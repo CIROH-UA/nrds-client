@@ -39,7 +39,6 @@ ENV NODE_VERSION_DIR=${NVM_DIR}/versions/node/v${NODE_VERSION}
 ENV NODE_PATH=${NODE_VERSION_DIR}/lib/node_modules
 ENV PATH=${NODE_VERSION_DIR}/bin:$PATH
 ENV NPM=${NODE_VERSION_DIR}/bin/npm
-
 ENV PDM="/root/.local/bin/pdm"
 ENV APP_SRC_ROOT=${TETHYS_HOME}/apps/nrds
 
