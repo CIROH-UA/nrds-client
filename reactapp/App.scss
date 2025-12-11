@@ -90,7 +90,7 @@ $theme-colors: (
   --select-option-hover-bg: rgba(38,132,255,0.1);
   --select-option-selected-bg: #2684ff;
 
-  --modal-bg: #ffffff;
+  --modal-bg: #{$primary};
   --modal-text-color: #111827;
   --modal-border-color: #e5e7eb;
 
@@ -177,7 +177,7 @@ $theme-colors: (
     --popup-bg: #2b333b;
     --popup-text-color: #f8f9fa;
 
-    --modal-bg: rgba(255, 255, 255, 0.08);
+    --modal-bg: #{$secondary};
     --modal-text-color: var(--text-color);
     --modal-border-color: #374151;
 
