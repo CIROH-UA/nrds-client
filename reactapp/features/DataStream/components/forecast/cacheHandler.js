@@ -1,6 +1,6 @@
 // ResetDataButton.js
 import React, { useState } from 'react';
-import { XButton } from '../styles/Styles';
+import { StyledButton } from 'features/Tethys/components/Styles';
 import { dropAllVpuDataTables } from 'features/DataStream/lib/queryData';
 import { resetDatabase } from 'features/DataStream/lib/duckdbClient';
 import { DeleteDataIcon } from 'features/DataStream/lib/layers';
@@ -34,14 +34,14 @@ const ResetDataButton = () => {
 
   return (
     <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 4 }}>
-      <XButton
+      <StyledButton
         variant="outline-danger"
         size="sm"
         onClick={handleResetClick}
         disabled={isResetting}
       >
         {isResetting ? 'Resetting…' :  <DeleteDataIcon style={{ marginRight: 6 }} />}
-      </XButton>
+      </StyledButton>
 
       {error && (
         <span

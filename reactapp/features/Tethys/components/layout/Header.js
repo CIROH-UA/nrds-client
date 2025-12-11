@@ -3,20 +3,18 @@ import Container from 'react-bootstrap/Container';
 import Form from 'react-bootstrap/Form';
 import Navbar from 'react-bootstrap/Navbar';
 import PropTypes from 'prop-types';
-import { useContext } from 'react';
-import { BsX, BsGear } from 'react-icons/bs';
+import { useContext, useState } from 'react';
+import { BsX, BsInfoCircle } from 'react-icons/bs';
 import { LinkContainer } from 'react-router-bootstrap';
 import HeaderButton from 'features/Tethys/components/buttons/HeaderButton';
-import NavButton from 'features/Tethys/components/buttons/NavButton';
 import SearchBar from 'features/DataStream/components/map/SearchBar';
 import { AppContext } from 'features/Tethys/context/context';
-import { CustomNavBar, CustomDiv } from 'features/Tethys/components/Styles';
-
+import { CustomNavBar, CustomDiv, StyledButton } from 'features/Tethys/components/Styles';
+import { GeneralInfoModal } from 'features/DataStream/components/Modals';
 
 const Header = ({onNavChange}) => {
   const {tethysApp, user} = useContext(AppContext);
-  const showNav = () => onNavChange(true);
-  
+  const [ modalGeneralInfoShow, setModalGeneralInfoShow ] = useState(false);
   return (
     <>
         <CustomNavBar fixed="top" className="shadow">
@@ -38,10 +36,16 @@ const Header = ({onNavChange}) => {
  
               <SearchBar/>
             </CustomDiv>
-
-            <Form inline="true">
-              <HeaderButton href={tethysApp.exitUrl} tooltipPlacement="bottom" tooltipText="Exit"><BsX size="1.5rem"/></HeaderButton>
-            </Form>
+            <CustomDiv>
+              <StyledButton onClick={() => setModalGeneralInfoShow(true)}><BsInfoCircle size="1.5rem"/></StyledButton>
+              <Form inline="true">
+                <HeaderButton href={tethysApp.exitUrl} tooltipPlacement="bottom" tooltipText="Exit"><BsX size="1.5rem"/></HeaderButton>
+              </Form>
+            </CustomDiv>
+            <GeneralInfoModal
+              show={modalGeneralInfoShow}
+              onHide={() => setModalGeneralInfoShow(false)}
+            />
           </Container>
         </CustomNavBar>
     </>

@@ -1,5 +1,3 @@
-import styled from 'styled-components';
-import Button from 'react-bootstrap/Button';
 import { BsList } from 'react-icons/bs';
 import { NavStyledButton } from 'features/Tethys/components/Styles';
 

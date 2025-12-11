@@ -12,7 +12,6 @@ const useDataStreamStore = create((set) => ({
     model: 'cfe_nom',
     date: `ngen.${getYesterdayDateString()}`,
     dates: [],
-    // date: 'ngen.20251125',
     forecast: 'short_range',
     time: null,
     cycle: '00',

@@ -7,7 +7,8 @@ export const StyledButton = styled.button`
   background-color: transparent;
   border: none;
   color: var(--text-color);
-
+  border-radius: 20px;
+  padding: 5px;
   &:hover,
   &:focus {
     background-color: var(--button-primary-hover-bg); 
