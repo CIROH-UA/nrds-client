@@ -3,7 +3,7 @@ name = "tethysapp-nrds"
 dynamic = ["version"]
 description = "An application for visualizaing Next gen model data."
 authors = [{ name = "Giovanni Romero", email = "gromero@aquaveo.com" }]
-dependencies = ["duckdb", "geopandas", "xarray", "netcdf4>=1.7.2", "numpy<2", "botocore", "boto3"  ]
+dependencies = ["geopandas", "xarray", "numpy<2","pandas", "pyarrow", "fsspec", "pyproj", "h5netcdf"]
 requires-python = ">=3.10"
 readme = "README.md"
 license = { text = "" }
