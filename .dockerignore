@@ -18,3 +18,7 @@ build
 **/*.egg-info
 *.ini
 .*sif
+launchApp.sh
+docker-compose.yaml
+.github
+scripts
