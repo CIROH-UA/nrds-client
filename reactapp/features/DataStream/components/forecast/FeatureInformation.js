@@ -1,14 +1,15 @@
-// GaugeInformation.js
-import React, { Fragment } from 'react';
+import React, { Fragment, useState } from 'react';
 import { MdInfoOutline } from 'react-icons/md';
-import { IconLabel, FieldBlock, FieldValue, FieldsGrid, FieldLabel, HeaderRow } from '../styles/Styles';
+import { IconLabel, FieldBlock, FieldValue, FieldsGrid, FieldLabel, HeaderRow, SButton } from '../styles/Styles';
 import { useFeatureStore } from 'features/DataStream/store/Layers';
 import { formatLabel } from 'features/DataStream/lib/utils';
 import { BasinSymbol } from 'features/DataStream/lib/layers';
+import { LayerInfoModal } from '../Modals';
 
 export const FeatureInformation = () => {
   const selectedFeature = useFeatureStore((state) => state.selected_feature);
-
+  const [ modalFeatureInfoShow, setModalFeatureInfoShow ] = useState(false);
+  
   if (!selectedFeature) {
     return null; // or <Panel>No gauge selected</Panel>
   }
@@ -56,7 +57,11 @@ export const FeatureInformation = () => {
       <HeaderRow>
         <IconLabel $fontSize={14}>
           <span style={{ fontWeight: 600 }}>Feature Information</span>
-          <MdInfoOutline size={16} />
+          <IconLabel>
+            <SButton bsPrefix='btn2' onClick={() => setModalFeatureInfoShow(true)}>
+              <MdInfoOutline size={15} />
+            </SButton>
+          </IconLabel> 
         </IconLabel>
       </HeaderRow>
 
@@ -77,6 +82,10 @@ export const FeatureInformation = () => {
           </FieldBlock>
         ))}
       </FieldsGrid>
+      <LayerInfoModal
+        show={modalFeatureInfoShow}
+        onHide={() => setModalFeatureInfoShow(false)}
+      />
     </Fragment>
   );
 };

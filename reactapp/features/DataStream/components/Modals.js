@@ -4,38 +4,73 @@ import { ThemedModal, XButton, SButton, Row } from './styles/Styles';
 import { MdClose } from "react-icons/md";
 
 export const LayerInfoModal = (props) => {
-
-
   return (
     <ThemedModal
       {...props}
-
       size="lg"
       aria-labelledby="contained-modal-title-vcenter"
       centered
       backdrop={false}
     >
-      <Modal.Header style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} >
-  
-        <Modal.Title id="contained-modal-title-vcenter">
+      <Modal.Header>
+        <Modal.Title id="contained-modal-title-vcenter" 
+          style={{
+            width: '100%',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
           Layer Information
-        <SButton onClick={props.onHide}>
-          <MdClose/>
-        </SButton>
- 
+          <SButton onClick={props.onHide}>
+            <MdClose />
+          </SButton>
         </Modal.Title>
       </Modal.Header>
+
       <Modal.Body>
         <p>
-          Cras mattis consectetur purus sit amet fermentum. Cras justo odio,
-          dapibus ac facilisis in, egestas eget quam. Morbi leo risus, porta ac
-          consectetur ac, vestibulum at eros.
+          The community HydroFabric is a nationally consistent, high-resolution hydrologic fabric whose
+          model inputs and outputs are being retrieved directly from the CIROH NextGen Datastream at{' '}
+          <a
+            href="https://datastream.ciroh.org/index.html#v2.2_resources/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            https://datastream.ciroh.org/index.html#v2.2_resources/
+          </a>.
+        </p>
+        <p>
+          The corresponding map layers are served as PMTiles and index files at{' '}
+          <a
+            href="https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/nexus.pmtiles"
+            target="_blank"
+            rel="noreferrer"
+          >
+            nexus.pmtiles
+          </a>
+          ,{' '}
+          <a
+            href="https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/merged.pmtiles"
+            target="_blank"
+            rel="noreferrer"
+          >
+            merged.pmtiles
+          </a>
+          , and{' '}
+          <a
+            href="https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/hydrofabric_index.parquet"
+            target="_blank"
+            rel="noreferrer"
+          >
+            hydrofabric_index.parquet
+          </a>.
         </p>
       </Modal.Body>
-
     </ThemedModal>
   );
 };
+
 
 export const DataInfoModel = (props) => {
 
