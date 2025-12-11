@@ -1,0 +1,241 @@
+/* Define color variables (SCSS) */
+$primary:   #ffffff;
+$secondary: #2c3e50;
+$success:   #3e8d63;
+$info:      #4b0ffd;
+$warning:   #b8c924;
+$danger:    #d62518;
+$light:     #f8f9fa;
+$dark:      #32465b;
+$accent:    #da6d25;
+
+
+/* Bootstrap theme map */
+$theme-colors: (
+  primary: $primary,
+  secondary: $secondary,
+  success: $success,
+  info: $info,
+  warning: $warning,
+  danger: $danger,
+  light: $light,
+  dark: $dark,
+  accent: $accent,
+);
+
+/* Import Bootstrap SCSS */
+@import "../node_modules/bootstrap/scss/bootstrap";
+
+/* === THEME VARIABLES === */
+
+/* Base (light) theme */
+:root {
+  color-scheme: light dark;
+  /* core */
+  --background-color: #{$primary};
+  --text-color: #212121;
+   --primary-color: #{$primary};
+  --title-text-color: #5f6368;
+  --ts-header-height: 56px;
+  --map-style-url: #{'https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/styles/light-style.json'};
+  
+
+  --map-divides-outline-color: rgba(91, 44, 111, 0.5);
+  --map-divides-highlight-fill: rgba(5, 49, 243, 0.32);
+  --map-divides-highlight-outline: rgba(253, 0, 253, 0.7);
+
+  --map-flowpaths-color: #000000;
+
+
+  --map-gauges-color: #646464;
+
+  
+  --map-nexus-circle-color: #1f78b4;
+  --map-nexus-stroke-color: #ffffff;
+  --map-nexus-highlight-circle-color: #1f78b4;
+
+  --button-primary-bg: #{$light};
+  --button-primary-hover-bg: #{$light};
+  --button-primary-text-hover: #{$secondary};
+  --button-primary-text: #5f6368;
+
+  --switch-active: #{$secondary};
+  --switch-inactive: #{$light};
+
+  --search-bg: #{$light};
+  --search-border: #{$light};
+  --search-text: #{$dark};
+  --search-placeholder: #{$dark};
+ 
+
+  /* extras used in components */
+  --panel-background: #{$primary};
+  --panel-border-color: #{$primary};
+  --muted-text: #9ca3af;
+
+  --offcanvas-bg: #ffffff;
+  --offcanvas-border-color: #dee2e6;
+
+  --popup-bg: #ffffff;
+  --popup-text-color: #212529;
+
+  --map-panel-bg: #{$light};
+  --map-panel-text: #212121;
+
+  --select-control-bg: #ffffff;
+  --select-control-border: #cccccc;
+  --select-text-color: #000000;
+  --select-placeholder-color: #666666;
+  --select-menu-bg: #ffffff;
+  --select-option-hover-bg: rgba(38,132,255,0.1);
+  --select-option-selected-bg: #2684ff;
+
+  --modal-bg: #ffffff;
+  --modal-text-color: #111827;
+  --modal-border-color: #e5e7eb;
+
+  --link-color: #0b74de;
+  --accent-text: #5f6368;
+  --hover-text: #{$secondary};
+
+
+    /* navbar buttons */
+  --nav-button-text-color: #{$secondary};
+  --nav-button-hover-bg: rgba(0, 0, 0, 0.1);
+
+  /* error overlay / box */
+  --error-overlay-bg: #ffffff;
+  --error-box-bg: #ffffff;
+  --error-box-text-color: #111827;
+
+  /* nav pills active state */
+  --nav-pill-active-bg: #009989;
+  --nav-pill-active-text-color: #ffffff;
+
+  /* line chart colors - light */
+  --chart-axis-label-color: #111827;
+  --chart-axis-stroke-color: #111827;
+  --chart-axis-tick-color: #111827;
+  --chart-axis-tick-text-color: #111827;
+  --chart-grid-color: #e5e7eb;
+  --chart-tooltip-bg: rgba(255, 255, 255, 0.95);
+  --chart-tooltip-text: #111827;
+  --chart-tooltip-border-color: rgba(148, 163, 184, 0.6);
+  --chart-crosshair-color: #4b5563;
+  --chart-glyph-stroke-color: #ffffff;
+  --chart-empty-text-color: #6b7280;
+  /* comma-separated line colors */
+  --chart-line-colors: #1d4ed8, #f97316, #16a34a, #dc2626, #7c3aed;
+
+}
+
+/* Dark theme override */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --primary-color: #{$secondary};
+    --title-text-color: #ffffff;
+    --background-color: #{$secondary};
+    --text-color: #ffffff;
+    --hover-text: #{$primary};
+    --map-style-url: #{'https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/styles/dark-style.json'};
+    --map-divides-outline-color: rgba(238, 51, 119, 0.5);
+    --map-divides-highlight-fill: rgba(24, 21, 230, 0.32);
+    --map-divides-highlight-outline: rgba(192, 20, 207, 0.7);
+
+    --map-flowpaths-color: #0077bb;
+
+    --map-gauges-color: #c8c8c8;
+
+    --map-nexus-circle-color: #2c3e50;
+    --map-nexus-stroke-color: #e9ecef;
+    --map-nexus-highlight-circle-color: #2c3e50;
+
+
+    --search-bg: #{$dark};
+    --search-border: #{$dark};
+    --search-text: #{$light};
+    --search-placeholder: #{$light};
+
+  
+    --switch-inactive: #{$dark};
+
+    --button-primary-bg: #{$dark};
+    --button-primary-hover-bg: #{$dark};
+    --button-primary-text-hover: #{$primary};
+    --button-primary-text: #c4fff8;
+    
+    // --accent-text: #c4fff8;
+    --accent-text: #cdcdcd;
+
+    --panel-background: #{$secondary};
+    --panel-border-color: #{$secondary};
+    --muted-text: #9ca3af;
+
+    --offcanvas-bg: #2c3e50;
+    --offcanvas-border-color: #333333;
+
+    --popup-bg: #2b333b;
+    --popup-text-color: #f8f9fa;
+
+    --modal-bg: rgba(255, 255, 255, 0.08);
+    --modal-text-color: var(--text-color);
+    --modal-border-color: #374151;
+
+    --link-color: #bfdbfe;
+    --map-panel-bg: #1f2933;
+    --map-panel-text: #f9fafb;
+
+    --select-control-bg: #2c3e50;
+    --select-control-border: #4f5b67;
+    --select-text-color: #ecf0f1;
+    --select-placeholder-color: #b0bec5;
+    --select-menu-bg: #2c3e50;
+    --select-option-hover-bg: #34495e;
+    --select-option-selected-bg: #1abc9c;
+
+    /* navbar buttons */
+    --nav-button-text-color: #f9fafb;
+    --nav-button-hover-bg: rgba(255, 255, 255, 0.08);
+
+    /* error overlay / box for dark mode */
+    --error-overlay-bg: #000000;         // or keep #ffffff if you really want a bright whiteout
+    --error-box-bg: #111827;
+    --error-box-text-color: #f9fafb;
+
+    /* nav pills active state */
+    --nav-pill-active-bg: #009989;       // same brand color in dark mode
+    --nav-pill-active-text-color: #ffffff;
+
+    --chart-axis-label-color: #e5e7eb;
+    --chart-axis-stroke-color: #d1d5db;
+    --chart-axis-tick-color: #9ca3af;
+    --chart-axis-tick-text-color: #e5e7eb;
+    --chart-grid-color: #4b5563;
+    --chart-tooltip-bg: rgba(31, 41, 55, 0.95);
+    --chart-tooltip-text: #f9fafb;
+    --chart-tooltip-border-color: rgba(148, 163, 184, 0.5);
+    --chart-crosshair-color: #9ca3af;
+    --chart-glyph-stroke-color: #0f172a;
+    --chart-empty-text-color: #9ca3af;
+
+    --chart-line-colors: #2dd4bf, #f97316, #a855f7, #38bdf8, #facc15;
+
+  }
+}
+
+/* Global usage */
+html, body, #root {
+  height: 100%;
+  background-color: var(--background-color);
+  color: var(--text-color);
+}
+
+body {
+  padding-top: var(--ts-header-height);
+}
+
+.form-switch .form-check-input {
+  width: 3em;
+  height: 1.5em;
+  margin-right: 10px;
+}

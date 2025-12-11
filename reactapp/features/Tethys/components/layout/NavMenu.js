@@ -1,0 +1,35 @@
+// NavMenu.jsx
+import React from 'react';
+import PropTypes from 'prop-types';
+
+import { ThemedOffcanvas } from 'features/Tethys/components/Styles';
+
+const NavMenu = ({ children, navTitle, onNavChange, navVisible, ...props }) => {
+
+  const handleClose = () => onNavChange(false);
+
+  return (
+    <ThemedOffcanvas
+      show={navVisible}
+      onHide={handleClose}
+      placement="end"
+      {...props}
+    >
+      <ThemedOffcanvas.Header closeButton >
+        <ThemedOffcanvas.Title>{navTitle}</ThemedOffcanvas.Title>
+        
+      </ThemedOffcanvas.Header>
+
+      <ThemedOffcanvas.Body>{children}</ThemedOffcanvas.Body>
+    </ThemedOffcanvas>
+  );
+};
+
+NavMenu.propTypes = {
+  children:   PropTypes.oneOfType([PropTypes.arrayOf(PropTypes.element), PropTypes.element]),
+  navTitle:   PropTypes.string,
+  onNavChange:PropTypes.func.isRequired,
+  navVisible: PropTypes.bool.isRequired,
+};
+
+export default NavMenu;

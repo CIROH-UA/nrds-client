@@ -1,0 +1,92 @@
+
+export const availableModelsList = [
+  { value: 'cfe_nom', label: 'cfe_nom' },
+  { value: 'lstm', label: 'lstm' },
+];
+export const availableForecastList = [
+  { value: 'short_range', label: 'short_range' },
+  { value: 'medium_range', label: 'medium_range' },
+  { value: 'analysis_assim_extend', label: 'analysis_assim_extend' },
+];
+
+export const availableCyclesList = {
+  short_range: [
+    { value: '00', label: '00' },
+    { value: '01', label: '01' },
+    { value: '02', label: '02' },
+    { value: '03', label: '03' },
+    { value: '04', label: '04' },
+    { value: '05', label: '05' },
+    { value: '06', label: '06' },
+    { value: '07', label: '07' },
+    { value: '08', label: '08' },
+    { value: '09', label: '09' },
+    { value: '10', label: '10' },
+    { value: '11', label: '11' },
+    { value: '12', label: '12' },
+    { value: '13', label: '13' },
+    { value: '14', label: '14' },
+    { value: '15', label: '15' },
+    { value: '16', label: '16' },
+    { value: '17', label: '17' },
+    { value: '18', label: '18' },
+    { value: '19', label: '19' },
+    { value: '20', label: '20' },
+    { value: '21', label: '21' },
+    { value: '22', label: '22' },
+    { value: '23', label: '23' }
+  ],
+  medium_range: [
+    { value: '00', label: '00' },
+    { value: '06', label: '06' },
+    { value: '12', label: '12' },
+    { value: '18', label: '18' }
+  ],
+  analysis_assim_extend: [{ value: '16', label: '16' }],
+};
+
+export const availableEnsembleList = {
+  short_range: [],
+  medium_range: [{ value: '1', label: '1' }],
+  analysis_assim_extend: [],
+};
+
+export const FEATURE_PROPERTIES = {
+  'tot_drainage_areasqkm': 'Total Drainage Area (km2)',
+  'areasqkm': 'Area (km2)',
+  'toid': 'To ID',
+  'vpuid': 'VPU ID',
+  'lengthkm': 'Length (km)',
+  'has_flowline': 'Has Flowline',
+  'divide_id': 'Divide ID',
+};
+
+export const getVariableUnits = (variableName) => {
+  if (!variableName) return '';
+
+  const variableUnits = {
+    rain_rate: 'mm/h',
+    giuh_runoff: 'mm',
+    infiltration_excess: '',
+    direct_runoff: '',
+    nash_lateral_runoff: '',
+    deep_gw_to_channel_flux: '',
+    soil_to_gw_flux: '',
+    q_out: '',
+    potential_et: '',
+    actual_et: '',
+    gw_storage: 'm/m',
+    soil_storage: 'm/m',
+    soil_storage_change: '',
+    surf_runoff_scheme: '',
+    nwm_ponded_depth: '',
+    type: '',
+    flow: 'm³/s',
+    velocity: 'm/s',
+    depth: 'm',
+    nudge: 'm³/s',
+    streamflow: 'm³/s',
+  };
+  const variable = variableName.toLowerCase();
+  return variableUnits[variable] ?? '';
+};

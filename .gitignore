@@ -1,0 +1,52 @@
+# Python
+*.pydevproject
+*.project
+*.egg-info
+*.class
+*.pyo
+*.pyc
+*.db
+.pytest_cache
+.venv
+
+# Vi
+*.swp
+
+# System
+*.DS_Store
+
+
+# Tethys
+tethysapp/*/workspaces/*
+home/*
+
+# Misc
+*.sqlite
+*.idea
+*.vscode
+*.coverage
+*.swp
+condorkey
+condorkey.pub
+tethysapp/nrds/workspaces/*
+services.yml
+dist/*
+build/*
+
+# PDM
+.pdm-python
+
+# Node/React
+node_modules*
+tethysapp/nrds/public/frontend/
+reactapp/config/production.env
+coverage
+
+
+# singularity
+
+.*sif
+.data
+scripts/out
+scripts/convert_outputs
+scripts/indexes
