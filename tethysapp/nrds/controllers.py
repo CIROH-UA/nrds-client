@@ -42,8 +42,6 @@ def getParquetPerVpu(request):
         )
         dfs.append(df)
     complete_df = pd.concat(dfs, ignore_index=True)
-    # breakpoint()
-    print(complete_df.head())
     table = pa.Table.from_pandas(complete_df)
 
     buf = io.BytesIO()
