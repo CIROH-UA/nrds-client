@@ -109,7 +109,7 @@ export default function DataMenu() {
         x: new Date(d.time),
         y: d[variables[0]],
       }));
-
+      const textToast = `Loaded ${xy.length} data points for id: ${feature_id}`;
       set_table(cacheKey);
       set_variables(variables);
       set_series(xy);
@@ -120,7 +120,7 @@ export default function DataMenu() {
         'title': makeTitle(forecast, feature_id),
       });
       toast.update(toastId, {
-        render: `Loaded data for id: ${feature_id}`,
+        render: `${textToast}`,
         type: 'success',
         isLoading: false,
         autoClose: 300,

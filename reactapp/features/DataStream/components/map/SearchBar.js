@@ -41,6 +41,10 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
     setLoading(true);
     const unbiased_id = e.target.value;
     const id = unbiased_id.split('-')[1];
+    const toastId = toast.loading(`Loading data for id: ${id}...`, {
+      closeOnClick: false,
+      draggable: false,
+    });
     try{
       const features = await getFeatureProperties({ cacheKey: 'index_data_table', feature_id: unbiased_id });
       if (features.length === 0) {
@@ -59,6 +63,7 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
         time,
         vpu_str
       );
+
       const tableExists = await checkForTable(cacheKey);
       if (!tableExists) {
         await loadVpuData(
@@ -81,6 +86,7 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
         x: new Date(d.time),
         y: d[variables[0]],
       }));
+      const textToat = `Loaded ${xy.length} points for id: ${id}`;
       set_series(xy);
       set_table(cacheKey);
       set_variables(variables);
@@ -90,9 +96,23 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
         'xaxis': "Time",
         'title': makeTitle(forecast, unbiased_id),
       });
+      toast.update(toastId, {
+          render: `${textToat}`,
+          type: 'success',
+          isLoading: false,
+          autoClose: 3000,
+          closeOnClick: true,
+        });
     }
     catch (error) {
       console.error('Error fetching data for feature id:', unbiased_id, error);
+      toast.update(toastId, {
+        render: `No data for id: ${id}`,
+        type: 'warning',
+        isLoading: false,
+        autoClose: 500,
+        closeOnClick: true,
+      });
     } finally {
       setLoading(false);
     }

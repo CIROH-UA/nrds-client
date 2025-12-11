@@ -269,6 +269,8 @@ const MapComponent = () => {
           x: new Date(d.time),
           y: d.flow,
         }));
+        const textToat = `Loaded ${xy.length} points for id: ${id}`;
+
         set_feature_id(unbiased_id);
         set_table(cacheKey);
         set_vpu(vpu_str);
@@ -281,7 +283,7 @@ const MapComponent = () => {
           title: makeTitle(forecast, unbiased_id),
         });
         toast.update(toastId, {
-          render: `Loaded data for id: ${id}`,
+          render: `${textToat}`,
           type: 'success',
           isLoading: false,
           autoClose: 3000,
