@@ -40,6 +40,7 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
     };
     setLoading(true);
     const unbiased_id = e.target.value;
+    set_feature_id(unbiased_id);
     const id = unbiased_id.split('-')[1];
     const toastId = toast.loading(`Loading data for id: ${id}...`, {
       closeOnClick: false,
@@ -51,7 +52,6 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
         setLoading(false);
         return 
       };
-      set_feature_id(e.target.value);
       const feature = features.length > 0 ? features[0] : null;
       set_selected_feature(feature || null);
       const vpu_str = `VPU_${feature.vpuid}`;
