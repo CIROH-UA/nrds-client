@@ -5,7 +5,7 @@ export const availableModelsList = [
 ];
 export const availableForecastList = [
   { value: 'short_range', label: 'short_range' },
-  { value: 'medium_range', label: 'medium_range' },
+  // { value: 'medium_range', label: 'medium_range' },
   { value: 'analysis_assim_extend', label: 'analysis_assim_extend' },
 ];
 
