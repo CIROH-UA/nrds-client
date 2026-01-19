@@ -21,15 +21,14 @@ export const TimeSlider = () => {
 
   const intervalRef = useRef(null);
 
-  // ✅ series is an ARRAY
   const timeSteps = Array.isArray(series) ? series.length : 0;
 
-  // ✅ label based on ms epoch values, relative to first point
   const currentLabel = useMemo(() => {
+    console.log("Calculating currentLabel");
     if (!timeSteps) return "T+0h";
-    const t0 = series?.[0]?.time;
-    const t = series?.[currentTimeIndex]?.time;
-    if (typeof t0 !== "number" || typeof t !== "number") return "T+0h";
+    const t0 = series?.[0]?.x;
+    const t = series?.[currentTimeIndex]?.x;
+    if (typeof t0 !== "object" || typeof t !== "object") return "T+0h";
     const hours = Math.round((t - t0) / 3600000); // ms -> hours
     return `T+${hours}h`;
   }, [series, currentTimeIndex, timeSteps]);
