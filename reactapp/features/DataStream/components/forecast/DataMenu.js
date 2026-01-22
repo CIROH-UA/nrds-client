@@ -79,8 +79,6 @@ export default function DataMenu() {
 
   const [outputFile, setOutputFile] = useState('');
 
-  // one dropdown at a time
-  const [activeStepKey, setActiveStepKey] = useState('model');
 
   const didBootstrapRef = useRef(false);
   const isMedium = forecast === 'medium_range';
@@ -88,6 +86,26 @@ export default function DataMenu() {
   // ─────────────────────────────────────
   // Helpers
   // ─────────────────────────────────────
+  // put near your helpers
+const deriveActiveKey = ({ model, date, forecast, cycle, ensemble, vpu }) => {
+  if (!model) return 'model';
+  if (!date) return 'date';
+  if (!forecast) return 'forecast';
+  if (!cycle) return 'cycle';
+
+  if (forecast === 'medium_range') {
+    if (!ensemble) return 'ensemble';
+    if (!vpu) return 'vpu';
+    return 'outputFile';
+  }
+
+  if (!vpu) return 'vpu';
+  return 'outputFile';
+};
+  // one dropdown at a time
+const [activeStepKey, setActiveStepKey] = useState(() =>
+  deriveActiveKey({ model, date, forecast, cycle, ensemble, vpu })
+);
   const handleLoading = (text) => {
     setLoading(true);
     setLoadingText(text);
@@ -380,7 +398,30 @@ export default function DataMenu() {
     () => (variables || []).map((vv) => ({ value: vv, label: vv })),
     [variables]
   );
+// ✅ auto-advance when the path becomes “deeper” (e.g., after bootstrap sets values)
+useEffect(() => {
+  const derived = deriveActiveKey({ model, date, forecast, cycle, ensemble, vpu });
 
+  setActiveStepKey((prev) => {
+    const prevIdx = stepOrder.indexOf(prev);
+    const nextIdx = stepOrder.indexOf(derived);
+    return nextIdx > prevIdx ? derived : prev; // only advance
+  });
+
+  // if we’re at the vpu level, make sure output files are fetched
+  if (derived === 'outputFile') {
+    ensureOptionsForStep('outputFile', { force: true });
+  }
+}, [
+  model,
+  date,
+  forecast,
+  cycle,
+  ensemble,
+  vpu,
+  stepOrder,
+  ensureOptionsForStep,
+]);
   // ─────────────────────────────────────
   // Step definitions
   // ─────────────────────────────────────
