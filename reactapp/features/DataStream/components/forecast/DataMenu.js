@@ -23,6 +23,7 @@ import {
   getPathForStep,
 } from 'features/DataStream/lib/DataMenu.nav';
 
+
 const ICONS = {
   model: <ModelIcon />,
   date: <DateIcon />,
@@ -54,9 +55,7 @@ const EMPTY_OPTS = {
 };
 
 export default function DataMenu() {
-  // ─────────────────────────────────────
-  // Stores
-  // ─────────────────────────────────────
+
   const vpu = useDataStreamStore((s) => s.vpu);
   const model = useDataStreamStore((s) => s.model);
   const date = useDataStreamStore((s) => s.date);
@@ -64,6 +63,7 @@ export default function DataMenu() {
   const cycle = useDataStreamStore((s) => s.cycle);
   const ensemble = useDataStreamStore((s) => s.ensemble);
   const variables = useDataStreamStore((s) => s.variables);
+  const outputFile = useDataStreamStore((s) => s.outputFile);
 
   const set_model = useDataStreamStore((s) => s.set_model);
   const set_date = useDataStreamStore((s) => s.set_date);
@@ -72,6 +72,7 @@ export default function DataMenu() {
   const set_ensemble = useDataStreamStore((s) => s.set_ensemble);
   const set_vpu = useDataStreamStore((s) => s.set_vpu);
   const set_variables = useDataStreamStore((s) => s.set_variables);
+  const setOutputFile = useDataStreamStore((s) => s.set_outputFile);
 
   const variable = useTimeSeriesStore((s) => s.variable);
   const set_variable = useTimeSeriesStore((s) => s.set_variable);
@@ -84,7 +85,7 @@ export default function DataMenu() {
 
 
   const [loadingText, setLoadingText] = useState('');
-  const [outputFile, setOutputFile] = useState(''); // store VALUE (not label)
+  // const [outputFile, setOutputFile] = useState(''); 
   const [opts, setOpts] = useState(EMPTY_OPTS);
 
   const didBootstrapRef = useRef(false);
@@ -269,6 +270,7 @@ export default function DataMenu() {
         setOpt('outputFile', oOpts);
 
         const oDef = pickDefault(oOpts, { index: 0 })?.value || '';
+        console.log("oDef", oDef);
         setOutputFile(oDef);
 
         setActiveStepKey('outputFile');
@@ -517,13 +519,13 @@ export default function DataMenu() {
     });
 
     try {
-      const cacheKey = getCacheKey(model, date, forecast, cycle, ensemble, vpu);
+      const cacheKey = getCacheKey(model, date, forecast, cycle, ensemble, vpu, outputFile);
       const vpu_gpkg = makeGpkgUrl(vpu);
       const id = feature_id.split('-')[1];
 
       const tableExists = await checkForTable(cacheKey);
       if (!tableExists) {
-        await loadVpuData(model, date, forecast, cycle, ensemble, vpu, vpu_gpkg);
+        await loadVpuData(model, date, forecast, cycle, ensemble, vpu, outputFile, vpu_gpkg);
       }
 
       const vars = await getVariables({ cacheKey });

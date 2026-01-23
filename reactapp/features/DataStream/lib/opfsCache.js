@@ -51,9 +51,9 @@ export async function loadArrowFromCache(key) {
 }
 
 
-export function getCacheKey(model, date, forecast, cycle, time, vpu) {
-  if (!time){
-    return `${model}_${date}_${forecast}_${cycle}_${vpu}`.replace(/\./g,'_').replace(/\//g,'_');  
+export function getCacheKey(model, date, forecast, cycle, ensemble, vpu, outputFile) {
+  if (!ensemble){
+    return `${model}_${date}_${forecast}_${cycle}_${vpu}_${outputFile}`.replace(/\./g,'_').replace(/\//g,'_');  
   }
-  return `${model}_${date}_${forecast}_${cycle}_${time}_${vpu}`.replace(/\./g,'_').replace(/\//g,'_');
+  return `${model}_${date}_${forecast}_${cycle}_${ensemble}_${vpu}_${outputFile}`.replace(/\./g,'_').replace(/\//g,'_');
 }

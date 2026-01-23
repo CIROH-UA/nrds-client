@@ -123,20 +123,18 @@ export async function loadVpuData(
   cycle,
   time,
   vpu,
+  outputFile,
   vpu_gpkg
 ) {
-  const cacheKey = getCacheKey(model, date, forecast, cycle, time, vpu);
+  const cacheKey = getCacheKey(model, date, forecast, cycle, time, vpu, outputFile);
   console.log("loadVpuData called with cacheKey:", cacheKey);
 
   let buffer = await loadArrowFromCache(cacheKey);
 
   if (!buffer) {
-    const nc_files = await getNCFiles(model, date, forecast, cycle, time, vpu);
-    if (nc_files.length === 0) {
-      throw new Error(`No NC files found for VPU ${vpu} with prefix.`);
-    }
+    const ncFile = await getNCFiles(model, date, forecast, cycle, time, vpu, outputFile);
     const res = await appAPI.getParquetPerVpu({
-      nc_files,
+      ncFile,
       vpu_gpkg,
     });
     buffer = res; // ArrayBuffer from axios

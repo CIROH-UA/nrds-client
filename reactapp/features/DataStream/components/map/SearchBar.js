@@ -20,6 +20,7 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
   const cycle = useDataStreamStore((state) => state.cycle);
   const time = useDataStreamStore((state) => state.time);
   const vpu = useDataStreamStore((state) => state.vpu);
+  const outputFile = useDataStreamStore((state) => state.outputFile);
   const set_variables = useDataStreamStore((state) => state.set_variables);
   
   const set_table = useTimeSeriesStore((state) => state.set_table);
@@ -61,7 +62,8 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
         forecast,
         cycle,
         time,
-        vpu_str
+        vpu_str,
+        outputFile
       );
 
       const tableExists = await checkForTable(cacheKey);
@@ -72,6 +74,7 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
           forecast,
           cycle,
           time,
+          outputFile,
           vpu_str,
           makeGpkgUrl(vpu)
         );

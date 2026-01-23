@@ -14,6 +14,7 @@ const useDataStreamStore = create((set) => ({
     forecast: 'short_range',
     ensemble: null,
     cycle: '00',
+    outputFile: null,
     variables: [],
 
     set_bucket: (newBucket) => set({ bucket: newBucket }),
@@ -28,7 +29,7 @@ const useDataStreamStore = create((set) => ({
     set_community_pmtiles: (newCommunityPmtiles) => set({ community_pmtiles: newCommunityPmtiles }),
     set_hydrofabric_index: (newHydrofabricIndex) => set({ hydrofabric_index: newHydrofabricIndex }),
     set_variables: (newVariables) => set({ variables: newVariables }),
-    // set_dates: (newDates) => set({ dates: newDates }),
+    set_outputFile: (newOutputFile) => set({ outputFile: newOutputFile }),
     reset: () => set({
         bucket: 'ciroh-community-ngen-datastream',
         nexus_pmtiles: 'https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/nexus.pmtiles',
@@ -42,7 +43,7 @@ const useDataStreamStore = create((set) => ({
         ensemble: null,
         cycle: '00',
         variables: [],
-        // dates: [],
+        outputFile: null,
     }),
 }));
 

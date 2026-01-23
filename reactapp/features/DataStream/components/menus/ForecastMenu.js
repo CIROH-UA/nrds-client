@@ -1,5 +1,5 @@
 import React, { Fragment, useMemo } from 'react';
-import DataMenu from '../forecast/DataMenu';
+import DataMenu from '../forecast/dataMenu';
 import { Content, Container } from '../styles/Styles';
 import TimeSeriesCard from '../forecast/TimeseriesCard';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';

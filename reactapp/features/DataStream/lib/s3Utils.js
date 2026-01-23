@@ -61,8 +61,8 @@ export async function getOptionsFromURL(url) {
     if (url.split('/').includes('troute')){
       const files = await listPublicS3Files(url);
       const ncFiles = files.filter(f => f.endsWith('.nc'));
-      const ncFilesParsed = ncFiles.map(f => `s3://ciroh-community-ngen-datastream/${f}`);
-      const options = ncFilesParsed.map((d) => ({ value: d, label: d.split('/').pop() }));
+      // const ncFilesParsed = ncFiles.map(f => `s3://ciroh-community-ngen-datastream/${f}`);
+      const options = ncFiles.map((d) => ({ value: d.split('/').pop(), label: d.split('/').pop() }));
       const sortedOptions = Array.from(options).sort().reverse();
       return sortedOptions;
     }
@@ -79,14 +79,16 @@ export const makePrefix = (model, avail_date,ngen_forecast,ngen_cycle, ngen_time
     return prefix_path;
 }
 
-export async function getNCFiles(model, date, forecast, cycle, time, vpu, buffer) {
+export async function getNCFiles(model, date, forecast, cycle, time, vpu, outputFile, buffer) {
     if (buffer){ return []; }
     const prefix = makePrefix(model, date, forecast, cycle, time, vpu);
-    const filesPrefix = await listPublicS3Files(prefix);
-    console.log("files_prefix", filesPrefix);
-    const ncFiles = filesPrefix.filter(f => f.endsWith('.nc'));
-    const ncFilesParsed = ncFiles.map(f => `s3://ciroh-community-ngen-datastream/${f}`);
-    return ncFilesParsed;
+    // const filesPrefix = await listPublicS3Files(prefix);
+    // console.log("files_prefix", filesPrefix);
+    // const ncFiles = filesPrefix.filter(f => f.endsWith('.nc'));
+    // const ncFilesParsed = ncFiles.map(f => `s3://ciroh-community-ngen-datastream/${f}`);
+    const ncFileParsed = `s3://ciroh-community-ngen-datastream/${prefix}${outputFile}`;
+    return ncFileParsed
+    // return ncFilesParsed;
 }
 
 export const makeGpkgUrl = (vpu) => {

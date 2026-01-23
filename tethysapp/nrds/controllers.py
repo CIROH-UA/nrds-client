@@ -25,23 +25,21 @@ logger.setLevel(logging.INFO)
 @controller
 def home(request):
     """Controller for the app home page."""
-    # The index.html template loads the React frontend
     return App.render(request, "index.html")
 
 
 @controller
 def getParquetPerVpu(request):
     print("Getting parquet file per vpu...")
-    file_prefix_list =  json.loads(request.body.decode("utf-8"))['nc_files']
+    
+    file_prefix =  json.loads(request.body.decode("utf-8"))['ncFile']
     vpu_gpkg = json.loads(request.body.decode("utf-8"))['vpu_gpkg']
-    dfs = []
-    for file_prefix in file_prefix_list:
-        df = convert_nc_2_df(
-            s3_nc_url=file_prefix,
-            s3_gpkg_url=vpu_gpkg,
-        )
-        dfs.append(df)
-    complete_df = pd.concat(dfs, ignore_index=True)
+    print("file_prefix", file_prefix)
+    print("vpu_gpkg", vpu_gpkg)
+    complete_df = convert_nc_2_df(
+        s3_nc_url=file_prefix,
+        s3_gpkg_url=vpu_gpkg,
+    )
     table = pa.Table.from_pandas(complete_df)
 
     buf = io.BytesIO()

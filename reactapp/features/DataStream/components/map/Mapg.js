@@ -67,8 +67,10 @@ const MapComponent = () => {
   const time = useDataStreamStore((state) => state.time);
   const cycle = useDataStreamStore((state) => state.cycle);
   const vpu = useDataStreamStore((state) => state.vpu);
+  const outputFile = useDataStreamStore((state) => state.outputFile);
   const set_vpu = useDataStreamStore((state) => state.set_vpu);
   const set_variables = useDataStreamStore((state) => state.set_variables);
+
 
   const set_hovered_feature = useFeatureStore((state) => state.set_hovered_feature);
   const hovered_feature = useFeatureStore((state) => state.hovered_feature);
@@ -399,13 +401,13 @@ useEffect(() => {
       const id = unbiased_id.split('-')[1];
       const vpu_str = `VPU_${feature.properties.vpuid}`;
       const vpu_gpkg = makeGpkgUrl(vpu_str);
-      const cacheKey = getCacheKey(model, date, forecast, cycle, time, vpu_str);
+      const cacheKey = getCacheKey(model, date, forecast, cycle, time , vpu_str, outputFile);
       const toastId = toast.loading(`Loading data for id: ${id}...`, {
         closeOnClick: false,
         draggable: false,
       });
       try {
-        await loadVpuData(model, date, forecast, cycle, time, vpu_str, vpu_gpkg);
+        await loadVpuData(model, date, forecast, cycle, time, vpu_str, outputFile, vpu_gpkg);
         const featureIDs = await getFeatureIDs(cacheKey);
         set_feature_ids(featureIDs);
       } catch (err) {
