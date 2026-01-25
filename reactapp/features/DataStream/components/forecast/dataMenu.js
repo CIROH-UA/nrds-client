@@ -104,7 +104,7 @@ export default function DataMenu() {
     }
     
     handleLoading('Loading Datastream Data'); 
-    const toastId = toast.loading(`Loading data for id: ${feature_id}...`, {
+    const toastId = toast.loading(`DataMenu - Loading data for id: ${feature_id}...`, {
       closeOnClick: false,
       draggable: false,
     });
@@ -118,7 +118,6 @@ export default function DataMenu() {
         vpu,
         outputFile
       );
-      // set_table(cacheKey);
       set_cache_key(cacheKey);
       const _prefix = makePrefix(model, date, forecast, cycle, ensemble, vpu, outputFile);
       set_prefix(_prefix);

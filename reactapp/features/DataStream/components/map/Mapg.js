@@ -413,7 +413,7 @@ useEffect(() => {
         setLoading(false);
         return;
       }
-      const toastId = toast.loading(`Loading data for id: ${id}...`, {
+      const toastId = toast.loading(`MAP- Loading data for id: ${id}...`, {
         closeOnClick: false,
         draggable: false,
       });
@@ -445,10 +445,6 @@ useEffect(() => {
           y: d.flow,
          }));
         const textToat = `Loaded ${xy.length} points for id: ${id}`;
-
-        // set_feature_id(unbiased_id);
-        // set_table(cacheKey);
-        // set_vpu(vpu_str);
         set_variables(variables);
         set_variable(variables[0]);
         set_series(xy);

@@ -98,6 +98,9 @@ export const initialS3Data = async(vpu) => {
   const dates = (await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/`)).reverse();
   const forecasts = (await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${dates[1]?.value}/`)).reverse();
   const cycles = await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${dates[1]?.value}/${forecasts[0]?.value}/`);
+  if (!vpu) {
+    return {models, dates, forecasts, cycles, outputFiles: []};
+  }
   const outputFiles = await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${dates[1]?.value}/${forecasts[0]?.value}/${cycles[0]?.value}/${vpu}/ngen-run/outputs/troute/`);  
   return {models, dates, forecasts, cycles, outputFiles};
 }
