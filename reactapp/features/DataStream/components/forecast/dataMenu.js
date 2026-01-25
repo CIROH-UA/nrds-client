@@ -2,20 +2,17 @@ import React, { useMemo, Fragment } from 'react';
 import { Spinner } from 'react-bootstrap';
 import { XButton, LoadingMessage, Row, IconLabel } from '../styles/Styles';
 import SelectComponent from '../SelectComponent';
-import { getTimeseries} from 'features/DataStream/lib/queryData';
 import {getOptionsFromURL, makePrefix } from 'features/DataStream/lib/s3Utils';
 import { getCacheKey } from 'features/DataStream/lib/opfsCache';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
 import useS3DataStreamBucketStore from 'features/DataStream/store/s3Store';
-import { makeTitle } from 'features/DataStream/lib/utils';
 import {
   ModelIcon,
   DateIcon,
   ForecastIcon,
   CycleIcon,
   EnsembleIcon,
-  VariableIcon,
 } from 'features/DataStream/lib/layers';
 
 export default function DataMenu() {
@@ -28,7 +25,6 @@ export default function DataMenu() {
   const variables = useDataStreamStore((state) => state.variables);
   const model = useDataStreamStore((state) => state.model);
   const outputFile = useDataStreamStore((state) => state.outputFile);
-  const cacheKey = useDataStreamStore((state) => state.cache_key);
 
   const set_date = useDataStreamStore((state) => state.set_date);
   const set_forecast = useDataStreamStore((state) => state.set_forecast);
@@ -37,10 +33,7 @@ export default function DataMenu() {
   const set_model = useDataStreamStore((state) => state.set_model);
   const set_outputFile = useDataStreamStore((state) => state.set_outputFile);
   const set_cache_key = useDataStreamStore((state) => state.set_cache_key);
-  const variable = useTimeSeriesStore((state) => state.variable);
-  const set_series = useTimeSeriesStore((state) => state.set_series);
-  const set_variable = useTimeSeriesStore((state) => state.set_variable);
-  const set_layout = useTimeSeriesStore((state) => state.set_layout);
+  
   const feature_id = useTimeSeriesStore((state) => state.feature_id);
   const loading = useTimeSeriesStore((state) => state.loading);
   const loadingText = useTimeSeriesStore((state) => state.loadingText);
@@ -182,23 +175,6 @@ export default function DataMenu() {
     if (opt) set_outputFile(opt.value);
   };
 
-  const handleChangeVariable = async (optionArray) => {
-    const opt = optionArray?.[0];
-    if (opt) set_variable(opt.value);
-    const id = feature_id.split('-')[1]; 
-    const series = await getTimeseries(id, cacheKey, opt.value);
-    const xy = series.map((d) => ({
-      x: new Date(d.time),
-      y: d[opt.value],
-      }));
-    set_series(xy);
-    set_layout({
-      'yaxis': opt.value,
-      'xaxis': "Time",
-      'title': makeTitle(forecast, feature_id),
-    });
-
-  };
 
   const availableVariablesList = useMemo(() => {
     return variables.map((v) => ({ value: v, label: v }));
@@ -246,11 +222,6 @@ export default function DataMenu() {
     null
   }, [availableOutputFiles, outputFile]);
 
-  const selectedVariableOption = useMemo(() => {
-    const opts = availableVariablesList || [];
-    return opts.find((opt) => opt.value === variable) ?? null;
-  }
-  , [variables, variable]);
 
   return (
     <Fragment>
@@ -329,16 +300,7 @@ export default function DataMenu() {
         </div>
       </Fragment>
 
-        { availableVariablesList.length > 0 && (
-          <Row>
-            <IconLabel> <VariableIcon /> Variable</IconLabel>
-            <SelectComponent
-              optionsList={availableVariablesList}
-              value={selectedVariableOption}
-              onChangeHandler={handleChangeVariable}
-            />
-          </Row>
-        )}
+
 
       <LoadingMessage>
         {loading && (
@@ -354,6 +316,7 @@ export default function DataMenu() {
           </>
         )}
       </LoadingMessage>
+
       <Fragment>
        
       </Fragment>
