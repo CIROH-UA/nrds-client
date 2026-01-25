@@ -70,16 +70,14 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
     const features = await getFeatureProperties({ cacheKey: 'index_data_table', feature_id: unbiased_id });
     console.log('Features fetched for id', unbiased_id, features);
     if (features.length === 0) {
-      setLoading(false);
       return 
     };
+    const feature = features.length > 0 ? features[0] : null;
+    set_selected_feature(feature || null);
+    const vpu_str = `VPU_${feature.vpuid}`;
+    set_vpu(vpu_str);
     set_feature_id(unbiased_id);
-   
 
-    //   const feature = features.length > 0 ? features[0] : null;
-    //   set_selected_feature(feature || null);
-    //   const vpu_str = `VPU_${feature.vpuid}`;
-    //   set_vpu(vpu_str);
     //   const cacheKey = getCacheKey(
     //     model,
     //     date,
