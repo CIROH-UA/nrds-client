@@ -15,6 +15,12 @@ export async function getTimeseries(id, cacheKey, variable) {
       WHERE feature_id = ${id}
       ORDER BY time
     `);
+    console.log("Query executed:", `
+      SELECT time, ${variable}
+      FROM ${cacheKey}
+      WHERE feature_id = ${id}
+      ORDER BY time
+    `);
 
     const rows = q.toArray().map(Object.fromEntries);
     rows.columns = q.schema.fields.map((d) => d.name);
@@ -24,7 +30,6 @@ export async function getTimeseries(id, cacheKey, variable) {
     );
     return rows;
   } finally {
-    // 🔑 make sure the connection is always closed
     await conn.close();
   }
 }
@@ -39,7 +44,7 @@ export async function getFeatureIDs(cacheKey) {
       SELECT feature_id
       FROM "${cacheKey}"
     `);
-
+      
     const rows = q.toArray().map(Object.fromEntries);
     rows.columns = q.schema.fields.map((d) => d.name);
 
@@ -117,22 +122,17 @@ export async function getFeatureProperties({ cacheKey, feature_id }) {
 
 
 export async function loadVpuData(
-  model,
-  date,
-  forecast,
-  cycle,
-  time,
-  vpu,
-  outputFile,
+  cacheKey,
+  prefix,
   vpu_gpkg
 ) {
-  const cacheKey = getCacheKey(model, date, forecast, cycle, time, vpu, outputFile);
+  // const cacheKey = getCacheKey(model, date, forecast, cycle, time, vpu, outputFile);
   console.log("loadVpuData called with cacheKey:", cacheKey);
 
   let buffer = await loadArrowFromCache(cacheKey);
 
   if (!buffer) {
-    const ncFile = await getNCFiles(model, date, forecast, cycle, time, vpu, outputFile);
+    const ncFile = getNCFiles(prefix);
     const res = await appAPI.getParquetPerVpu({
       ncFile,
       vpu_gpkg,

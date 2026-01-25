@@ -3,11 +3,12 @@ import { Spinner } from 'react-bootstrap';
 import { XButton, LoadingMessage, Row, IconLabel } from '../styles/Styles';
 import SelectComponent from '../SelectComponent';
 import { toast } from 'react-toastify';
-import { loadVpuData, getVariables, getTimeseries, checkForTable } from 'features/DataStream/lib/queryData';
-import { makeGpkgUrl, getOptionsFromURL } from 'features/DataStream/lib/s3Utils';
+import { loadVpuData, getVariables, getTimeseries, checkForTable, getFeatureIDs } from 'features/DataStream/lib/queryData';
+import { makeGpkgUrl, getOptionsFromURL, initialS3Data, makePrefix } from 'features/DataStream/lib/s3Utils';
 import { getCacheKey } from 'features/DataStream/lib/opfsCache';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
+import useS3DataStreamBucketStore from 'features/DataStream/store/s3Store';
 import { makeTitle } from 'features/DataStream/lib/utils';
 import {
   ModelIcon,
@@ -17,6 +18,8 @@ import {
   EnsembleIcon,
   VariableIcon,
 } from 'features/DataStream/lib/layers';
+import { useVPUStore } from 'features/DataStream/store/Layers';
+
 
 export default function DataMenu() {
 
@@ -28,6 +31,8 @@ export default function DataMenu() {
   const variables = useDataStreamStore((state) => state.variables);
   const model = useDataStreamStore((state) => state.model);
   const outputFile = useDataStreamStore((state) => state.outputFile);
+  const cacheKey = useDataStreamStore((state) => state.cache_key);
+  // const table = useTimeSeriesStore((state) => state.table);
 
   const set_date = useDataStreamStore((state) => state.set_date);
   const set_forecast = useDataStreamStore((state) => state.set_forecast);
@@ -36,10 +41,10 @@ export default function DataMenu() {
   const set_variables = useDataStreamStore((state) => state.set_variables);
   const set_model = useDataStreamStore((state) => state.set_model);
   const set_outputFile = useDataStreamStore((state) => state.set_outputFile);
-
+  const set_cache_key = useDataStreamStore((state) => state.set_cache_key);
   const variable = useTimeSeriesStore((state) => state.variable);
   const set_series = useTimeSeriesStore((state) => state.set_series);
-  const set_table = useTimeSeriesStore((state) => state.set_table);
+  // const set_table = useTimeSeriesStore((state) => state.set_table);
   const set_variable = useTimeSeriesStore((state) => state.set_variable);
   const set_layout = useTimeSeriesStore((state) => state.set_layout);
   const feature_id = useTimeSeriesStore((state) => state.feature_id);
@@ -48,16 +53,23 @@ export default function DataMenu() {
   const reset = useTimeSeriesStore((state) => state.reset);
   const [loadingText, setLoadingText] = useState('');
 
-  const [availableModelsList, setAvailableModelsList] = useState([]);
-  const [availableDatesList, setAvailableDatesList] = useState([]);
-  const [availableForecastList, setForecastOptions] = useState([]);
-  const [availableCyclesList, setAvailableCyclesList] = useState([]);
-  const [availableEnsembleList, setAvailableEnsembleList] = useState([]);
-  const [availableOutputFiles, setAvailableOutputFiles] = useState([]);
-  const [currentPath, setCurrentPath] = useState('outputs');
-  /* ─────────────────────────────────────
-     Helpers
-     ───────────────────────────────────── */
+  const availableModelsList = useS3DataStreamBucketStore((state) => state.models);
+  const availableDatesList = useS3DataStreamBucketStore((state) => state.dates);
+  const availableForecastList = useS3DataStreamBucketStore((state) => state.forecasts);
+  const availableCyclesList = useS3DataStreamBucketStore((state) => state.cycles);
+  const availableEnsembleList = useS3DataStreamBucketStore((state) => state.ensembles);
+  const availableOutputFiles = useS3DataStreamBucketStore((state) => state.outputFiles);
+  
+  const set_prefix = useS3DataStreamBucketStore((state) => state.set_prefix);
+
+  const setForecastOptions = useS3DataStreamBucketStore((state) => state.set_forecasts);
+  const setAvailableDatesList = useS3DataStreamBucketStore((state) => state.set_dates);
+  const setAvailableCyclesList = useS3DataStreamBucketStore((state) => state.set_cycles);
+  const setAvailableEnsembleList = useS3DataStreamBucketStore((state) => state.set_ensembles);
+  const setAvailableOutputFiles = useS3DataStreamBucketStore((state) => state.set_outputFiles);
+
+  const set_feature_ids = useVPUStore((state) => state.set_feature_ids);
+
   const handleLoading = (text) => {
     setLoading(true);
     setLoadingText(text);
@@ -81,6 +93,11 @@ export default function DataMenu() {
       handleError('Please select a feature on the map first');
       return;
     }
+    if(!outputFile){
+      handleError('No Output File selected');
+      return;
+    }
+
     if (loading){
       toast.info('Data is already loading, please wait...', { autoClose: 300});
       return
@@ -98,14 +115,21 @@ export default function DataMenu() {
         forecast,
         cycle,
         ensemble,
-        outputFile,
-        vpu
+        vpu,
+        outputFile
       );
+      // set_table(cacheKey);
+      set_cache_key(cacheKey);
+      const _prefix = makePrefix(model, date, forecast, cycle, ensemble, vpu, outputFile);
+      set_prefix(_prefix);
       const vpu_gpkg = makeGpkgUrl(vpu);      
       const id = feature_id.split('-')[1];
       const tableExists = await checkForTable(cacheKey);
       if (!tableExists) {
-        await loadVpuData(model, date, forecast, cycle, ensemble, vpu, outputFile, vpu_gpkg);
+        // await loadVpuData(model, date, forecast, cycle, ensemble, vpu, outputFile, vpu_gpkg);
+        await loadVpuData(cacheKey, _prefix, vpu_gpkg);
+        const featureIDs = await getFeatureIDs(cacheKey);
+        set_feature_ids(featureIDs);
       } else {
         console.log(`Table ${cacheKey} already exists.`);
       }
@@ -118,7 +142,6 @@ export default function DataMenu() {
         y: d[variables[0]],
        }));
       const textToast = `Loaded ${xy.length} data points for id: ${feature_id}`;
-      set_table(cacheKey);
       set_variables(variables);
       set_series(xy);
       set_variable(_variable);
@@ -243,39 +266,20 @@ export default function DataMenu() {
   const handleChangeVariable = async (optionArray) => {
     const opt = optionArray?.[0];
     if (opt) set_variable(opt.value);
+    const id = feature_id.split('-')[1]; 
+    const series = await getTimeseries(id, cacheKey, opt.value);
+    const xy = series.map((d) => ({
+      x: new Date(d.time),
+      y: d[opt.value],
+      }));
+    set_series(xy);
+    set_layout({
+      'yaxis': opt.value,
+      'xaxis': "Time",
+      'title': makeTitle(forecast, feature_id),
+    });
+
   };
-
-  useEffect(() => {
-    async function fetchInitialData() {
-      try {
-        const modelOptions = await getOptionsFromURL(`outputs`);
-        setAvailableModelsList(modelOptions);
-        const dateOptions = await getOptionsFromURL(`outputs/${model}/v2.2_hydrofabric/`);
-        setAvailableDatesList(dateOptions);
-        set_date(dateOptions[1]?.value);
-        const forecastOptions = await getOptionsFromURL(`outputs/${model}/v2.2_hydrofabric/${dateOptions[1]?.value}/`);
-        setForecastOptions(forecastOptions);
-        set_forecast(forecastOptions[0]?.value);
-        const cycleOptions =  await getOptionsFromURL(`outputs/${model}/v2.2_hydrofabric/${dateOptions[1]?.value}/${forecastOptions[0]?.value}/`);
-        setAvailableCyclesList(cycleOptions);
-        set_cycle(cycleOptions[0]?.value);
-        const oOpts = await getOptionsFromURL(`outputs/${model}/v2.2_hydrofabric/${dateOptions[1]?.value}/${forecastOptions[0]?.value}/${cycleOptions[0]?.value}/${vpu}/ngen-run/outputs/troute/`);
-        setAvailableOutputFiles(oOpts);
-        set_outputFile(oOpts[0]?.value);
-
-      } catch (error) {
-        console.error('Error fetching dates from S3:', error);
-      }
-    }
-    fetchInitialData();
-
-  }, []);
-
-  // useEffect(() => {
-  //   if (!forecast) return;
-
-  // }, [forecast, cycle]);
-
 
   const availableVariablesList = useMemo(() => {
     return variables.map((v) => ({ value: v, label: v }));
@@ -329,6 +333,24 @@ export default function DataMenu() {
   }
   , [variables, variable]);
 
+  useEffect(() => {
+    async function fetchInitialData() {
+      if (!vpu) return;
+      const { models, dates, forecasts, cycles, outputFiles } = await initialS3Data(vpu);
+      const _models = models.filter(m => m.value !== 'test'); 
+      setAvailableDatesList(dates);
+      setForecastOptions(forecasts);
+      setAvailableCyclesList(cycles);
+      setAvailableOutputFiles(outputFiles);
+      set_model(_models[0]?.value);
+      set_date(dates[1]?.value);
+      set_forecast(forecasts[0]?.value);
+      set_cycle(cycles[0]?.value);
+      set_outputFile(outputFiles[0]?.value);
+    }
+    fetchInitialData();
+
+  }, [vpu]);
 
   return (
     <Fragment>
@@ -391,7 +413,7 @@ export default function DataMenu() {
           </Row>
         )}
         {
-            availableOutputFiles.length > 0 && (
+            availableOutputFiles.length > 0 ? (
             <Row>
                 <IconLabel> Output File</IconLabel>
                 <SelectComponent
@@ -400,8 +422,13 @@ export default function DataMenu() {
                 onChangeHandler={handleChangeOutputFile}
                 />
             </Row>
-            )
+            ) :  <p> No Outputs Available</p>
         }
+        <div style={{marginTop: '10px', paddingLeft: '100px', paddingRight: '100px'}}>
+          <XButton onClick={handleVisulization}>Update</XButton>
+        </div>
+      </Fragment>
+
         { availableVariablesList.length > 0 && (
           <Row>
             <IconLabel> <VariableIcon /> Variable</IconLabel>
@@ -412,10 +439,6 @@ export default function DataMenu() {
             />
           </Row>
         )}
-        <div style={{marginTop: '10px', paddingLeft: '100px', paddingRight: '100px'}}>
-          <XButton onClick={handleVisulization}>Update</XButton>
-        </div>
-      </Fragment>
 
       <LoadingMessage>
         {loading && (

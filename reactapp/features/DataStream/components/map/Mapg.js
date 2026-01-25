@@ -5,11 +5,11 @@ import { MapboxOverlay } from "@deck.gl/mapbox";
 import { PathLayer } from "@deck.gl/layers";
 import Map, { Source, Popup } from 'react-map-gl/maplibre';
 import { Protocol } from 'pmtiles';
-import { makeGpkgUrl } from '../../lib/s3Utils';
-import { getCacheKey } from '../../lib/opfsCache';
-import { loadVpuData, getVariables, getTimeseries, getFeatureIDs,  getDistinctFeatureIds, getDistinctTimes, getVpuVariableFlat  } from 'features/DataStream/lib/queryData';
+import { makeGpkgUrl, makePrefix } from '../../lib/s3Utils';
+import { loadVpuData, getVariables, getTimeseries, getFeatureIDs,  getDistinctFeatureIds, getDistinctTimes, getVpuVariableFlat, checkForTable  } from 'features/DataStream/lib/queryData';
 import useTimeSeriesStore from '../../store/Timeseries';
 import useDataStreamStore from '../../store/Datastream';
+import useS3DataStreamBucketStore from '../../store/s3Store';
 import { useVPUStore } from '../../store/Layers';
 import { useLayersStore, useFeatureStore } from '../../store/Layers';
 import { PopupContent } from '../styles/Styles';
@@ -50,27 +50,25 @@ const MapComponent = () => {
 
   const selectedFeatureId = useTimeSeriesStore((state) => state.feature_id);
   const loading = useTimeSeriesStore((state) => state.loading);
-  const table = useTimeSeriesStore((state) => state.table);
+  // const table = useTimeSeriesStore((state) => state.table);
   const setLoading = useTimeSeriesStore((state) => state.set_loading);
   const set_series = useTimeSeriesStore((state) => state.set_series);
   const set_feature_id = useTimeSeriesStore((state) => state.set_feature_id);
   const set_variable = useTimeSeriesStore((state) => state.set_variable);
-  const set_table = useTimeSeriesStore((state) => state.set_table);
   const set_layout = useTimeSeriesStore((state) => state.set_layout);
   const reset = useTimeSeriesStore((state) => state.reset);
 
   const nexus_pmtiles = useDataStreamStore((state) => state.nexus_pmtiles);
   const conus_pmtiles = useDataStreamStore((state) => state.community_pmtiles);
-  const date = useDataStreamStore((state) => state.date);
-  const model = useDataStreamStore((state) => state.model);
   const forecast = useDataStreamStore((state) => state.forecast);
-  const time = useDataStreamStore((state) => state.time);
-  const cycle = useDataStreamStore((state) => state.cycle);
-  const vpu = useDataStreamStore((state) => state.vpu);
   const outputFile = useDataStreamStore((state) => state.outputFile);
+  const cacheKey = useDataStreamStore((state) => state.cache_key);
+
   const set_vpu = useDataStreamStore((state) => state.set_vpu);
   const set_variables = useDataStreamStore((state) => state.set_variables);
 
+
+  const prefix = useS3DataStreamBucketStore((state) => state.prefix);
 
   const set_hovered_feature = useFeatureStore((state) => state.set_hovered_feature);
   const hovered_feature = useFeatureStore((state) => state.hovered_feature);
@@ -369,14 +367,14 @@ useEffect(() => {
   }, [isNexusVisible, isCatchmentsVisible]);
 
   const handleMapClick = async (event) => {
-
-    if (loading) {
+   if (loading) {
       toast.info('Data is already loading, please wait...', { autoClose: 300 });
       return;
     }
+
     setLoading(true);
-    // set_feature_id(null);
     reset();
+
     const map = event.target;
 
     if (layersToQuery.length === 0) return;
@@ -396,20 +394,37 @@ useEffect(() => {
         ...feature.properties,
       });
 
+
       const featureIdProperty = layerIdToFeatureType(layerId);
       const unbiased_id = feature.properties[featureIdProperty];
+      set_feature_id(unbiased_id);
+
+
       const id = unbiased_id.split('-')[1];
       const vpu_str = `VPU_${feature.properties.vpuid}`;
+      set_vpu(vpu_str);
+     
       const vpu_gpkg = makeGpkgUrl(vpu_str);
-      const cacheKey = getCacheKey(model, date, forecast, cycle, time , vpu_str, outputFile);
+      // const cacheKey = getCacheKey(model, date, forecast, cycle, ensemble , vpu_str, outputFile);
+      // const cacheKey = table;
+      // const _prefix = makePrefix(model, date, forecast, cycle, ensemble , vpu_str, outputFile);
+      if(!outputFile){
+        toast.warning('No Output File found.', { autoClose: 3000 });
+        setLoading(false);
+        return;
+      }
       const toastId = toast.loading(`Loading data for id: ${id}...`, {
         closeOnClick: false,
         draggable: false,
       });
       try {
-        await loadVpuData(model, date, forecast, cycle, time, vpu_str, outputFile, vpu_gpkg);
-        const featureIDs = await getFeatureIDs(cacheKey);
-        set_feature_ids(featureIDs);
+        // await loadVpuData(model, date, forecast, cycle, ensemble, vpu_str, outputFile, vpu_gpkg);
+        const tableExists = await checkForTable(cacheKey);
+        if (!tableExists) {
+          await loadVpuData(cacheKey, prefix, vpu_gpkg);
+          const featureIDs = await getFeatureIDs(cacheKey);
+          set_feature_ids(featureIDs);
+        }
       } catch (err) {
         toast.update(toastId, {
           render: `No data for id: ${id}`,
@@ -431,9 +446,9 @@ useEffect(() => {
          }));
         const textToat = `Loaded ${xy.length} points for id: ${id}`;
 
-        set_feature_id(unbiased_id);
-        set_table(cacheKey);
-        set_vpu(vpu_str);
+        // set_feature_id(unbiased_id);
+        // set_table(cacheKey);
+        // set_vpu(vpu_str);
         set_variables(variables);
         set_variable(variables[0]);
         set_series(xy);

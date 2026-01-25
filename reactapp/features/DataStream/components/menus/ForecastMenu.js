@@ -8,27 +8,25 @@ import { FeatureInformation } from '../forecast/FeatureInformation';
 import { TimeSlider } from '../forecast/TimeSlider';
 const ForecastMenu = () => {
 
-  // const feature_id = useTimeSeriesStore((state) => state.feature_id);
   const series = useTimeSeriesStore((state) => state.series);
   const layout = useTimeSeriesStore((state) => state.layout);
   const reset_ts_store = useTimeSeriesStore((state) => state.reset);
-  const isopen = useMemo(() => {
-    // return feature_id ? true : false;
-    return series.length > 0;
-  // }, [feature_id]);
-   }, [series]);
-
-  // const set_feature_id = useTimeSeriesStore((state) => state.set_feature_id);
+  const feature_id = useTimeSeriesStore((state) => state.feature_id);
+  // const isopen = useMemo(() => {
+  //   return series.length > 0;
+  //  }, [series]);
+const isopen = useMemo(() => {
+    console.log('feature_id in ForecastMenu:', feature_id);
+    return feature_id != null;
+}, [feature_id]);
 
   return (
-    <Fragment>
-          
+    <Fragment>          
           <Container $isOpen={isopen}>
             <div>
                   {layout?.title && (
                     <ForecastHeader
                       title ={layout.title}
-                      // onClick={()=> {set_feature_id(null)}} 
                       onClick={()=> {reset_ts_store()}} 
                     />
                   )}

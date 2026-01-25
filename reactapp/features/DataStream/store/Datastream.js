@@ -1,17 +1,16 @@
 import { create } from 'zustand';
 import { getYesterdayDateString } from '../lib/utils';
 
-// Define the store
 const useDataStreamStore = create((set) => ({
     bucket: 'ciroh-community-ngen-datastream',
     nexus_pmtiles: 'https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/nexus.pmtiles',
     community_pmtiles: 'https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/merged.pmtiles',
     hydrofabric_index: 'https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/hydrofabric_index.parquet',
     cache_key: null,
-    vpu: `VPU_01`,
+    vpu: null,
     model: 'cfe_nom',
     date: `ngen.${getYesterdayDateString()}`,
-    forecast: 'short_range',
+    forecast: 'analysis_assim_extend',
     ensemble: null,
     cycle: '00',
     outputFile: null,
@@ -37,7 +36,7 @@ const useDataStreamStore = create((set) => ({
         hydrofabric_index: 'https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/hydrofabric_index.parquet',
         model: 'cfe_nom',
         cache_key: null,
-        vpu: `VPU_01`,
+        vpu: null,
         date: 'ngen.20251125',
         forecast: 'short_range',
         ensemble: null,
@@ -46,5 +45,6 @@ const useDataStreamStore = create((set) => ({
         outputFile: null,
     }),
 }));
+
 
 export default useDataStreamStore;
