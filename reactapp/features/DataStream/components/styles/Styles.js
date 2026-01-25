@@ -147,16 +147,14 @@ export const LayerButton = styled(Button)`
 `;
 
 export const XButton = styled(Button)`
-  background-color: var(--button-primary-bg);
-  color: var(--accent-text);
-  border-radius: 8px;
+  background: var(--accent-text, #0a0e14);
+  border: 1px solid var(--border-color, #2a3a4a);
+  border-radius: var(--radius-sm, 4px);
+  color: var(--primary-color);
   padding: 7px 8px;
   width: 100%;
   z-index: 1001;
   box-shadow: none;
-  border-radius: 20px;
-  border-color: transparent;
-  border: none;
   &:hover,
   &:focus {
     background-color: var(--button-primary-hover-bg);
