@@ -46,7 +46,6 @@ const DataStreamView = () => {
   const setVarData = useVPUStore((state) => state.setVarData);
 
   const feature_id = useTimeSeriesStore((state) => state.feature_id);
-  const laodingText = useTimeSeriesStore((state) => state.loadingText);
   const loading = useTimeSeriesStore((state) => state.loading);
   const set_variable = useTimeSeriesStore((state) => state.set_variable);
   const set_loading_text = useTimeSeriesStore((state) => state.set_loading_text);
@@ -88,53 +87,53 @@ const DataStreamView = () => {
 
   useEffect( () => {   
    async function getData(){
-    if (!outputFile || loading ) return;
+    if (!outputFile || loading || !feature_id ) return;
     const vpu_gpkg = makeGpkgUrl(vpu);
     const id = feature_id.split('-')[1];
     setLoading(true);
     set_loading_text('Loading feature properties...');
-      try {
-        const tableExists = await checkForTable(cacheKey);
-        if (!tableExists) {
-          await loadVpuData(cacheKey, prefix, vpu_gpkg);
-          const featureIDs = await getFeatureIDs(cacheKey);
-          set_feature_ids(featureIDs);
-        }
-        } catch (err) {
-          console.error('No data for VPU', vpu, err);
-          set_loading_text('No data available for selected VPU');
-          setLoading(false);
-        }
-        try {
-          const variables = await getVariables({ cacheKey });
-          const series = await getTimeseries(id, cacheKey, variables[0]);
-          const xy = series.map((d) => ({
-            x: new Date(d.time),
-            y: d.flow,
-          }));
-          set_loading_text(`Loaded ${xy.length} points for id: ${id}`);
-          set_variables(variables);
-          set_variable(variables[0]);
-          set_series(xy);
-          set_layout({
-            yaxis: variables[0],
-            xaxis: '',
-            title: makeTitle(forecast, feature_id),
-          });
-          const [featureIds, times, flat] = await Promise.all([
-            getDistinctFeatureIds(cacheKey),
-            getDistinctTimes(cacheKey),
-            getVpuVariableFlat(cacheKey, variables[0]),
-          ]);
-          setAnimationIndex(featureIds, times);
-          setVarData(variables[0], flat);
-          set_loading_text('');
-          setLoading(false);
-        } catch (err) {
-            set_loading_text(`Failed to load timeseries for id: ${id}`);
-            setLoading(false);
-            console.error('Failed to load timeseries for', id, err);
-        }
+    try {
+      const tableExists = await checkForTable(cacheKey);
+      if (!tableExists) {
+        await loadVpuData(cacheKey, prefix, vpu_gpkg);
+        const featureIDs = await getFeatureIDs(cacheKey);
+        set_feature_ids(featureIDs);
+      }
+    } catch (err) {
+      console.error('No data for VPU', vpu, err);
+      set_loading_text('No data available for selected VPU');
+      setLoading(false);
+    }
+    try {
+      const variables = await getVariables({ cacheKey });
+      const series = await getTimeseries(id, cacheKey, variables[0]);
+      const xy = series.map((d) => ({
+        x: new Date(d.time),
+        y: d.flow,
+      }));
+      set_loading_text(`Loaded ${xy.length} points for id: ${id}`);
+      set_variables(variables);
+      set_variable(variables[0]);
+      set_series(xy);
+      set_layout({
+        yaxis: variables[0],
+        xaxis: '',
+        title: makeTitle(forecast, feature_id),
+      });
+      const [featureIds, times, flat] = await Promise.all([
+        getDistinctFeatureIds(cacheKey),
+        getDistinctTimes(cacheKey),
+        getVpuVariableFlat(cacheKey, variables[0]),
+      ]);
+      setAnimationIndex(featureIds, times);
+      setVarData(variables[0], flat);
+      set_loading_text('');
+      setLoading(false);
+    } catch (err) {
+        set_loading_text(`Failed to load timeseries for id: ${id}`);
+        setLoading(false);
+        console.error('Failed to load timeseries for', id, err);
+    }
    }
    getData();
 
