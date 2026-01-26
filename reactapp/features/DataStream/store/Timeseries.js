@@ -17,8 +17,8 @@ const useTimeSeriesStore = create((set, get ) => ({
 
     // playback state
     isPlaying: false,
-    playSpeed: 5,        // 1..20
-    baseFrameMs: 2500,   // base frame duration before applying speed
+    playSpeed: 10,       
+    baseFrameMs: 2500,   
     setCurrentTimeIndex: (idx) => {
       const { series } = get();
       const maxIdx = Math.max(0, series.length - 1);
@@ -74,7 +74,6 @@ const useTimeSeriesStore = create((set, get ) => ({
             "xaxis": "Simulation Time Period (YYYY-MM-DD)",
             "title": "TimeSeries",
         },
-        // table: '',
     }),
 }));
 export default useTimeSeriesStore;

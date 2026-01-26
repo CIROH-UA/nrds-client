@@ -37,22 +37,6 @@ import {
 } from './MapLayers';
 
 
-
-const onMapLoad = (event) => {
-  const map = event.target;
-  const hoverLayers = ['divides', 'nexus-points'];
-  hoverLayers.forEach((layer) => {
-    map.on('mouseenter', layer, () => {
-      map.getCanvas().style.cursor = 'pointer';
-    });
-    map.on('mouseleave', layer, () => {
-      map.getCanvas().style.cursor = '';
-    });
-  });
-
-  reorderLayers(map);
-};
-
 const MapComponent = () => {
   const isNexusVisible = useLayersStore((state) => state.nexus.visible);
   const isCatchmentsVisible = useLayersStore((state) => state.catchments.visible);
@@ -89,9 +73,10 @@ const MapComponent = () => {
   const mapRef = useRef(null);
 
 
+
 const handleMapLoad = useCallback((event) => {
   const map = event.target;
-
+  
   // keep your existing onMapLoad behavior
   const hoverLayers = ["divides", "nexus-points"];
   hoverLayers.forEach((layer) => {
@@ -251,12 +236,6 @@ useEffect(() => {
 
   useEffect(() => {
     if (!deckOverlayRef.current) return;
-    // console.log("deck setProps", {
-    //   visible: isFlowPathsVisible,
-    //   varData: !!valuesByVar?.[variable],
-    //   times: timesArr?.length,
-    //   pathData: pathData?.length,
-    // });
 
     if (!isFlowPathsVisible) {
       deckOverlayRef.current.setProps({ layers: [] });
@@ -377,8 +356,6 @@ useEffect(() => {
       onClick={handleMapClick}
       onLoad={handleMapLoad}
       onMouseMove={onHover}
-      projection="mercator"
-      // onZoom={logZoomChanges}
       interactiveLayerIds={['divides', 'nexus-points', 'flowpaths', 'conus-gauges']}
     >
       <Source key="conus" id="conus" type="vector" url={`pmtiles://${conus_pmtiles}`}>

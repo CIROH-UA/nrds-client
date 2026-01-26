@@ -23,8 +23,7 @@ export const TimeSlider = () => {
   const timeSteps = Array.isArray(series) ? series.length : 0;
 
   const currentLabel = useMemo(() => {
-    console.log("Calculating currentLabel");
-    if (!timeSteps) return "T+0h";
+     if (!timeSteps) return "T+0h";
     const t0 = series?.[0]?.x;
     const t = series?.[currentTimeIndex]?.x;
     if (typeof t0 !== "object" || typeof t !== "object") return "T+0h";
