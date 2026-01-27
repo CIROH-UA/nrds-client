@@ -1,7 +1,7 @@
 // // nexusTimeseries.js
 import { tableFromIPC } from "apache-arrow";
 import appAPI from "features/Tethys/services/api/app";
-import { saveArrowToCache, loadArrowFromCache, getCacheKey } from "./opfsCache";
+import { saveArrowToCache, loadArrowFromCache } from "./opfsCache";
 import { getConnection } from "./duckdbClient";
 import { getNCFiles } from "./s3Utils";
 
@@ -126,7 +126,6 @@ export async function loadVpuData(
   prefix,
   vpu_gpkg
 ) {
-  // const cacheKey = getCacheKey(model, date, forecast, cycle, time, vpu, outputFile);
   console.log("loadVpuData called with cacheKey:", cacheKey);
 
   let buffer = await loadArrowFromCache(cacheKey);
@@ -182,6 +181,19 @@ export async function checkForTable(cacheKey) {
     await conn.close();
   }
 }
+
+export async function deleteTable(tableName){
+  const conn = await getConnection();
+  try {
+    await conn.query(`
+      DROP TABLE IF EXISTS "${tableName}"
+    `);
+    console.log(`Table ${tableName} has been deleted.`);
+  } finally {
+    await conn.close();
+  }
+}
+
 export async function dropAllVpuDataTables() {
   const conn = await getConnection();
 

@@ -4,7 +4,6 @@ import { loadIndexData, getFeatureProperties } from 'features/DataStream/lib/que
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
 import {useFeatureStore} from 'features/DataStream/store/Layers';
-import ResetDataButton from '../forecast/cacheHandler';
 
 const SearchBar = ({ placeholder = 'Search for an id' }) => {
 
@@ -54,7 +53,6 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
         aria-label={placeholder}
       />
     </SearchBarWrapper>
-      <ResetDataButton />
     </>
  );
 };

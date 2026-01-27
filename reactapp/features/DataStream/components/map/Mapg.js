@@ -198,9 +198,7 @@ useEffect(() => {
       if (!isFlowPathsVisible) return;
       const zooom = map.getZoom();
       const feats = map.queryRenderedFeatures({ layers: ["flowpaths"] });
-      if(feats.length === 0){
-        console.log(`zoom: ${zooom.toFixed(2)}, features: ${feats.length}`);
-      }
+
       const matched = feats.filter(
         (f) => featureIdToIndex[f.properties?.id] !== undefined
       );
@@ -228,54 +226,7 @@ useEffect(() => {
   };
 }, [featureIdToIndex, setPathData]);
 
-// useEffect(() => {
-//   const map = mapRef.current?.getMap?.() ?? mapRef.current;
-//   if (!map) return;
 
-//   const hasIndex = featureIdToIndex && Object.keys(featureIdToIndex).length > 0;
-//   if (!hasIndex) return;
-
-//   let raf = null;
-//   let pendingIdle = false;
-
-//   const run = () => {
-//     pendingIdle = false;
-//     if (raf) cancelAnimationFrame(raf);
-//     raf = requestAnimationFrame(() => {
-//       if (!isFlowPathsVisible) return;
-
-//       const feats = map.queryRenderedFeatures({ layers: ["flowpaths"] });
-
-//       // IMPORTANT: don't wipe Deck just because tiles aren't ready yet
-//       if (!feats.length) return;
-
-//       const matched = feats.filter((f) => {
-//         const id = String(f.id ?? f.properties?.id ?? "");
-//         return featureIdToIndex[id] !== undefined;
-//       });
-
-//       if (!matched.length) return;
-
-//       setPathData(convertFeaturesToPaths(matched, featureIdToIndex));
-//     });
-//   };
-
-//   const schedule = () => {
-//     if (pendingIdle) return;
-//     pendingIdle = true;
-//     map.once("idle", run); // <-- key change
-//   };
-
-//   schedule();
-//   map.on("moveend", schedule);
-//   map.on("zoomend", schedule);
-
-//   return () => {
-//     if (raf) cancelAnimationFrame(raf);
-//     map.off("moveend", schedule);
-//     map.off("zoomend", schedule);
-//   };
-// }, [featureIdToIndex, isFlowPathsVisible, setPathData]);
 
   useEffect(() => {
 

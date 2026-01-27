@@ -122,6 +122,51 @@ export const LayersContainer = styled.div`
   }
 `;
 
+export const CacheTableContainer = styled.div`
+  position: absolute;
+  top: calc(var(--ts-header-height) + 300px);
+  right: 10px;
+  // height: 300px;
+  overflow-y: scroll;
+  width: 250px;
+  padding: 15px;
+  background-color: var(--map-panel-bg);
+  color: var(--map-panel-text);
+  z-index: 1000;
+  border-radius: 8px;
+  font-size: 13px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  @media (max-width: 768px) {
+    width: 100%;
+    border-radius: 0;
+  }
+`;
+export const CacheButton = styled(Button)`
+  top: 360px;
+  right: 1%;
+  position: absolute;
+  margin-top: 10px;
+  transition: transform 0.3s ease;
+
+  background-color: ${({ $bgColor = 'var(--button-primary-bg)' }) =>
+    $bgColor};
+  border: none;
+  color: var(--accent-text);
+  border-radius: 20px;
+  padding: 7px 8px;
+  z-index: 1001;
+
+  &:hover,
+  &:focus {
+    color: var(--hover-text);
+    background-color: ${({ $bgColor = 'var(--button-primary-bg)' }) => $bgColor};
+    border: none;
+    box-shadow: none;
+  }
+`;
+
 export const LayerButton = styled(Button)`
   top: 60px;
   right: 1%;

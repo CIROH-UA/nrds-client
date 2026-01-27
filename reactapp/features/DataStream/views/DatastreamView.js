@@ -5,6 +5,7 @@ import MapComponent from 'features/DataStream/components/map/Mapg.js';
 import MainMenu from 'features/DataStream/components/menus/MainMenu';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
 import useTimeSeriesStore from '../store/Timeseries';
+import { useCacheTablesStore } from '../store/CacheTables';
 import { useVPUStore } from '../store/Layers';
 import useS3DataStreamBucketStore from 'features/DataStream/store/s3Store';
 import { initialS3Data, makePrefix, makeGpkgUrl } from 'features/DataStream/lib/s3Utils';
@@ -20,6 +21,8 @@ import { checkForTable,
 } from 'features/DataStream/lib/queryData';
 import { makeTitle } from 'features/DataStream/lib/utils';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { use } from 'react';
+import { cache } from 'react';
 
 const DataStreamView = () => {
   const vpu = useDataStreamStore((state) => state.vpu);
@@ -53,7 +56,9 @@ const DataStreamView = () => {
   const set_layout = useTimeSeriesStore((state) => state.set_layout);
   const setLoading = useTimeSeriesStore((state) => state.set_loading);  
   const setAnimationIndex = useVPUStore((state) => state.setAnimationIndex);
- 
+  
+  const add_cacheTable = useCacheTablesStore((state) => state.add_cacheTable);
+
   useEffect(() => {
     async function fetchInitialData() {
       if (!vpu) return;
@@ -97,6 +102,7 @@ const DataStreamView = () => {
       if (!tableExists) {
         try{
           await loadVpuData(cacheKey, prefix, vpu_gpkg);
+          add_cacheTable({id: cacheKey, name: cacheKey.replaceAll('_',' ')});
         }catch(err){
           console.error('No data for VPU', vpu, err);
           set_loading_text('No data available for selected VPU');
