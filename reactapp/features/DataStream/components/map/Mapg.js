@@ -26,7 +26,7 @@ import {
   getValueAtTimeFlat 
 } from '../../lib/layers';
 import { layerIdToFeatureType } from '../../lib/utils';
-import { getCentroid } from '../../lib/layers';
+import { getCentroid, flowpathsSignature } from '../../lib/layers';
 
 import {
   useCatchmentLayers,
@@ -76,6 +76,7 @@ const MainMap = () => {
   const EMPTY_LAYERS = useMemo(() => [], []);
 
   const mapRef = useRef(null);
+  const lastSigRef = useRef("");
 
   const mapStyleUrl = getComputedStyle(document.documentElement).getPropertyValue('--map-style-url').trim();
 
@@ -221,50 +222,52 @@ const MainMap = () => {
   }, [isNexusVisible, isCatchmentsVisible, isFlowPathsVisible, isConusGaugesVisible]);
 
  
-useEffect(() => {
-  const map =
-    mapRef.current && mapRef.current.getMap ? mapRef.current.getMap() : mapRef.current;
-  if (!map) return;
+  useEffect(() => {
+    const map =
+      mapRef.current && mapRef.current.getMap ? mapRef.current.getMap() : mapRef.current;
+    if (!map) return;
 
-  const hasIndex = featureIdToIndex && Object.keys(featureIdToIndex).length > 0;
-  if (!hasIndex) return;
+    const hasIndex = featureIdToIndex && Object.keys(featureIdToIndex).length > 0;
+    if (!hasIndex) return;
 
-  let raf = null;
+    let raf = null;
 
-  const run = () => {
+    const run = () => {
 
-     // cancel any queued run and schedule at next animation frame
-    if (raf) cancelAnimationFrame(raf);
-    raf = requestAnimationFrame(() => {
-      if (!isFlowPathsVisible) return;
-       const feats = map.queryRenderedFeatures({ layers: ["flowpaths"] });
+      // cancel any queued run and schedule at next animation frame
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        if (!isFlowPathsVisible) return;
+        const feats = map.queryRenderedFeatures({ layers: ["flowpaths"] });
 
-      const matched = feats.filter(
-        (f) => featureIdToIndex[f.properties?.id] !== undefined
-      );
+        const matched = feats.filter(
+          (f) => featureIdToIndex[f.properties?.id] !== undefined
+        );
 
-      setPathData(convertFeaturesToPaths(matched, featureIdToIndex));
-      raf = null;
-    });
-  };
+        const sig = flowpathsSignature(matched);
+        if (sig === lastSigRef.current) {
+          raf = null;
+          return;
+        }
+        lastSigRef.current = sig;
+        const next = convertFeaturesToPaths(matched, featureIdToIndex);
+        setPathData(next);
 
-  // initial fill once map is ready
-  map.once("idle", run);
+        raf = null;
+      });
+    };
 
-  // update when the view changes (zoom/pan)
-  map.on("moveend", run);
-  map.on("zoomend", run);
- 
-  // also update when new tiles load after moving/zooming
-  // map.on("idle", run);
-
-  return () => {
-    if (raf) cancelAnimationFrame(raf);
-    map.off("moveend", run);
-    map.off("zoomend", run);
-    map.off("idle", run);
-  };
-}, [featureIdToIndex, setPathData]);
+    map.once("idle", run);
+    map.on("moveend", run);
+    map.on("zoomend", run);
+  
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      map.off("moveend", run);
+      map.off("zoomend", run);
+      map.off("idle", run);
+    };
+  }, [featureIdToIndex, setPathData, isFlowPathsVisible]);
 
 
 

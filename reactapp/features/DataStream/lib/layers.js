@@ -558,3 +558,27 @@ export function convertFeaturesToPaths(features, featureIdToIndex) {
 
   return out;
 }
+
+export function flowpathsSignature(features) {
+  const parts = [];
+
+  for (const f of features) {
+    const rawId = f.id ?? f.properties?.id;
+    if (rawId == null) continue;
+
+    const id = String(rawId);
+    const g = f.geometry;
+    if (!g) continue;
+
+    if (g.type === "LineString") {
+      parts.push(`${id}:L:${g.coordinates.length}`);
+    } else if (g.type === "MultiLineString") {
+      const lines = g.coordinates.length;
+      const totalPts = g.coordinates.reduce((sum, line) => sum + line.length, 0);
+      parts.push(`${id}:M:${lines}:${totalPts}`);
+    }
+  }
+
+  parts.sort(); // make stable regardless of render order
+  return parts.join("|");
+}
