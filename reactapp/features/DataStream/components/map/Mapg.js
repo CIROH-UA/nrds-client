@@ -70,14 +70,16 @@ const MainMap = () => {
   const featureIdToIndex = useVPUStore((s) => s.featureIdToIndex);
   const timesArr = useVPUStore((s) => s.times);
   const valuesByVar = useVPUStore((s) => s.valuesByVar);
-  const pathData = useVPUStore((s) => s.pathData);
-  const setPathData = useVPUStore((s) => s.setPathData);
+  // const pathData = useVPUStore((s) => s.pathData);
+  // const setPathData = useVPUStore((s) => s.setPathData);
 
   const EMPTY_LAYERS = useMemo(() => [], []);
 
   const mapRef = useRef(null);
   const lastSigRef = useRef("");
+  const pathDataRef = useRef([]);
 
+  const [pathTick, setPathTick] = React.useState(0);
   const mapStyleUrl = getComputedStyle(document.documentElement).getPropertyValue('--map-style-url').trim();
 
 
@@ -87,7 +89,9 @@ const MainMap = () => {
     const varData = valuesByVar?.[variable];
     const numTimes = timesArr?.length || 0;
 
-    if (!varData || !numTimes || !pathData.length) return EMPTY_LAYERS;
+    const pathData = pathDataRef.current;
+
+    if (!varData || !numTimes || !pathData?.length) return EMPTY_LAYERS;
 
     const bounds = computeBounds(varData);
 
@@ -113,12 +117,20 @@ const MainMap = () => {
         jointRounded: true,
         pickable: false,
         updateTriggers: {
-          getColor: [currentTimeIndex, variable],
-          getWidth: [currentTimeIndex, variable],
+          getColor: [currentTimeIndex, variable, pathTick],
+          getWidth: [currentTimeIndex, variable, pathTick],
         },
       }),
     ];
-  }, [isFlowPathsVisible, valuesByVar, variable, timesArr, pathData, currentTimeIndex]);
+  }, [
+    isFlowPathsVisible,
+    valuesByVar,
+    variable,
+    timesArr,
+    currentTimeIndex,
+    pathTick,
+  ]);
+
 
   const handleMapLoad = useCallback((event) => {
     const map = event.target;
@@ -223,8 +235,7 @@ const MainMap = () => {
 
  
   useEffect(() => {
-    const map =
-      mapRef.current && mapRef.current.getMap ? mapRef.current.getMap() : mapRef.current;
+    const map = mapRef.current?.getMap?.() ?? mapRef.current;
     if (!map) return;
 
     const hasIndex = featureIdToIndex && Object.keys(featureIdToIndex).length > 0;
@@ -233,11 +244,11 @@ const MainMap = () => {
     let raf = null;
 
     const run = () => {
-
-      // cancel any queued run and schedule at next animation frame
       if (raf) cancelAnimationFrame(raf);
+
       raf = requestAnimationFrame(() => {
         if (!isFlowPathsVisible) return;
+
         const feats = map.queryRenderedFeatures({ layers: ["flowpaths"] });
 
         const matched = feats.filter(
@@ -250,8 +261,12 @@ const MainMap = () => {
           return;
         }
         lastSigRef.current = sig;
-        const next = convertFeaturesToPaths(matched, featureIdToIndex);
-        setPathData(next);
+
+        // IMPORTANT: don’t store properties unless you need them
+        pathDataRef.current = convertFeaturesToPaths(matched, featureIdToIndex);
+
+        // trigger deck overlay update without pushing pathData into global state
+        setPathTick((t) => t + 1);
 
         raf = null;
       });
@@ -260,15 +275,13 @@ const MainMap = () => {
     map.once("idle", run);
     map.on("moveend", run);
     map.on("zoomend", run);
-  
+
     return () => {
       if (raf) cancelAnimationFrame(raf);
       map.off("moveend", run);
       map.off("zoomend", run);
-      map.off("idle", run);
     };
-  }, [featureIdToIndex, setPathData, isFlowPathsVisible]);
-
+  }, [featureIdToIndex, isFlowPathsVisible]);
 
 
   useEffect(() => {
