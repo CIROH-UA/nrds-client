@@ -21,8 +21,7 @@ import { checkForTable,
 } from 'features/DataStream/lib/queryData';
 import { makeTitle } from 'features/DataStream/lib/utils';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { use } from 'react';
-import { cache } from 'react';
+
 
 const DataStreamView = () => {
   const vpu = useDataStreamStore((state) => state.vpu);
@@ -30,20 +29,14 @@ const DataStreamView = () => {
   const ensemble = useDataStreamStore((state) => state.ensemble);
   const outputFile = useDataStreamStore((state) => state.outputFile);
   const forecast = useDataStreamStore((state) => state.forecast);
-  const set_model = useDataStreamStore((state) => state.set_model); 
-  const set_date = useDataStreamStore((state) => state.set_date);
-  const set_cycle = useDataStreamStore((state) => state.set_cycle);
-  const set_forecast = useDataStreamStore((state) => state.set_forecast);
-  const set_outputFile = useDataStreamStore((state) => state.set_outputFile);
-  const set_variables = useDataStreamStore((state) => state.set_variables);
-  const set_cache_key = useDataStreamStore((state) => state.set_cache_key);
 
+
+  const setAllState = useDataStreamStore((state) => state.setAllState);
+  
+  const set_variables = useDataStreamStore((state) => state.set_variables);
+  
   const prefix = useS3DataStreamBucketStore((state) => state.prefix);
-  const set_prefix = useS3DataStreamBucketStore((state) => state.set_prefix);
-  const setForecastOptions = useS3DataStreamBucketStore((state) => state.set_forecasts);
-  const setAvailableDatesList = useS3DataStreamBucketStore((state) => state.set_dates);
-  const setAvailableCyclesList = useS3DataStreamBucketStore((state) => state.set_cycles);
-  const setAvailableOutputFiles = useS3DataStreamBucketStore((state) => state.set_outputFiles);
+  const setInitialData = useS3DataStreamBucketStore((state) => state.setInitialData);
   
   const set_feature_ids = useVPUStore((state) => state.set_feature_ids);
   const setVarData = useVPUStore((state) => state.setVarData);
@@ -60,35 +53,85 @@ const DataStreamView = () => {
   const add_cacheTable = useCacheTablesStore((state) => state.add_cacheTable);
 
   useEffect(() => {
+    const controller = new AbortController();
+    let alive = true;
+
     async function fetchInitialData() {
       if (!vpu) return;
-      const { models, dates, forecasts, cycles, outputFiles } = await initialS3Data(vpu);
-      const _models = models.filter(m => m.value !== 'test'); 
-      setAvailableDatesList(dates);
-      setForecastOptions(forecasts);
-      setAvailableCyclesList(cycles);
-      setAvailableOutputFiles(outputFiles);
-      set_model(_models[0]?.value);
-      set_date(dates[1]?.value);
-      set_forecast(forecasts[0]?.value);
-      set_cycle(cycles[0]?.value);
-      set_outputFile(outputFiles[0]?.value);
-      const cacheKey = getCacheKey(
-        _models[0]?.value,
-        dates[1]?.value,
-        forecasts[0]?.value,
-        cycles[0]?.value,
-        ensemble,
-        vpu,
-        outputFiles[0]?.value
-      );
-      set_cache_key(cacheKey);
-      const _prefix = makePrefix(_models[0]?.value, dates[1]?.value, forecasts[0]?.value, cycles[0]?.value, ensemble, vpu, outputFiles[0]?.value);
-      set_prefix(_prefix);
+      try {
+        const { models, dates, forecasts, cycles, outputFiles } =
+          await initialS3Data(vpu, { signal: controller.signal });
+
+        if (!alive) return; // <- prevents any setState after unmount/dep change
+
+        const _models = models.filter(m => m.value !== 'test');
+
+        const cacheKey = getCacheKey(
+          _models[0]?.value,
+          dates[1]?.value,
+          forecasts[0]?.value,
+          cycles[0]?.value,
+          ensemble,
+          vpu,
+          outputFiles[0]?.value
+        );
+
+        // set_model(_models[0]?.value);
+        // set_date(dates[1]?.value);
+        // set_forecast(forecasts[0]?.value);
+        // set_cycle(cycles[0]?.value);
+        // set_outputFile(outputFiles[0]?.value);
+        // set_cache_key(cacheKey);
+
+        setAllState({
+          model: _models[0]?.value,
+          date: dates[1]?.value,
+          forecast: forecasts[0]?.value,
+          cycle: cycles[0]?.value,
+          ensemble: null,
+          outputFile: outputFiles[0]?.value,
+          cache_key: cacheKey,
+        });
+
+        const _prefix = makePrefix(
+          _models[0]?.value,
+          dates[1]?.value,
+          forecasts[0]?.value,
+          cycles[0]?.value,
+          ensemble,
+          vpu,
+          outputFiles[0]?.value
+        );
+
+        setInitialData({
+          models: _models,
+          dates: dates,
+          forecasts: forecasts,
+          cycles: cycles,
+          outputFiles: outputFiles,
+          prefix: _prefix,
+        });
+
+        // setAvailableDatesList(dates);
+        // setForecastOptions(forecasts);
+        // setAvailableCyclesList(cycles);
+        // setAvailableOutputFiles(outputFiles);
+        // set_prefix(_prefix);
+
+      } catch (error) {
+        // fetch abort throws DOMException with name AbortError
+        if (error?.name === 'AbortError') return;
+        console.error('Error fetching initial S3 data:', error);
+      }
     }
+
     fetchInitialData();
 
-  }, [vpu]); 
+    return () => {
+      alive = false;
+      controller.abort();
+    };
+  }, [vpu]);
 
   useEffect( () => {   
    async function getData(){
@@ -160,5 +203,5 @@ const DataStreamView = () => {
     </ViewContainer>
   );
 };
-
+DataStreamView.whyDidYouRender = true;
 export default DataStreamView;

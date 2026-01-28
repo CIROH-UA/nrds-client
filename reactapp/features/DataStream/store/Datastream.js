@@ -29,6 +29,12 @@ const useDataStreamStore = create((set) => ({
     set_hydrofabric_index: (newHydrofabricIndex) => set({ hydrofabric_index: newHydrofabricIndex }),
     set_variables: (newVariables) => set({ variables: newVariables }),
     set_outputFile: (newOutputFile) => set({ outputFile: newOutputFile }),
+
+    setAllState: (newState) => set({ 
+        bucket: 'ciroh-community-ngen-datastream',
+        ...newState
+    }),
+
     reset: () => set({
         bucket: 'ciroh-community-ngen-datastream',
         nexus_pmtiles: 'https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/nexus.pmtiles',

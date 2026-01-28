@@ -1,4 +1,3 @@
-import { getOptionsFromURL } from '../lib/s3Utils';
 import { create } from 'zustand';
 
 const useS3DataStreamBucketStore = create((set) => ({
@@ -18,6 +17,11 @@ const useS3DataStreamBucketStore = create((set) => ({
     set_ensembles: (newEnsembles) => set({ ensembles: newEnsembles }),
     set_outputFiles: (newOutputFiles) => set({ outputFiles: newOutputFiles}),
     set_prefix: (newPrefix) => set({ prefix: newPrefix }),
+    setInitialData: (newState) => set({ 
+        bucket: 'ciroh-community-ngen-datastream',
+        ensembles: [],
+        ...newState
+    }),
     reset: () => set({
         bucket: 'ciroh-community-ngen-datastream',
         models: [],

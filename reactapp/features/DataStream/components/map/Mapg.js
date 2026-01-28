@@ -1,17 +1,16 @@
 // MapComponent.jcacheKeys
-import React, { useEffect, useCallback, useRef, useMemo, useState } from 'react';
+import React, { useEffect, useCallback, useRef, useMemo } from 'react';
 import maplibregl from 'maplibre-gl';
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import { PathLayer } from "@deck.gl/layers";
-import Map, { Source, Popup, useControl } from 'react-map-gl/maplibre';
+import Map, { Source, useControl } from 'react-map-gl/maplibre';
 import { Protocol } from 'pmtiles';
 import useTimeSeriesStore from '../../store/Timeseries';
 import useDataStreamStore from '../../store/Datastream';
 import { useVPUStore } from '../../store/Layers';
 import { useLayersStore, useFeatureStore } from '../../store/Layers';
-import { PopupContent } from '../styles/Styles';
+import CustomPopUp from './Popup';
 import { 
-  // mapStyleUrl,
   dividesOutlineColor, 
   dividesHighlightFillColor, 
   dividesHighlightOutlineColor, 
@@ -43,7 +42,7 @@ function DeckGLOverlay(props) {
   return null;
 }
 
-const MapComponent = () => {
+const MainMap = () => {
   const isNexusVisible = useLayersStore((state) => state.nexus.visible);
   const isCatchmentsVisible = useLayersStore((state) => state.catchments.visible);
   const isFlowPathsVisible = useLayersStore((state) => state.flowpaths.visible);
@@ -73,61 +72,103 @@ const MapComponent = () => {
   const valuesByVar = useVPUStore((s) => s.valuesByVar);
   const pathData = useVPUStore((s) => s.pathData);
   const setPathData = useVPUStore((s) => s.setPathData);
-  // const deckOverlayRef = useRef(null);
 
-  const [deckLayers, setDeckLayers] = useState([]);
+  const EMPTY_LAYERS = useMemo(() => [], []);
 
   const mapRef = useRef(null);
 
-const mapStyleUrl = getComputedStyle(document.documentElement).getPropertyValue('--map-style-url').trim();
+  const mapStyleUrl = getComputedStyle(document.documentElement).getPropertyValue('--map-style-url').trim();
 
-const handleMapLoad = useCallback((event) => {
-  const map = event.target;
-  
-  // keep your existing onMapLoad behavior
-  const hoverLayers = ["divides", "nexus-points"];
-  hoverLayers.forEach((layer) => {
-    map.on("mouseenter", layer, () => (map.getCanvas().style.cursor = "pointer"));
-    map.on("mouseleave", layer, () => (map.getCanvas().style.cursor = ""));
-  });
-  reorderLayers(map);
 
-}, []); // deckOverlayRef is a ref; no dep needed
+  const deckLayers = useMemo(() => {
+    if (!isFlowPathsVisible) return EMPTY_LAYERS;
 
-  const onHover = useCallback(
-    (event) => {
-      if (!enabledHovering) {
-        set_hovered_feature({});
-        return;
-      }
-      const { features, lngLat } = event;
+    const varData = valuesByVar?.[variable];
+    const numTimes = timesArr?.length || 0;
 
-      if (!features || features.length === 0) {
-        set_hovered_feature({});
-        return;
-      }
+    if (!varData || !numTimes || !pathData.length) return EMPTY_LAYERS;
 
-      const feature = features[0];
-      const layerId = feature.layer.id;
+    const bounds = computeBounds(varData);
 
-      let id =
-        layerId === 'divides'
-          ? feature.properties?.divide_id
-          : feature.properties?.id;
+    return [
+      new PathLayer({
+        id: "flowpaths-anim",
+        data: pathData,
+        getPath: (d) => d.path,
+        getColor: (d) => {
+          const v = getValueAtTimeFlat(varData, numTimes, d.featureIndex, currentTimeIndex);
+          return valueToColor(v, bounds);
+        },
+        getWidth: (d) => {
+          const v = getValueAtTimeFlat(varData, numTimes, d.featureIndex, currentTimeIndex);
+          if (v === null || v <= -9998) return 2;
+          const t = Math.max(0, Math.min(1, (v - bounds.min) / (bounds.max - bounds.min)));
+          return 3 + t * 8;
+        },
+        widthUnits: "pixels",
+        widthMinPixels: 2,
+        widthMaxPixels: 12,
+        capRounded: true,
+        jointRounded: true,
+        pickable: false,
+        updateTriggers: {
+          getColor: [currentTimeIndex, variable],
+          getWidth: [currentTimeIndex, variable],
+        },
+      }),
+    ];
+  }, [isFlowPathsVisible, valuesByVar, variable, timesArr, pathData, currentTimeIndex]);
 
-      if (!id) {
-        set_hovered_feature({});
-        return;
-      }
+  const handleMapLoad = useCallback((event) => {
+    const map = event.target;
+    
+    // keep your existing onMapLoad behavior
+    const hoverLayers = ["divides", "nexus-points"];
+    hoverLayers.forEach((layer) => {
+      map.on("mouseenter", layer, () => (map.getCanvas().style.cursor = "pointer"));
+      map.on("mouseleave", layer, () => (map.getCanvas().style.cursor = ""));
+    });
+    reorderLayers(map);
 
-      set_hovered_feature({
-        longitude: lngLat.lng,
-        latitude: lngLat.lat,
-        ...feature.properties,
-      });
-    },
-    [set_hovered_feature, enabledHovering]
-  );
+  }, []); // deckOverlayRef is a ref; no dep needed
+
+  const onHover = useCallback((event) => {
+    if (!enabledHovering) return;
+
+    const { features, lngLat } = event;
+
+    const prev = useFeatureStore.getState().hovered_feature;
+
+    if (!features?.length) {
+      if (prev !== null) set_hovered_feature(null);
+      return;
+    }
+
+    const feature = features[0];
+    const layerId = feature.layer.id;
+
+    const hoverId =
+      layerId === "divides"
+        ? feature.properties?.divide_id
+        : feature.properties?.id;
+
+    if (!hoverId) {
+      if (prev !== null) set_hovered_feature(null);
+      return;
+    }
+
+    if (prev?.hoverId === hoverId) return;
+
+    const next = {
+      ...feature.properties,
+      hoverId,
+      longitude: lngLat.lng,
+      latitude: lngLat.lat,
+    };
+
+    set_hovered_feature(next);
+  }, [enabledHovering, set_hovered_feature]);
+
 
   // --- Use extracted layer hooks ---
   const catchmentLayer = useCatchmentLayers({
@@ -196,8 +237,7 @@ useEffect(() => {
     if (raf) cancelAnimationFrame(raf);
     raf = requestAnimationFrame(() => {
       if (!isFlowPathsVisible) return;
-      const zooom = map.getZoom();
-      const feats = map.queryRenderedFeatures({ layers: ["flowpaths"] });
+       const feats = map.queryRenderedFeatures({ layers: ["flowpaths"] });
 
       const matched = feats.filter(
         (f) => featureIdToIndex[f.properties?.id] !== undefined
@@ -225,57 +265,6 @@ useEffect(() => {
     map.off("idle", run);
   };
 }, [featureIdToIndex, setPathData]);
-
-
-
-  useEffect(() => {
-
-    if (!isFlowPathsVisible) {
-      setDeckLayers([]);
-      return;
-    }
-
-    const varData = valuesByVar?.[variable];
-    const numTimes = timesArr?.length || 0;
-
-    if (!varData || !numTimes || !pathData.length) {
-      console.log("deck clear layers");
-      setDeckLayers([]);
-      return;
-    }
-
-    const bounds = computeBounds(varData);
-
-    const layers = [
-      new PathLayer({
-        id: "flowpaths-anim",
-        data: pathData,
-        getPath: (d) => d.path,
-        getColor: (d) => {
-          const v = getValueAtTimeFlat(varData, numTimes, d.featureIndex, currentTimeIndex);
-          return valueToColor(v, bounds);
-        },
-        getWidth: (d) => {
-          const v = getValueAtTimeFlat(varData, numTimes, d.featureIndex, currentTimeIndex);
-          if (v === null || v <= -9998) return 2;
-          const t = Math.max(0, Math.min(1, (v - bounds.min) / (bounds.max - bounds.min)));
-          return 3 + t * 8;
-        },
-        widthUnits: "pixels",
-        widthMinPixels: 2,
-        widthMaxPixels: 12,
-        capRounded: true,
-        jointRounded: true,
-        pickable: false,
-        updateTriggers: {
-          getColor: [currentTimeIndex, variable],
-          getWidth: [currentTimeIndex, variable],
-        },
-      })
-    ]
-    
-    setDeckLayers(layers)
-  }, [valuesByVar, timesArr, pathData, currentTimeIndex]);
 
 
 
@@ -363,27 +352,14 @@ useEffect(() => {
         {nexusLayers}
       </Source>
       <DeckGLOverlay layers={deckLayers} interleaved />
-      {hovered_feature?.id && (
-        <Popup
-          longitude={hovered_feature.longitude}
-          latitude={hovered_feature.latitude}
-          offset={[0, -10]}
-          closeButton={false}
-        >
-          <PopupContent>
-            <div className="popup-title">Feature</div>
-            {Object.keys(hovered_feature).map((key) => (
-              <div className="popup-row" key={key}>
-                <span className="popup-label">{key}</span>
-                <span className="popup-value">{hovered_feature[key]}</span>
-              </div>
-            ))}
-          </PopupContent>
-        </Popup>
-      )}
+      <CustomPopUp hovered_feature={hovered_feature} enabledHovering={enabledHovering} />
     </Map>
   );
 };
 
+
+const MapComponent = React.memo(MainMap);
+
+MapComponent.whyDidYouRender = true;
 export default MapComponent;
 

@@ -1,4 +1,4 @@
-export async function listPublicS3Directories(prefix = "v2.2/") {
+export async function listPublicS3Directories(prefix = "v2.2/", { signal } = {}) {
   const bucket = "ciroh-community-ngen-datastream";
 
   // Ensure trailing slash
@@ -10,7 +10,7 @@ export async function listPublicS3Directories(prefix = "v2.2/") {
     `?list-type=2&prefix=${encodeURIComponent(normalizedPrefix)}` +
     `&delimiter=/`;
 
-  const resp = await fetch(url);
+  const resp = await fetch(url, { signal });
   if (!resp.ok) {
     throw new Error(`S3 list error: ${resp.status} ${resp.statusText}`);
   }
@@ -38,14 +38,17 @@ export async function listPublicS3Directories(prefix = "v2.2/") {
   return { fullPrefixes, childNames };
 }
 
-export async function listPublicS3Files(prefix = "v2.2/") {
+export async function listPublicS3Files(prefix = "v2.2/", { signal } = {}) {
     const bucket = "ciroh-community-ngen-datastream";
     const url =
         `https://${bucket}.s3.us-east-1.amazonaws.com` +
         `/?list-type=2&prefix=${encodeURIComponent(prefix)}`;
 
 
-    const resp = await fetch(url);
+    const resp = await fetch(url,{ signal });
+    if (!resp.ok) {
+        throw new Error(`S3 list error: ${resp.status} ${resp.statusText}`);
+    }
     const xml = await resp.text();
 
     // parse XML -> extract <Key> elements
@@ -56,20 +59,24 @@ export async function listPublicS3Files(prefix = "v2.2/") {
     return contents.map(node => node.getElementsByTagName("Key")[0].textContent);
 }
 
-export async function getOptionsFromURL(url) {
-    // console.log("getOptionsFromURL called with url:", url);
+export async function getOptionsFromURL(url, { signal } = {}) {
+  try{
     if (url.split('/').includes('troute')){
-      const files = await listPublicS3Files(url);
+      const files = await listPublicS3Files(url, { signal });
       const ncFiles = files.filter(f => f.endsWith('.nc'));
       // const ncFilesParsed = ncFiles.map(f => `s3://ciroh-community-ngen-datastream/${f}`);
       const options = ncFiles.map((d) => ({ value: d.split('/').pop(), label: d.split('/').pop() }));
       const sortedOptions = Array.from(options).sort().reverse();
       return sortedOptions;
     }
-    const { childNames } = await listPublicS3Directories(url);
+    const { childNames } = await listPublicS3Directories(url, { signal });
     const options = childNames.map((d) => ({ value: d, label: d }));
     const sortedOptions = Array.from(options).sort();
     return sortedOptions;
+  }catch(error){
+    return [];
+  }
+
 }
 
 export const makePrefix = (model, avail_date,ngen_forecast,ngen_cycle, ngen_ensemble, ngen_vpu, outputFile) => {
@@ -92,16 +99,28 @@ export const makeGpkgUrl = (vpu) => {
     return vpu_gpkg;
 }
 
-export const initialS3Data = async(vpu) => {
-  let _models = await getOptionsFromURL(`outputs`);
+export const initialS3Data = async(vpu, { signal } = {}) => {
+  let _models = await getOptionsFromURL(`outputs`, { signal });
+  if (_models.length === 0){
+    return {models: [], dates: [], forecasts: [], cycles: [], outputFiles: []};
+  }
   const models = _models.filter(m => m.value !== 'test'); 
-  const dates = (await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/`)).reverse();
-  const forecasts = (await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${dates[1]?.value}/`)).reverse();
-  const cycles = await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${dates[1]?.value}/${forecasts[0]?.value}/`);
+  const dates = (await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/`, { signal })).reverse();
+  if (dates.length === 0){
+    return {models, dates: [], forecasts: [], cycles: [], outputFiles: []};
+  }
+  const forecasts = (await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${dates[1]?.value}/`, { signal })).reverse();
+  if (forecasts.length === 0){
+    return {models, dates, forecasts: [], cycles: [], outputFiles: []};
+  }
+  const cycles = await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${dates[1]?.value}/${forecasts[0]?.value}/`, { signal });
+  if (cycles.length === 0){
+    return {models, dates, forecasts, cycles: [], outputFiles: []};
+  }
   if (!vpu) {
     return {models, dates, forecasts, cycles, outputFiles: []};
   }
-  const outputFiles = await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${dates[1]?.value}/${forecasts[0]?.value}/${cycles[0]?.value}/${vpu}/ngen-run/outputs/troute/`);  
+  const outputFiles = await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${dates[1]?.value}/${forecasts[0]?.value}/${cycles[0]?.value}/${vpu}/ngen-run/outputs/troute/`, { signal });
   return {models, dates, forecasts, cycles, outputFiles};
 }
 
