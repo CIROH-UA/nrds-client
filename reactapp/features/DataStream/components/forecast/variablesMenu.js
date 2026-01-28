@@ -1,26 +1,47 @@
-import React, { useMemo, Fragment } from 'react';
+import React, { useMemo, Fragment, useCallback } from 'react';
 import { Row, IconLabel } from '../styles/Styles';
 import SelectComponent from '../SelectComponent';
 import { getTimeseries} from 'features/DataStream/lib/queryData';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
+import { useShallow } from 'zustand/react/shallow';
 import { makeTitle } from 'features/DataStream/lib/utils';
 import {
   VariableIcon,
 } from 'features/DataStream/lib/layers';
 
-export default function VariablesMenu() {
-  const forecast = useDataStreamStore((state) => state.forecast);
-  const variables = useDataStreamStore((state) => state.variables);
-  const cacheKey = useDataStreamStore((state) => state.cache_key);
-  const variable = useTimeSeriesStore((state) => state.variable);
-  const set_series = useTimeSeriesStore((state) => state.set_series);
-  const set_variable = useTimeSeriesStore((state) => state.set_variable);
-  const set_layout = useTimeSeriesStore((state) => state.set_layout);
-  const feature_id = useTimeSeriesStore((state) => state.feature_id);
+function VariablesMenu() {
 
-  const handleChangeVariable = async (optionArray) => {
-    const opt = optionArray?.[0];
+  const{ forecast, variables, cacheKey } = useDataStreamStore(
+    useShallow((state) => ({
+      forecast: state.forecast,
+      variables: state.variables,
+      cacheKey: state.cache_key,
+    }))
+  );
+  
+  const { variable, set_variable, set_series, set_layout, feature_id } = useTimeSeriesStore(
+    useShallow((state) => ({
+      variable: state.variable,
+      set_variable: state.set_variable,
+      set_series: state.set_series,
+      set_layout: state.set_layout,
+      feature_id: state.feature_id,
+    }))
+  );
+
+  const availableVariablesList = useMemo(() => {
+    return variables.map((v) => ({ value: v, label: v }));
+  }, [variables]);
+
+  const selectedVariableOption = useMemo(() => {
+    const opts = availableVariablesList || [];
+    return opts.find((opt) => opt.value === variable) ?? null;
+  }
+  , [variables, variable]);
+
+  const handleChangeVariable = useCallback(async () => {
+    const opt = availableVariablesList?.[0];
     if (opt) set_variable(opt.value);
     const id = feature_id.split('-')[1]; 
     const series = await getTimeseries(id, cacheKey, opt.value);
@@ -35,17 +56,7 @@ export default function VariablesMenu() {
       'title': makeTitle(forecast, feature_id),
     });
 
-  };
-
-  const availableVariablesList = useMemo(() => {
-    return variables.map((v) => ({ value: v, label: v }));
-  }, [variables]);
-
-  const selectedVariableOption = useMemo(() => {
-    const opts = availableVariablesList || [];
-    return opts.find((opt) => opt.value === variable) ?? null;
-  }
-  , [variables, variable]);
+  }, [availableVariablesList]);
 
   return (
     <Fragment>
@@ -63,3 +74,6 @@ export default function VariablesMenu() {
   );
 }
 
+VariablesMenu.whyDidYouRender = true;
+
+export default React.memo(VariablesMenu);

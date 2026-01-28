@@ -1,10 +1,11 @@
-import React, { Fragment, useState } from 'react';
+import React, { Fragment, useCallback, useState } from 'react';
 import { LayerControl } from '../map/LayersControl';
 import { LayersContainer, LayerButton } from '../styles/Styles';
 import { IoLayers, IoClose } from "react-icons/io5";
 
 export const LayersMenu = () => {
   const [open, setIsOpen] = useState(false);
+  const toggle = useCallback(() => setIsOpen(o => !o), []);
 
   return (
     <Fragment>
@@ -12,7 +13,7 @@ export const LayersMenu = () => {
         <>
           <LayerButton
             $bgColor="#ffffff00"
-            onClick={() => setIsOpen(prev => !prev)}
+            onClick={toggle}
           >
             <IoClose size={20} />
           </LayerButton>
@@ -29,3 +30,5 @@ export const LayersMenu = () => {
     </Fragment>
   );
 };
+
+LayersMenu.whyDidYouRender = true;

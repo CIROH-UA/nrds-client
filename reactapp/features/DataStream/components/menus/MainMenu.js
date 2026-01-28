@@ -13,4 +13,5 @@ const MainMenu = () => {
   );
 };
 
+MainMenu.whyDidYouRender = true;
 export default MainMenu;

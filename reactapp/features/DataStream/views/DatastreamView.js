@@ -23,35 +23,20 @@ import { makeTitle } from 'features/DataStream/lib/utils';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 
-const DataStreamView = () => {
-  const vpu = useDataStreamStore((state) => state.vpu);
-  const cacheKey = useDataStreamStore((state) => state.cache_key);
-  const ensemble = useDataStreamStore((state) => state.ensemble);
-  const outputFile = useDataStreamStore((state) => state.outputFile);
-  const forecast = useDataStreamStore((state) => state.forecast);
+import { useShallow } from "zustand/react/shallow";
 
+function InitialS3Loader() {
+  const { vpu, ensemble, setAllState } = useDataStreamStore(
+    useShallow((s) => ({
+      vpu: s.vpu,
+      ensemble: s.ensemble,
+      setAllState: s.setAllState,
+    }))
+  );
 
-  const setAllState = useDataStreamStore((state) => state.setAllState);
-  
-  const set_variables = useDataStreamStore((state) => state.set_variables);
-  
-  const prefix = useS3DataStreamBucketStore((state) => state.prefix);
-  const setInitialData = useS3DataStreamBucketStore((state) => state.setInitialData);
-  
-  const set_feature_ids = useVPUStore((state) => state.set_feature_ids);
-  const setVarData = useVPUStore((state) => state.setVarData);
-
-  const feature_id = useTimeSeriesStore((state) => state.feature_id);
-  const loading = useTimeSeriesStore((state) => state.loading);
-  const variable = useTimeSeriesStore((state) => state.variable);
-  const set_variable = useTimeSeriesStore((state) => state.set_variable);
-  const set_loading_text = useTimeSeriesStore((state) => state.set_loading_text);
-  const set_series = useTimeSeriesStore((state) => state.set_series);
-  const set_layout = useTimeSeriesStore((state) => state.set_layout);
-  const setLoading = useTimeSeriesStore((state) => state.set_loading);  
-  const setAnimationIndex = useVPUStore((state) => state.setAnimationIndex);
-  
-  const add_cacheTable = useCacheTablesStore((state) => state.add_cacheTable);
+  const { setInitialData } = useS3DataStreamBucketStore(
+    useShallow((s) => ({ setInitialData: s.setInitialData }))
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -121,12 +106,55 @@ const DataStreamView = () => {
     };
   }, [vpu]);
 
+  return null;
+}
+
+function TimeseriesLoader() {
+  const { cacheKey, outputFile, forecast, vpu, set_variables } = useDataStreamStore(
+    useShallow((s) => ({
+      cacheKey: s.cache_key,
+      outputFile: s.outputFile,
+      forecast: s.forecast,
+      vpu: s.vpu,
+      set_variables: s.set_variables,
+    }))
+  );
+  const { add_cacheTable } = useCacheTablesStore(
+    useShallow((s) => ({
+      add_cacheTable: s.add_cacheTable,
+    }))
+  );
+  
+  const { prefix } = useS3DataStreamBucketStore(
+    useShallow((s) => ({ prefix: s.prefix }))
+  );
+
+  const { feature_id, loading, variable, set_variable, set_loading_text, set_series, set_layout, set_loading } = useTimeSeriesStore(
+    useShallow((s) => ({ 
+      feature_id: s.feature_id,
+      loading: s.loading,
+      variable: s.variable,
+      set_variable: s.set_variable,
+      set_loading_text: s.set_loading_text,
+      set_series: s.set_series,
+      set_layout: s.set_layout,
+      set_loading: s.set_loading,
+    }))
+  );
+  const { set_feature_ids, setVarData, setAnimationIndex } = useVPUStore(
+    useShallow((s) => ({
+      set_feature_ids: s.set_feature_ids,
+      setVarData: s.setVarData,
+      setAnimationIndex: s.setAnimationIndex,
+    }))
+  );
+
   useEffect( () => {   
    async function getData(){
     if (!outputFile || loading || !feature_id ) return;
     const vpu_gpkg = makeGpkgUrl(vpu);
     const id = feature_id.split('-')[1];
-    setLoading(true);
+    set_loading(true);
     set_loading_text('Loading feature properties...');
     let currentVariable = variable;
     try {
@@ -139,7 +167,7 @@ const DataStreamView = () => {
         }catch(err){
           console.error('No data for VPU', vpu, err);
           set_loading_text('No data available for selected VPU');
-          setLoading(false);
+          set_loading(false);
         }        
         const featureIDs = await getFeatureIDs(cacheKey);
         set_feature_ids(featureIDs);
@@ -168,11 +196,11 @@ const DataStreamView = () => {
         title: makeTitle(forecast, feature_id),
       });
      set_loading_text('');
-      setLoading(false);
+      set_loading(false);
     } 
     catch (err) {
         set_loading_text(`Failed to load timeseries for id: ${id}`);
-        setLoading(false);
+        set_loading(false);
         console.error('Failed to load timeseries for', id, err);
     }
    }
@@ -180,13 +208,21 @@ const DataStreamView = () => {
 
   }, [cacheKey, feature_id]);
 
+
+  return null;
+}
+
+
+const DataStreamView = () => {
   return (
     <ViewContainer>
-            <ToastContainer stacked  />
-            <MapContainer>
-              <MapComponent/>
-            </MapContainer >
-            <MainMenu/>
+      <InitialS3Loader />
+      <TimeseriesLoader />
+      <ToastContainer stacked  />
+        <MapContainer>
+          <MapComponent/>
+        </MapContainer >
+        <MainMenu/>
     </ViewContainer>
   );
 };

@@ -65,37 +65,6 @@ export const useFeatureStore = create((set) => ({
         })),
 }));
 
-// const sameArray = (a, b) =>
-//   a === b || (a?.length === b?.length && a.every((v, i) => v === b[i]));
-
-// export const useVPUStore = create(
-//     subscribeWithSelector((set) => ({
-//         featureIds: [],
-//         featureIdToIndex: {},
-//         times: [],
-//         valuesByVar: {},
-//         set_feature_ids: (featureIds) => set({ featureIds }),
-//         setAnimationIndex: (featureIds, times) =>
-//             set((s) => {
-//             if (sameArray(s.featureIds, featureIds) && sameArray(s.times, times)) return s;
-
-//             const featureIdToIndex = {};
-//             featureIds.forEach((id, idx) => {
-//                 featureIdToIndex[id] = idx;
-//                 featureIdToIndex[`wb-${id}`] = idx;
-//             });
-
-//             return { featureIds, times, featureIdToIndex };
-//             }),
-
-//         setVarData: (variable, flatValues) =>
-//             set((s) => {
-//             if (s.valuesByVar?.[variable] === flatValues) return s; // same ref => no update
-//             return { valuesByVar: { ...s.valuesByVar, [variable]: flatValues } };
-//             }),
-//     }))
-// );
-
 
 // ---------- small helpers ----------
 const sameArrayRefOrValues = (a, b) =>
