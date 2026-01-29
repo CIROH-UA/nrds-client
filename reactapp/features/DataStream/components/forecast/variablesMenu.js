@@ -40,9 +40,10 @@ function VariablesMenu() {
   }
   , [variables, variable]);
 
-  const handleChangeVariable = useCallback(async () => {
-    const opt = availableVariablesList?.[0];
+  const handleChangeVariable = useCallback(async (evt) => {
+    const opt = evt || availableVariablesList?.[0];
     if (opt) set_variable(opt.value);
+    console.log(opt.value);
     const id = feature_id.split('-')[1]; 
     const series = await getTimeseries(id, cacheKey, opt.value);
     const xy = series.map((d) => ({
@@ -55,7 +56,6 @@ function VariablesMenu() {
       'xaxis': "Time",
       'title': makeTitle(forecast, feature_id),
     });
-
   }, [availableVariablesList]);
 
   return (

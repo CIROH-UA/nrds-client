@@ -21,19 +21,35 @@ import { checkForTable,
 } from 'features/DataStream/lib/queryData';
 import { makeTitle } from 'features/DataStream/lib/utils';
 import 'maplibre-gl/dist/maplibre-gl.css';
-
-
 import { useShallow } from "zustand/react/shallow";
 
 function InitialS3Loader() {
-  const { vpu, ensemble, setAllState } = useDataStreamStore(
+  // const { vpu, ensemble, setAllState } = useDataStreamStore(
+  //   useShallow((s) => ({
+  //     vpu: s.vpu,
+  //     ensemble: s.ensemble,
+  //     setAllState: s.setAllState,
+  //   }))
+  // );
+
+  const { vpu, ensemble } = useDataStreamStore(
     useShallow((s) => ({
       vpu: s.vpu,
       ensemble: s.ensemble,
-      setAllState: s.setAllState,
     }))
   );
 
+  const { set_model, set_forecast, set_cycle, set_outputFile, set_date, set_ensemble, set_cache_key } = useDataStreamStore(
+    useShallow((s) => ({
+      set_model: s.set_model,
+      set_forecast: s.set_forecast,
+      set_cycle: s.set_cycle,
+      set_outputFile: s.set_outputFile,
+      set_date: s.set_date,
+      set_ensemble: s.set_ensemble,
+      set_cache_key: s.set_cache_key,
+    }))
+  );
   const { setInitialData } = useS3DataStreamBucketStore(
     useShallow((s) => ({ setInitialData: s.setInitialData }))
   );
@@ -62,15 +78,22 @@ function InitialS3Loader() {
           outputFiles[0]?.value
         );
 
-        setAllState({
-          model: _models[0]?.value,
-          date: dates[1]?.value,
-          forecast: forecasts[0]?.value,
-          cycle: cycles[0]?.value,
-          ensemble: null,
-          outputFile: outputFiles[0]?.value,
-          cache_key: cacheKey,
-        });
+        set_model(_models[0]?.value);
+        set_forecast(forecasts[0]?.value);
+        set_cycle(cycles[0]?.value);
+        set_outputFile(outputFiles[0]?.value);
+        set_date(dates[1]?.value);
+        set_ensemble(ensemble);
+        set_cache_key(cacheKey);
+        // setAllState({
+        //   model: _models[0]?.value,
+        //   date: dates[1]?.value,
+        //   forecast: forecasts[0]?.value,
+        //   cycle: cycles[0]?.value,
+        //   ensemble: null,
+        //   outputFile: outputFiles[0]?.value,
+        //   cache_key: cacheKey,
+        // });
 
         const _prefix = makePrefix(
           _models[0]?.value,
