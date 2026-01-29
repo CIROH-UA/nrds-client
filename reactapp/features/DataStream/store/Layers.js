@@ -1,72 +1,6 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from "zustand/middleware";
 
-export const useLayersStore = create(
-    subscribeWithSelector((set) => ({
-        nexus: {
-            visible: false,
-        },
-        catchments: {
-            visible: true,
-        },
-        flowpaths: {
-            visible: true
-        },
-        conus_gauges: {
-            visible: false
-        },
-        colorBounds: {
-            flow: { min: 0, max: 100 },
-            velocity: { min: 0, max: 5 },
-            depth: { min: 0, max: 3 },
-        },
-        hovered_enabled: false,
-        set_hovered_enabled: (isEnabled) => set({ hovered_enabled: isEnabled }),
-        get_nexus_visibility: () => get().nexus.visible,
-        get_catchments_visibility: () => get().catchments.visible,
-        set_nexus_visibility: (isVisible) => set((state) => ({
-            nexus: {
-                ...state.nexus,
-                visible: isVisible,
-            },
-        })),
-        set_catchments_visibility: (isVisible) => set((state) => ({
-            catchments: {
-                ...state.catchments,
-                visible: isVisible,
-            },
-        })),
-        set_flowpaths_visibility: (isVisible) => set((state) => ({
-            flowpaths: {
-                ...state.flowpaths,
-                visible: isVisible
-            }
-        })),
-        set_conus_gauges_visibility: (isVisible) => set((state) => ({
-            conus_gauges: {
-                ...state.conus_gauges,
-                visible: isVisible
-            }
-        }))
-    })));
-
-
-export const useFeatureStore = create((set) => ({
-    hovered_feature: null,
-    selected_feature: null,
-    
-    set_selected_feature: (feature) =>
-        set(() => ({
-            selected_feature: feature,
-        })),
-    set_hovered_feature: (feature) =>
-        set(() => ({
-            hovered_feature: feature,
-        })),
-}));
-
-
-// ---------- small helpers ----------
 const sameArrayRefOrValues = (a, b) =>
   a === b ||
   (!!a &&
@@ -74,7 +8,6 @@ const sameArrayRefOrValues = (a, b) =>
     a.length === b.length &&
     a.every((v, i) => v === b[i]));
 
-// shallow compare for plain objects: same keys + same values by ===
 const shallowEqualObj = (a, b) => {
   if (a === b) return true;
   if (!a || !b) return false;
@@ -87,7 +20,6 @@ const shallowEqualObj = (a, b) => {
   return true;
 };
 
-// build mapping (your original logic)
 const buildFeatureIdToIndex = (featureIds) => {
   const m = {};
   for (let idx = 0; idx < featureIds.length; idx++) {
@@ -98,7 +30,90 @@ const buildFeatureIdToIndex = (featureIds) => {
   return m;
 };
 
-// ---------- store ----------
+const featureKey = (f) =>
+  f?.id ?? f?.properties?.id ?? f?.properties?.feature_id ?? null;
+
+export const useLayersStore = create(
+  subscribeWithSelector((set, get) => ({
+    nexus: { visible: false },
+    catchments: { visible: true },
+    flowpaths: { visible: true },
+    conus_gauges: { visible: false },
+
+    colorBounds: {
+      flow: { min: 0, max: 100 },
+      velocity: { min: 0, max: 5 },
+      depth: { min: 0, max: 3 },
+    },
+
+    hovered_enabled: false,
+
+    // ---- getters (fine to keep, but note: using get() doesn't subscribe) ----
+    get_nexus_visibility: () => get().nexus.visible,
+    get_catchments_visibility: () => get().catchments.visible,
+
+    // ---- setters with guards ----
+    set_hovered_enabled: (isEnabled) =>
+      set((s) => (s.hovered_enabled === isEnabled ? s : { hovered_enabled: isEnabled })),
+
+    set_nexus_visibility: (isVisible) =>
+      set((s) => (s.nexus.visible === isVisible ? s : { nexus: { ...s.nexus, visible: isVisible } })),
+
+    set_catchments_visibility: (isVisible) =>
+      set((s) =>
+        s.catchments.visible === isVisible ? s : { catchments: { ...s.catchments, visible: isVisible } }
+      ),
+
+    set_flowpaths_visibility: (isVisible) =>
+      set((s) =>
+        s.flowpaths.visible === isVisible ? s : { flowpaths: { ...s.flowpaths, visible: isVisible } }
+      ),
+
+    set_conus_gauges_visibility: (isVisible) =>
+      set((s) =>
+        s.conus_gauges.visible === isVisible
+          ? s
+          : { conus_gauges: { ...s.conus_gauges, visible: isVisible } }
+      ),
+
+    set_colorBounds: (key, bounds) =>
+      set((s) => {
+        const prev = s.colorBounds?.[key];
+        if (!prev) return s;
+        if (prev.min === bounds.min && prev.max === bounds.max) return s;
+        return {
+          colorBounds: {
+            ...s.colorBounds,
+            [key]: { ...prev, ...bounds },
+          },
+        };
+      }),
+  }))
+);
+
+
+
+export const useFeatureStore = create((set) => ({
+  hovered_feature: null,
+  selected_feature: null,
+
+  set_selected_feature: (feature) =>
+    set((s) => {
+      // same reference OR same id => no update
+      if (s.selected_feature === feature) return s;
+      if (featureKey(s.selected_feature) === featureKey(feature)) return s;
+      return { selected_feature: feature };
+    }),
+
+  set_hovered_feature: (feature) =>
+    set((s) => {
+      if (s.hovered_feature === feature) return s;
+      if (featureKey(s.hovered_feature) === featureKey(feature)) return s;
+      return { hovered_feature: feature };
+    }),
+}));
+
+
 export const useVPUStore = create(
   subscribeWithSelector((set, get) => ({
     featureIds: [],

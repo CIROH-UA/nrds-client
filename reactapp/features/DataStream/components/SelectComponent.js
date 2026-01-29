@@ -147,7 +147,10 @@ const SelectComponent = ({
     () => createFilter({ ignoreAccents: false }),
     []
   );
-
+  const onChange = React.useCallback(
+    (opt) => onChangeHandler(opt),
+    [onChangeHandler]
+  );
   return (
     <Select
       components={components}
@@ -155,7 +158,7 @@ const SelectComponent = ({
       filterOption={filterOption}
       options={optionsList}
       value={value}
-      onChange={onChangeHandler}
+      onChange={onChange}
       menuPortalTarget={document.body}
       menuShouldScrollIntoView={false}
       menuPosition="fixed"

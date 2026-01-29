@@ -57,7 +57,6 @@ const DataMenuLoading = React.memo(function DataMenuLoading() {
 
 // -------------------- controls-only subcomponent --------------------
 const DataMenuControls = React.memo(function DataMenuControls() {
-  // values
   const { vpu, date, forecast, ensemble, cycle, model, outputFile } =
     useDataStreamStore(
       useShallow((state) => ({
@@ -92,14 +91,7 @@ const DataMenuControls = React.memo(function DataMenuControls() {
     }))
   );
 
-  // time series state needed for "Update" button + messages
-  const { feature_id, loading, setLoadingText } = useTimeSeriesStore(
-    useShallow((state) => ({
-      feature_id: state.feature_id,
-      loading: state.loading,
-      setLoadingText: state.set_loading_text,
-    }))
-  );
+  const feature_id = useTimeSeriesStore((s) => s.feature_id);
 
   // s3 available lists
   const {
@@ -141,19 +133,20 @@ const DataMenuControls = React.memo(function DataMenuControls() {
 
   // -------------------- stable handlers (no stale closures) --------------------
   const handleVisulization = useEvent(async () => {
+    const { loading, set_loading_text } = useTimeSeriesStore.getState();
     if (!feature_id || !vpu) {
-      setLoadingText('Please select a feature on the map first');
-      setLoadingText('');
+      set_loading_text('Please select a feature on the map first');
+      set_loading_text('');
       return;
     }
     if (!outputFile) {
-      setLoadingText('No Output File selected');
-      setLoadingText('');
+      set_loading_text('No Output File selected');
+      set_loading_text('');
       return;
     }
     if (loading) {
-      setLoadingText('Data is already loading, please wait...');
-      setLoadingText('');
+      set_loading_text('Data is already loading, please wait...');
+      set_loading_text('');
       return;
     }
 
@@ -189,7 +182,7 @@ const DataMenuControls = React.memo(function DataMenuControls() {
     const nextCycle = cycleOptions[0]?.value ?? '';
     set_cycle(nextCycle);
 
-    if (opt.value === 'medium_range') {
+    if (nextForecast === 'medium_range') {
       const ensembleOptions = await getOptionsFromURL(
         `outputs/${opt.value}/v2.2_hydrofabric/${nextDate}/${nextForecast}/${nextCycle}/`
       );
@@ -212,15 +205,7 @@ const DataMenuControls = React.memo(function DataMenuControls() {
       setAvailableOutputFiles(outputFileOptions);
       set_outputFile(outputFileOptions[0]?.value ?? '');
     }
-    // // reset downstream
-    // setAvailableOutputFiles([]);
-    // setAvailableEnsembleList([]);
-    // setAvailableCyclesList([]);
-    // setForecastOptions([]);
-    // set_forecast('');
-    // set_cycle('');
-    // set_ensemble('');
-    // set_outputFile('');
+
   });
 
   const handleChangeDate = useEvent(async (v) => {
@@ -242,7 +227,7 @@ const DataMenuControls = React.memo(function DataMenuControls() {
     const nextCycle = cycleOptions[0]?.value ?? '';
     set_cycle(nextCycle);
 
-    if (opt.value === 'medium_range') {
+    if (nextForecast === 'medium_range') {
       const ensembleOptions = await getOptionsFromURL(
         `outputs/${model}/v2.2_hydrofabric/${opt.value}/${nextForecast}/${nextCycle}/`
       );
