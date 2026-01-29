@@ -1,31 +1,48 @@
-import React, { Component, useCallback } from 'react';
+import React, { Component, useMemo } from 'react';
 import Select, { createFilter } from 'react-select';
 import { FixedSizeList as List } from 'react-window';
-// import useTheme from 'hooks/useTheme';
 
-const height = 28;
+const ROW_HEIGHT = 28;
+const LIST_STYLE = { overflowX: "hidden" };
 
-class MenuList extends Component {
-  render() {
-    const { options, children, maxHeight, getValue } = this.props;
+const Row = React.memo(function Row({ index, style, data }) {
+  return <div style={style}>{data.children[index]}</div>;
+});
+
+const MenuList = React.memo(function MenuList(props) {
+  const { options, children, maxHeight, getValue } = props;
+
+  const childArray = useMemo(() => React.Children.toArray(children), [children]);
+  const itemCount = childArray.length;
+
+  // Compute initial scroll offset based on selected option
+  const initialOffset = useMemo(() => {
     const [value] = getValue();
-    const initialOffset = options.indexOf(value) * height;
+    const selected = value?.value;
+    const idx = Math.max(0, options.findIndex((o) => o.value === selected));
+    return idx * ROW_HEIGHT;
+  }, [getValue, options]);
 
-    const adjustedHeight = Math.min(children.length * height, maxHeight);
+  const adjustedHeight = useMemo(
+    () => Math.min(itemCount * ROW_HEIGHT, maxHeight),
+    [itemCount, maxHeight]
+  );
 
-    return (
-      <List
-        height={adjustedHeight}
-        itemCount={children.length}
-        itemSize={height}
-        initialScrollOffset={initialOffset}
-        style={{ overflowX: 'hidden' }}
-      >
-        {({ index, style }) => <div style={style}>{children[index]}</div>}
-      </List>
-    );
-  }
-}
+  const itemData = useMemo(() => ({ children: childArray }), [childArray]);
+
+  return (
+    <List
+      height={adjustedHeight}
+      itemCount={itemCount}
+      itemSize={ROW_HEIGHT}
+      initialScrollOffset={initialOffset}
+      style={LIST_STYLE}
+      itemData={itemData}
+    >
+      {Row}
+    </List>
+  );
+});
 
 const customStyles = (width = 150) => {
   return {
@@ -123,22 +140,22 @@ const SelectComponent = ({
   width = 150,
 }) => {
 
+  const components = useMemo(() => ({ MenuList }), []);
 
-  const handleChange = useCallback(
-    (option) => {
-      onChangeHandler([option]);
-    },
-    [onChangeHandler]
+  const styles = useMemo(() => customStyles(width), [width]);
+  const filterOption = useMemo(
+    () => createFilter({ ignoreAccents: false }),
+    []
   );
 
   return (
     <Select
-      components={{ MenuList }}
-      styles={customStyles(width)}
-      filterOption={createFilter({ ignoreAccents: false })}
+      components={components}
+      styles={styles}
+      filterOption={filterOption}
       options={optionsList}
       value={value}
-      onChange={handleChange}
+      onChange={onChangeHandler}
       menuPortalTarget={document.body}
       menuShouldScrollIntoView={false}
       menuPosition="fixed"
@@ -146,4 +163,4 @@ const SelectComponent = ({
   );
 };
 
-export default SelectComponent;
+export default React.memo(SelectComponent);

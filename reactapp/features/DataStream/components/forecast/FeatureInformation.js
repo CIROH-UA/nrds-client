@@ -11,10 +11,9 @@ export const FeatureInformation = () => {
   const [ modalFeatureInfoShow, setModalFeatureInfoShow ] = useState(false);
   
   if (!selectedFeature) {
-    return null; // or <Panel>No gauge selected</Panel>
+    return null; 
   }
 
-  // Pull out lat/lon so we can render them together
   const { lat, latitude, lon, longitude, ...restProps } = selectedFeature;
   const latVal = lat ?? latitude;
   const lonVal = lon ?? longitude;
