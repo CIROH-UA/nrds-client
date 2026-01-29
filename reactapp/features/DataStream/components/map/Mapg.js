@@ -326,8 +326,6 @@ const MainMap = () => {
 
   const handleMapClick = async (event) => {
    if (loading) {
-      set_loading_text('Data is already loading, please wait...');
-      set_loading_text('');
       return;
     }
     // reset();

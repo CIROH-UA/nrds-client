@@ -131,7 +131,6 @@ const DataMenuControls = React.memo(function DataMenuControls() {
     }))
   );
 
-  // -------------------- stable handlers (no stale closures) --------------------
   const handleVisulization = useEvent(async () => {
     const { loading, set_loading_text } = useTimeSeriesStore.getState();
     if (!feature_id || !vpu) {
