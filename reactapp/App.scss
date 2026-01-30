@@ -71,7 +71,7 @@ $theme-colors: (
   /* extras used in components */
   --panel-background: #{$primary};
   --panel-border-color: #{$primary};
-  --muted-text: #9ca3af;
+  --muted-text: #212121;
 
   --offcanvas-bg: #ffffff;
   --offcanvas-border-color: #dee2e6;
@@ -169,7 +169,7 @@ $theme-colors: (
 
     --panel-background: #{$secondary};
     --panel-border-color: #{$secondary};
-    --muted-text: #9ca3af;
+    --muted-text: #ffff;
 
     --offcanvas-bg: #2c3e50;
     --offcanvas-border-color: #333333;

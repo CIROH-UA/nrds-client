@@ -41,14 +41,12 @@ const ForecastMenu = () => {
               <DataMenu />
             </Content>
             <Content>
-              <VariablesMenu />
-            </Content>
-            <Content>
+                <VariablesMenu />
                 <TimeSlider />
             </Content>
             <Content>
               <FeatureInformation />
-            </Content>
+            </Content>            
           </Container>
     </Fragment>
 

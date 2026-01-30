@@ -404,6 +404,23 @@ export const EnsembleIcon = (props) => (
   </svg>
 );
 
+export const FileIcon = (props) => (
+  <svg {...baseProps} {...props}>
+    <path
+      d="M6 2H14L20 8V20C20 21.1046 19.1046 22 18 22H6C4.89543 22 4 21.1046 4 20V4C4 2.89543 4.89543 2 6 2Z"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M14 2V8H20"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 // Variable: axes + curve
 export const VariableIcon = (props) => (
   <svg {...baseProps} {...props}>

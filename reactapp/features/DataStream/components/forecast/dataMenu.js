@@ -15,6 +15,7 @@ import {
   ForecastIcon,
   CycleIcon,
   EnsembleIcon,
+  FileIcon
 } from 'features/DataStream/lib/layers';
 
 // -------------------- helpers --------------------
@@ -461,8 +462,12 @@ const DataMenuControls = React.memo(function DataMenuControls() {
     if (availableOutputFiles?.length > 0) {
       out.push({
         key: 'outputFile',
-        label: <>Output File</>,
-        options: availableOutputFiles,
+        label: (
+          <>
+            <FileIcon/> Output File
+          </>
+        ),
+       options: availableOutputFiles,
         value: selectedOutputFileOption,
         onChange: handleChangeOutputFile,
       });

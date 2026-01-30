@@ -6,7 +6,7 @@ import { formatLabel } from 'features/DataStream/lib/utils';
 import { BasinSymbol } from 'features/DataStream/lib/layers';
 import { LayerInfoModal } from '../Modals';
 
-export const FeatureInformation = () => {
+export const FeatureInformation = React.memo(() => {
   const selectedFeature = useFeatureStore((state) => state.selected_feature);
   const [ modalFeatureInfoShow, setModalFeatureInfoShow ] = useState(false);
   
@@ -87,4 +87,6 @@ export const FeatureInformation = () => {
       />
     </Fragment>
   );
-};
+});
+
+FeatureInformation.whyDidYouRender = true;
