@@ -1,12 +1,11 @@
-import { Fragment, useCallback, useState } from 'react';
+import React, { Fragment, useCallback, useState } from 'react';
 import { IoFolderOpenOutline, IoClose, IoSkullOutline } from "react-icons/io5";
 import { MdInfoOutline } from "react-icons/md";
 import { IconLabel, Title, SButton  } from '../styles/Styles';
-
 import { LayerInfoModal } from '../Modals';
 import { useCacheTablesStore } from 'features/DataStream/store/CacheTables';
 
-export const CacheTable = ({tables}) => {
+export const CacheTable = React.memo(({tables}) => {
     const [modalLayerInfoShow, setModalLayerInfoShow] = useState(false);
     const deleteCacheTable = useCacheTablesStore((state) => state.delete_cacheTable);
     const resetCacheTables = useCacheTablesStore((state) => state.reset);
@@ -104,4 +103,7 @@ export const CacheTable = ({tables}) => {
       />
     </Fragment>
   );
-};
+});
+
+
+CacheTable.whyDidYouRender = true;

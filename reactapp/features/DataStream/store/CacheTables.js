@@ -2,7 +2,6 @@ import {create} from 'zustand';
 import { deleteFileFromCache, clearCache } from '../lib/opfsCache';
 import { deleteTable, dropAllVpuDataTables } from '../lib/queryData';
 
-
 const EMPTY_TABLE = []
 
 export const useCacheTablesStore = create((set) => ({

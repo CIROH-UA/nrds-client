@@ -185,8 +185,8 @@ function TimeseriesLoader() {
       if (!tableExists) {
         console.log('Loading VPU data for cacheKey:', cacheKey);
         try{
-          await loadVpuData(cacheKey, prefix, vpu_gpkg);
-          add_cacheTable({id: cacheKey, name: cacheKey.replaceAll('_',' ')});
+          const fileSize = await loadVpuData(cacheKey, prefix, vpu_gpkg);
+          add_cacheTable({id: cacheKey, name: cacheKey.replaceAll('_',' '), size: fileSize});
         }catch(err){
           console.error('No data for VPU', vpu, err);
           set_loading_text('No data available for selected VPU');

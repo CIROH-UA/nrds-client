@@ -129,7 +129,7 @@ export async function loadVpuData(
   console.log("loadVpuData called with cacheKey:", cacheKey);
 
   let buffer = await loadArrowFromCache(cacheKey);
-
+  let fileSize;
   if (!buffer) {
     const ncFile = getNCFiles(prefix);
     const res = await appAPI.getParquetPerVpu({
@@ -137,7 +137,7 @@ export async function loadVpuData(
       vpu_gpkg,
     });
     buffer = res; // ArrayBuffer from axios
-    await saveArrowToCache(cacheKey, buffer);
+    fileSize = await saveArrowToCache(cacheKey, buffer);
   }
 
   const arrowTable = tableFromIPC(new Uint8Array(buffer));
@@ -163,6 +163,7 @@ export async function loadVpuData(
     }
   } finally {
     await conn.close();
+    return fileSize;
   }
 }
 

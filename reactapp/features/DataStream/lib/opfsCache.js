@@ -1,5 +1,12 @@
 const CACHE_DIR = "nrds-arrow-cache";
-
+function formatBytes(bytes, decimals = 2) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
 async function getCacheDir() {
   if (!("storage" in navigator) || !navigator.storage.getDirectory) {
     // OPFS not supported (e.g., non-Chromium / http)
@@ -34,6 +41,8 @@ export async function saveArrowToCache(key, buffer) {
 
   await writable.write(dataToWrite);
   await writable.close();
+  const file = await fileHandle.getFile();
+  return formatBytes(file.size);
 }
 
 export async function loadArrowFromCache(key) {
@@ -62,14 +71,7 @@ async function* getFilesRecursively(entry) {
     }
   }
 }
-function formatBytes(bytes, decimals = 2) {
-  if (bytes === 0) return '0 Bytes';
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-}
+
 
 export async function getFilesFromCache() {
   const dir = await getCacheDir();
