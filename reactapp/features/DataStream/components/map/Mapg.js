@@ -110,7 +110,6 @@ const MainMap = () => {
 
     if (!varData || !numTimes || !pathData?.length) return EMPTY_LAYERS;
     const bounds = computeBounds(varData);
-
     return [
       new PathLayer({
         id: "flowpaths-anim",
@@ -159,8 +158,7 @@ const MainMap = () => {
     });
     reorderLayers(map);
 
-  }, []); // deckOverlayRef is a ref; no dep needed
-
+  }, []);
   const onHover = useCallback((event) => {
     if (!enabledHovering) return;
 
@@ -199,7 +197,6 @@ const MainMap = () => {
   }, [enabledHovering, set_hovered_feature]);
 
 
-  // --- Use extracted layer hooks ---
   const catchmentLayer = useCatchmentLayers({
     isCatchmentsVisible,
     selectedFeatureId,

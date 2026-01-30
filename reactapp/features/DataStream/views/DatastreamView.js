@@ -201,10 +201,10 @@ function TimeseriesLoader() {
         const [featureIds, times, flat] = await Promise.all([
           getDistinctFeatureIds(cacheKey),
           getDistinctTimes(cacheKey),
-          getVpuVariableFlat(cacheKey, variables[0]),
+          getVpuVariableFlat(cacheKey, currentVariable),
         ]);
         setAnimationIndex(featureIds, times);
-        setVarData(variables[0], flat);
+        setVarData(currentVariable, flat);
      }
       const series = await getTimeseries(id, cacheKey, currentVariable);
       const xy = series.map((d) => ({

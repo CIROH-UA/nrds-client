@@ -28,7 +28,6 @@ function useEvent(fn) {
   return React.useCallback((...args) => ref.current(...args), []);
 }
 
-// -------------------- loading-only subcomponent --------------------
 const DataMenuLoading = React.memo(function DataMenuLoading() {
   const { loading, loadingText } = useTimeSeriesStore(
     useShallow((s) => ({
@@ -55,7 +54,6 @@ const DataMenuLoading = React.memo(function DataMenuLoading() {
   );
 });
 
-// -------------------- controls-only subcomponent --------------------
 const DataMenuControls = React.memo(function DataMenuControls() {
   const { vpu, date, forecast, ensemble, cycle, model, outputFile } =
     useDataStreamStore(
@@ -93,7 +91,6 @@ const DataMenuControls = React.memo(function DataMenuControls() {
 
   const feature_id = useTimeSeriesStore((s) => s.feature_id);
 
-  // s3 available lists
   const {
     availableModelsList,
     availableDatesList,
@@ -112,7 +109,6 @@ const DataMenuControls = React.memo(function DataMenuControls() {
     }))
   );
 
-  // s3 setters
   const {
     set_prefix,
     setForecastOptions,
