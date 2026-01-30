@@ -80,7 +80,6 @@ export async function getFilesFromCache() {
   const fileHandlers = await getFilesRecursively(dir);
   
   for await (const file of fileHandlers) {
-    console.log("Cached file:", file.name, formatBytes(file.size));
     const id = decodeURIComponent(file.name.replace(".arrow", ""));
     files.push({id: id, name: id.replaceAll("_", "/"), size: formatBytes(file.size)});
   }

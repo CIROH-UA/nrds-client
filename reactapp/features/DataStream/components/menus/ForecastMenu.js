@@ -4,6 +4,7 @@ import VariablesMenu from '../forecast/variablesMenu';
 import { Content, Container } from '../styles/Styles';
 import TimeSeriesCard from '../forecast/TimeseriesCard';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
+import { useVPUStore } from 'features/DataStream/store/Layers';
 import { ForecastHeader } from '../forecast/ForecastHeader';
 import { FeatureInformation } from '../forecast/FeatureInformation';
 import { TimeSlider } from '../forecast/TimeSlider';
@@ -17,12 +18,20 @@ const ForecastMenu = () => {
       reset: state.reset,
     }))
   );
+  const { resetVPU } = useVPUStore(
+    useShallow((state) => ({
+      resetVPU: state.resetVPU,
+    }))
+  );
 
   const isopen = useMemo(() => {
       return feature_id != null;
   }, [feature_id]);
 
-  const onReset = useCallback(() => reset(), [reset]);
+  const onReset = useCallback(() => {
+    reset();
+    resetVPU();
+  }, [reset, resetVPU]);
   
   return (
     <Fragment>          

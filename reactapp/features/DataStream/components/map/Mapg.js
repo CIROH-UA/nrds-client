@@ -338,7 +338,6 @@ const MainMap = () => {
 
     for (const feature of features) {
       const layerId = feature.layer.id;
-      console.log('Clicked feature on layer:', layerId, feature);
       const {lon, lat} = getCentroid(feature);
       set_selected_feature({
         latitude: lat,

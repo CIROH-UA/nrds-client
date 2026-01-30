@@ -17,7 +17,6 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
   const handleChange = async (e) => {
     const unbiased_id = e.target.value;
     const features = await getFeatureProperties({ cacheKey: 'index_data_table', feature_id: unbiased_id });
-    console.log('Features fetched for id', unbiased_id, features);
     if (features.length === 0) {
       return 
     };

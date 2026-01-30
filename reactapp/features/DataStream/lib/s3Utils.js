@@ -55,7 +55,6 @@ export async function listPublicS3Files(prefix = "v2.2/", { signal } = {}) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(xml, "application/xml");
     const contents = [...doc.getElementsByTagName("Contents")];
-    // console.log( contents.map(node => node.getElementsByTagName("Key")[0].textContent))   
     return contents.map(node => node.getElementsByTagName("Key")[0].textContent);
 }
 
