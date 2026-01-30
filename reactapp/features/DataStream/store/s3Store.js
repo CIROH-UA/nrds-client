@@ -15,7 +15,7 @@ function sameOptionsByValue(a, b) {
   for (let i = 0; i < a.length; i++) {
     const ai = a[i];
     const bi = b[i];
-    // stable “identity” for options
+    // stable "identity" for options
     if (ai?.value !== bi?.value) return false;
     // optionally also compare label if you want
   }

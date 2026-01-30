@@ -57,5 +57,4 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
  );
 };
 
-SearchBar.whyDidYouRender = true;
 export default SearchBar;

@@ -448,67 +448,6 @@ export const VariableIcon = (props) => (
   </svg>
 );
 
-
-
-async function loadNetCDFFromS3(url) {
-    const btn = document.getElementById("loadBtn");
-    const statusDot = document.getElementById("statusDot");
-    const statusText = document.getElementById("statusText");
-
-    btn.disabled = true;
-    statusDot.className = "status-dot loading";
-    statusText.textContent = "Fetching NetCDF file...";
-
-    try {
-        const response = await fetch(url);
-        if (!response.ok)
-            throw new Error(`HTTP error: ${response.status}`);
-
-        statusText.textContent = "Downloading...";
-        const arrayBuffer = await response.arrayBuffer();
-
-        statusText.textContent = "Parsing NetCDF...";
-        const file = new hdf5.File(arrayBuffer);
-
-        console.log("HDF5 File loaded:", file.keys);
-
-        state.data = {
-            time: file.get("time")?.value || [],
-            feature_id: file.get("feature_id")?.value || [],
-            flow: file.get("flow")?.value || [],
-            velocity: file.get("velocity")?.value || [],
-            depth: file.get("depth")?.value || [],
-            attributes: file.attrs || {},
-        };
-
-        state.featureIds = Array.from(state.data.feature_id);
-        state.featureIdToIndex = {};
-        state.featureIds.forEach((id, idx) => {
-            state.featureIdToIndex[id] = idx;
-            state.featureIdToIndex[`wb-${id}`] = idx;
-        });
-
-        console.log("Feature IDs:", state.featureIds);
-
-        updateDataInfo();
-        showDataPanels();
-        updateLegend();
-
-        state.dataLoaded = true;
-        queryFlowpathGeometries();
-
-        statusDot.className = "status-dot success";
-        statusText.textContent = `Loaded ${state.featureIds.length} features`;
-    } catch (error) {
-        statusDot.className = "status-dot error";
-        statusText.textContent = `Error: ${error.message}`;
-        console.error("Load error:", error);
-    } finally {
-        btn.disabled = false;
-    }
-}
-
-
 export function getValueAtTimeFlat(varData, numTimes, featureIndex, timeIndex) {
   if (!varData || featureIndex === undefined || featureIndex === null) return null;
   const idx = featureIndex * numTimes + timeIndex;

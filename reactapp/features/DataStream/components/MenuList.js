@@ -73,6 +73,5 @@ const areEqualMenuList = (prev, next) => {
     p["aria-multiselectable"] === n["aria-multiselectable"]
   );
 };
-MenuListInner.whyDidYouRender = true;
 
 export const MenuList = React.memo(MenuListInner, areEqualMenuList);

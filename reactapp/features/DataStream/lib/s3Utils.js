@@ -4,7 +4,7 @@ export async function listPublicS3Directories(prefix = "v2.2/", { signal } = {})
   // Ensure trailing slash
   const normalizedPrefix = prefix.endsWith("/") ? prefix : `${prefix}/`;
 
-  // S3 ListObjectsV2 with delimiter to get “folders”
+  // S3 ListObjectsV2 with delimiter to get "folders"
   const url =
     `https://${bucket}.s3.us-east-1.amazonaws.com/` +
     `?list-type=2&prefix=${encodeURIComponent(normalizedPrefix)}` +

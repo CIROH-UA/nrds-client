@@ -1,4 +1,4 @@
-import './wdyr'
+// import './wdyr'
 
 import { BrowserRouter } from 'react-router-dom';
 import { StrictMode } from 'react';

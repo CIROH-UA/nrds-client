@@ -53,5 +53,4 @@ const ForecastMenu = () => {
   );
 };
 
-ForecastMenu.whyDidYouRender = true;
 export default ForecastMenu;

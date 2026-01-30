@@ -74,6 +74,5 @@ function VariablesMenu() {
   );
 }
 
-VariablesMenu.whyDidYouRender = true;
 
 export default React.memo(VariablesMenu);

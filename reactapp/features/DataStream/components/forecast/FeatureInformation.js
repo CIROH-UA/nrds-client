@@ -88,5 +88,3 @@ export const FeatureInformation = React.memo(() => {
     </Fragment>
   );
 });
-
-FeatureInformation.whyDidYouRender = true;

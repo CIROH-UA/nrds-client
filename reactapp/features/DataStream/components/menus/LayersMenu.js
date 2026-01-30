@@ -30,5 +30,3 @@ export const LayersMenu = () => {
     </Fragment>
   );
 };
-
-LayersMenu.whyDidYouRender = true;

@@ -1,27 +1,24 @@
-import React, { Fragment, useCallback, useState } from 'react';
+import React, { Fragment, useCallback } from 'react';
 import { IoFolderOpenOutline, IoClose, IoSkullOutline } from "react-icons/io5";
-import { MdInfoOutline } from "react-icons/md";
 import { IconLabel, Title, SButton  } from '../styles/Styles';
-import { LayerInfoModal } from '../Modals';
 import { useCacheTablesStore } from 'features/DataStream/store/CacheTables';
 
 export const CacheTable = React.memo(({tables}) => {
-    const [modalLayerInfoShow, setModalLayerInfoShow] = useState(false);
-    const deleteCacheTable = useCacheTablesStore((state) => state.delete_cacheTable);
-    const resetCacheTables = useCacheTablesStore((state) => state.reset);
-    
-    const deleteSingleCache = useCallback(
-        async (tableId) => {
-            console.log("Delete cache table:", tableId);
-            deleteCacheTable(tableId);
-        },
-        [deleteCacheTable]
-    );
-    
-    const deleteAllCache = useCallback(async () => {
-        console.log("Delete all cache tables");
-        resetCacheTables();
-    }, [resetCacheTables]);
+  const deleteCacheTable = useCacheTablesStore((state) => state.delete_cacheTable);
+  const resetCacheTables = useCacheTablesStore((state) => state.reset);
+  
+  const deleteSingleCache = useCallback(
+      async (tableId) => {
+          console.log("Delete cache table:", tableId);
+          deleteCacheTable(tableId);
+      },
+      [deleteCacheTable]
+  );
+  
+  const deleteAllCache = useCallback(async () => {
+      console.log("Delete all cache tables");
+      resetCacheTables();
+  }, [resetCacheTables]);
 
 
   return (
@@ -29,9 +26,6 @@ export const CacheTable = React.memo(({tables}) => {
       <IconLabel>
         <IoFolderOpenOutline />
         <Title>Files Loaded</Title>
-        <SButton bsPrefix='btn2' onClick={() => setModalLayerInfoShow(true)}>
-          <MdInfoOutline size={15} />
-        </SButton>
          <SButton bsPrefix='btn2' onClick={() => deleteAllCache()} >
           <IoSkullOutline size={15} />
         </SButton>
@@ -97,13 +91,6 @@ export const CacheTable = React.memo(({tables}) => {
       ) : (
         <div style={{ padding: '16px', textAlign: 'center', color: '#666' }}>No cached tables available.</div>
       )}
-     <LayerInfoModal
-        show={modalLayerInfoShow}
-        onHide={() => setModalLayerInfoShow(false)}
-      />
     </Fragment>
   );
 });
-
-
-CacheTable.whyDidYouRender = true;

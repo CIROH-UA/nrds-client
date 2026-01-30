@@ -45,7 +45,7 @@ const useTimeSeriesStore = create(
           const nextEmpty = !nextSeries || nextSeries.length === 0;
           if (prevEmpty && nextEmpty) return s;
 
-          // “equal by value” guard (cheap)
+          // "equal by value" guard (cheap)
           if (seriesFingerprint(prev) === seriesFingerprint(nextSeries)) return s;
 
           return { series: nextSeries };

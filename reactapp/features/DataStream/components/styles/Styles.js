@@ -10,7 +10,7 @@ export const TimeSeriesContainer = styled.div`
   background-color: var(--panel-background);
 `;
 
-// Themed Modal wrapper – now fully CSS-variable based
+// Themed Modal wrapper - now fully CSS-variable based
 export const ThemedModal = styled(Modal)`
   .modal-content {
     background-color: var(--modal-bg);

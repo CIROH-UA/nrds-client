@@ -527,5 +527,4 @@ function DataMenu() {
   );
 }
 
-DataMenu.whyDidYouRender = true;
 export default React.memo(DataMenu);

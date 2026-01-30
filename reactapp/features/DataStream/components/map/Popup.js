@@ -29,5 +29,4 @@ const CustomPopUp = React.memo(({ hovered_feature, enabledHovering }) => {
   );
 });
 
-CustomPopUp.whyDidYouRender = true;
 export default CustomPopUp;

@@ -384,6 +384,5 @@ const MainMap = () => {
 
 const MapComponent = React.memo(MainMap);
 
-MapComponent.whyDidYouRender = true;
 export default MapComponent;
 

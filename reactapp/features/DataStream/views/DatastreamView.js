@@ -249,5 +249,4 @@ const DataStreamView = () => {
     </ViewContainer>
   );
 };
-DataStreamView.whyDidYouRender = true;
 export default DataStreamView;

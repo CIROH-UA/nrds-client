@@ -143,5 +143,3 @@ export const TimeSlider = React.memo(() => {
     </div>
   );
 });
-
-TimeSlider.whyDidYouRender = true;

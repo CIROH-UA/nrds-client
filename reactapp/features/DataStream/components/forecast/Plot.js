@@ -14,13 +14,6 @@ import { getVariableUnits } from '../../lib/data';
 import useDataStreamStore from '../../store/Datastream';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 
-GridColumns.whyDidYouRender = true;
-GridRows.whyDidYouRender = true;
-LinePath.whyDidYouRender = true;
-AxisLeft.whyDidYouRender = true;
-AxisBottom.whyDidYouRender = true;
-Line.whyDidYouRender = true;
-
 
 const MARGIN = Object.freeze({ top: 40, right: 20, bottom: 30, left: 50 });
 
@@ -563,5 +556,4 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout })
   );
 });
 
-LineChart.whyDidYouRender = true;
 export default LineChart;
