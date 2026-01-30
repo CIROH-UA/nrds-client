@@ -3,7 +3,7 @@ import { Fragment, useMemo, useState } from 'react';
 import { Switch } from  '../styles/Styles';
 import { IoLayers } from "react-icons/io5";
 import { MdInfoOutline } from "react-icons/md";
-import { IconLabel, Row, Title, SButton, Content  } from '../styles/Styles';
+import { IconLabel, Row, Title, SButton} from '../styles/Styles';
 import { NexusSymbol, CatchmentSymbol, FlowPathSymbol, GaugeSymbol, symbologyColors, CursorSymbol } from '../../lib/layers';
 import useTheme from 'hooks/useTheme';
 import { LayerInfoModal } from '../Modals';

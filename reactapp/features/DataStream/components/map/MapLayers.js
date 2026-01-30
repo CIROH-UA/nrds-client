@@ -69,6 +69,7 @@ export function useFlowPathsLayer({ isFlowPathsVisible, flowpathsLineColor }) {
     if (!isFlowPathsVisible) return null;
 
     return (
+      // null
       <Layer
         key="flowpaths"
         id="flowpaths"
@@ -78,6 +79,7 @@ export function useFlowPathsLayer({ isFlowPathsVisible, flowpathsLineColor }) {
         paint={{
           'line-color': flowpathsLineColor,
           'line-width': { stops: [[7, 1], [10, 2]] },
+          // 'line-opacity': 0,
           'line-opacity': { stops: [[7, 0], [11, 1]] },
         }}
       />

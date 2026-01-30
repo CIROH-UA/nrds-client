@@ -1,137 +1,49 @@
-import React, { Component, useCallback } from 'react';
+import React, { Component, useMemo } from 'react';
 import Select, { createFilter } from 'react-select';
 import { FixedSizeList as List } from 'react-window';
-// import useTheme from 'hooks/useTheme';
 
-const height = 28;
+const ROW_HEIGHT = 28;
+const LIST_STYLE = { overflowX: "hidden" };
 
-class MenuList extends Component {
-  render() {
-    const { options, children, maxHeight, getValue } = this.props;
+const Row = React.memo(function Row({ index, style, data }) {
+  return <div style={style}>{data.children[index]}</div>;
+});
+
+const MenuList = React.memo(function MenuList(props) {
+  const { options, children, maxHeight, getValue } = props;
+
+  const childArray = useMemo(() => React.Children.toArray(children), [children]);
+  const itemCount = childArray.length;
+
+  // Compute initial scroll offset based on selected option
+  const initialOffset = useMemo(() => {
     const [value] = getValue();
-    const initialOffset = options.indexOf(value) * height;
+    const selected = value?.value;
+    const idx = Math.max(0, options.findIndex((o) => o.value === selected));
+    return idx * ROW_HEIGHT;
+  }, [getValue, options]);
 
-    const adjustedHeight = Math.min(children.length * height, maxHeight);
+  const adjustedHeight = useMemo(
+    () => Math.min(itemCount * ROW_HEIGHT, maxHeight),
+    [itemCount, maxHeight]
+  );
 
-    return (
-      <List
-        height={adjustedHeight}
-        itemCount={children.length}
-        itemSize={height}
-        initialScrollOffset={initialOffset}
-        style={{ overflowX: 'hidden' }}
-      >
-        {({ index, style }) => <div style={style}>{children[index]}</div>}
-      </List>
-    );
-  }
-}
+  const itemData = useMemo(() => ({ children: childArray }), [childArray]);
 
-// // theme-aware styles
-// const customStyles = (theme, width = 150) => {
-//   // const isDark = theme === 'dark';
+  return (
+    <List
+      height={adjustedHeight}
+      itemCount={itemCount}
+      itemSize={ROW_HEIGHT}
+      initialScrollOffset={initialOffset}
+      style={LIST_STYLE}
+      itemData={itemData}
+    >
+      {Row}
+    </List>
+  );
+});
 
-//   const controlBg = isDark ? '#2c3e50' : '#ffffff';
-//   const controlBorder = isDark ? '#4f5b67' : '#cccccc';
-//   const textColor = isDark ? '#ecf0f1' : '#000000';
-//   const placeholderColor = isDark ? '#b0bec5' : '#666666';
-//   const menuBg = isDark ? '#2c3e50' : '#ffffff';
-//   const optionHoverBg = isDark ? '#34495e' : 'rgba(38,132,255,0.1)';
-//   const optionSelectedBg = isDark ? '#1abc9c' : '#2684ff';
-
-//   return {
-//     container: (base) => ({
-//       ...base,
-//       width,
-//       fontSize: 12,
-//     }),
-
-//     control: (base, state) => ({
-//       ...base,
-//       minHeight: 28,
-//       height: 28,
-//       fontSize: 12,
-//       borderRadius: 4,
-//       paddingTop: 0,
-//       paddingBottom: 0,
-//       backgroundColor: controlBg,
-//       borderColor: state.isFocused ? '#2684ff' : controlBorder,
-//       boxShadow: state.isFocused ? '0 0 0 1px #2684ff' : 'none',
-//       '&:hover': {
-//         borderColor: '#2684ff',
-//       },
-//     }),
-
-//     valueContainer: (base) => ({
-//       ...base,
-//       padding: '0 6px',
-//     }),
-
-//     indicatorsContainer: (base) => ({
-//       ...base,
-//       height: 28,
-//     }),
-//     dropdownIndicator: (base) => ({
-//       ...base,
-//       padding: '0 4px',
-//     }),
-//     clearIndicator: (base) => ({
-//       ...base,
-//       padding: '0 4px',
-//     }),
-
-//     singleValue: (base) => ({
-//       ...base,
-//       color: textColor,
-//       maxWidth: '100%',
-//       whiteSpace: 'nowrap',
-//       overflow: 'hidden',
-//       textOverflow: 'ellipsis',
-//     }),
-
-//     input: (base) => ({
-//       ...base,
-//       color: textColor,
-//       margin: 0,
-//       padding: 0,
-//     }),
-
-//     placeholder: (base) => ({
-//       ...base,
-//       fontSize: 12,
-//       color: placeholderColor,
-//     }),
-
-//     menuPortal: (base) => ({ ...base, zIndex: 9999 }),
-//     menu: (base) => ({
-//       ...base,
-//       overflowY: 'auto',
-//       fontSize: 12,
-//       backgroundColor: menuBg,
-//     }),
-//     menuList: (base) => ({
-//       ...base,
-//       paddingTop: 0,
-//       paddingBottom: 0,
-//     }),
-
-//     option: (base, state) => ({
-//       ...base,
-//       fontSize: 12,
-//       padding: '4px 8px',
-//       width: '100%',
-//       whiteSpace: 'nowrap',
-//       overflow: 'hidden',
-//       textOverflow: 'ellipsis',
-//       color: state.isSelected ? '#ffffff' : textColor,
-//       backgroundColor: state.isSelected
-//         ? optionSelectedBg
-//         : state.isFocused
-//         ? optionHoverBg
-//         : menuBg,
-//     }),
-//   };
-// };
 const customStyles = (width = 150) => {
   return {
     container: (base) => ({
@@ -228,22 +140,25 @@ const SelectComponent = ({
   width = 150,
 }) => {
 
+  const components = useMemo(() => ({ MenuList }), []);
 
-  const handleChange = useCallback(
-    (option) => {
-      onChangeHandler([option]);
-    },
+  const styles = useMemo(() => customStyles(width), [width]);
+  const filterOption = useMemo(
+    () => createFilter({ ignoreAccents: false }),
+    []
+  );
+  const onChange = React.useCallback(
+    (opt) => onChangeHandler(opt),
     [onChangeHandler]
   );
-
   return (
     <Select
-      components={{ MenuList }}
-      styles={customStyles(width)}
-      filterOption={createFilter({ ignoreAccents: false })}
+      components={components}
+      styles={styles}
+      filterOption={filterOption}
       options={optionsList}
       value={value}
-      onChange={handleChange}
+      onChange={onChange}
       menuPortalTarget={document.body}
       menuShouldScrollIntoView={false}
       menuPosition="fixed"
@@ -251,4 +166,4 @@ const SelectComponent = ({
   );
 };
 
-export default SelectComponent;
+export default React.memo(SelectComponent);

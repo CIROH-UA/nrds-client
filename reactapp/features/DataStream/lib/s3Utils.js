@@ -1,18 +1,16 @@
-import { getCacheKey, loadArrowFromCache } from "./opfsCache";
-
-export async function listPublicS3Directories(prefix = "v2.2/") {
+export async function listPublicS3Directories(prefix = "v2.2/", { signal } = {}) {
   const bucket = "ciroh-community-ngen-datastream";
 
   // Ensure trailing slash
   const normalizedPrefix = prefix.endsWith("/") ? prefix : `${prefix}/`;
 
-  // S3 ListObjectsV2 with delimiter to get “folders”
+  // S3 ListObjectsV2 with delimiter to get "folders"
   const url =
     `https://${bucket}.s3.us-east-1.amazonaws.com/` +
     `?list-type=2&prefix=${encodeURIComponent(normalizedPrefix)}` +
     `&delimiter=/`;
 
-  const resp = await fetch(url);
+  const resp = await fetch(url, { signal });
   if (!resp.ok) {
     throw new Error(`S3 list error: ${resp.status} ${resp.statusText}`);
   }
@@ -40,42 +38,88 @@ export async function listPublicS3Directories(prefix = "v2.2/") {
   return { fullPrefixes, childNames };
 }
 
-export async function listPublicS3Files(prefix = "v2.2/") {
+export async function listPublicS3Files(prefix = "v2.2/", { signal } = {}) {
     const bucket = "ciroh-community-ngen-datastream";
     const url =
         `https://${bucket}.s3.us-east-1.amazonaws.com` +
         `/?list-type=2&prefix=${encodeURIComponent(prefix)}`;
 
 
-    const resp = await fetch(url);
+    const resp = await fetch(url,{ signal });
+    if (!resp.ok) {
+        throw new Error(`S3 list error: ${resp.status} ${resp.statusText}`);
+    }
     const xml = await resp.text();
 
     // parse XML -> extract <Key> elements
     const parser = new DOMParser();
     const doc = parser.parseFromString(xml, "application/xml");
     const contents = [...doc.getElementsByTagName("Contents")];
-
     return contents.map(node => node.getElementsByTagName("Key")[0].textContent);
 }
 
-export const makePrefix = (model, avail_date,ngen_forecast,ngen_cycle, ngen_time, ngen_vpu) => {    
+export async function getOptionsFromURL(url, { signal } = {}) {
+  try{
+    if (url.split('/').includes('troute')){
+      const files = await listPublicS3Files(url, { signal });
+      const ncFiles = files.filter(f => f.endsWith('.nc'));
+      // const ncFilesParsed = ncFiles.map(f => `s3://ciroh-community-ngen-datastream/${f}`);
+      const options = ncFiles.map((d) => ({ value: d.split('/').pop(), label: d.split('/').pop() }));
+      const sortedOptions = Array.from(options).sort().reverse();
+      return sortedOptions;
+    }
+    const { childNames } = await listPublicS3Directories(url, { signal });
+    const options = childNames.map((d) => ({ value: d, label: d }));
+    const sortedOptions = Array.from(options).sort();
+    return sortedOptions;
+  }catch(error){
+    return [];
+  }
+
+}
+
+export const makePrefix = (model, avail_date,ngen_forecast,ngen_cycle, ngen_ensemble, ngen_vpu, outputFile) => {
     let prefix_path = `outputs/${model}/v2.2_hydrofabric/${avail_date}/${ngen_forecast}/${ngen_cycle}`
-    let time_path = ngen_time ? `${ngen_time}/` : '';
-    prefix_path = `${prefix_path}/${time_path}${ngen_vpu}/ngen-run/outputs/troute/`;
+    let ensemble_path = ngen_ensemble ? `${ngen_ensemble}/` : '';
+    prefix_path = `${prefix_path}/${ensemble_path}${ngen_vpu}/ngen-run/outputs/troute/${outputFile}`;
     return prefix_path;
 }
 
-export async function getNCFiles(model, date, forecast, cycle, time, vpu, buffer) {
-    if (buffer){ return []; }
-    const prefix = makePrefix(model, date, forecast, cycle, time, vpu);
-    const filesPrefix = await listPublicS3Files(prefix);
-    console.log("files_prefix", filesPrefix);
-    const ncFiles = filesPrefix.filter(f => f.endsWith('.nc'));
-    const ncFilesParsed = ncFiles.map(f => `s3://ciroh-community-ngen-datastream/${f}`);
-    return ncFilesParsed;
+// export function getNCFiles(model, date, forecast, cycle, time, vpu, outputFile) {
+export function getNCFiles(prefix) {
+    // const prefix = makePrefix(model, date, forecast, cycle, time, vpu);
+    // const ncFileParsed = `s3://ciroh-community-ngen-datastream/${prefix}${outputFile}`;
+    const ncFileParsed = `s3://ciroh-community-ngen-datastream/${prefix}`;
+    return ncFileParsed
 }
 
 export const makeGpkgUrl = (vpu) => {
     const vpu_gpkg = `s3://ciroh-community-ngen-datastream/v2.2_resources/${vpu}/config/nextgen_${vpu}.gpkg`;
     return vpu_gpkg;
 }
+
+export const initialS3Data = async(vpu, { signal } = {}) => {
+  let _models = await getOptionsFromURL(`outputs`, { signal });
+  if (_models.length === 0){
+    return {models: [], dates: [], forecasts: [], cycles: [], outputFiles: []};
+  }
+  const models = _models.filter(m => m.value !== 'test'); 
+  const dates = (await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/`, { signal })).reverse();
+  if (dates.length === 0){
+    return {models, dates: [], forecasts: [], cycles: [], outputFiles: []};
+  }
+  const forecasts = (await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${dates[1]?.value}/`, { signal })).reverse();
+  if (forecasts.length === 0){
+    return {models, dates, forecasts: [], cycles: [], outputFiles: []};
+  }
+  const cycles = await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${dates[1]?.value}/${forecasts[0]?.value}/`, { signal });
+  if (cycles.length === 0){
+    return {models, dates, forecasts, cycles: [], outputFiles: []};
+  }
+  if (!vpu) {
+    return {models, dates, forecasts, cycles, outputFiles: []};
+  }
+  const outputFiles = await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${dates[1]?.value}/${forecasts[0]?.value}/${cycles[0]?.value}/${vpu}/ngen-run/outputs/troute/`, { signal });
+  return {models, dates, forecasts, cycles, outputFiles};
+}
+

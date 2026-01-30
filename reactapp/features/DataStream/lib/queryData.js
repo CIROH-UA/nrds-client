@@ -1,7 +1,7 @@
 // // nexusTimeseries.js
 import { tableFromIPC } from "apache-arrow";
 import appAPI from "features/Tethys/services/api/app";
-import { saveArrowToCache, loadArrowFromCache, getCacheKey } from "./opfsCache";
+import { saveArrowToCache, loadArrowFromCache } from "./opfsCache";
 import { getConnection } from "./duckdbClient";
 import { getNCFiles } from "./s3Utils";
 
@@ -10,6 +10,12 @@ export async function getTimeseries(id, cacheKey, variable) {
   
   try {
     const q = await conn.query(`
+      SELECT time, ${variable}
+      FROM ${cacheKey}
+      WHERE feature_id = ${id}
+      ORDER BY time
+    `);
+    console.log("Query executed:", `
       SELECT time, ${variable}
       FROM ${cacheKey}
       WHERE feature_id = ${id}
@@ -24,11 +30,32 @@ export async function getTimeseries(id, cacheKey, variable) {
     );
     return rows;
   } finally {
-    // 🔑 make sure the connection is always closed
     await conn.close();
   }
 }
 
+export async function getFeatureIDs(cacheKey) {
+  console.log("getFeatureIDs called with cacheKey:", cacheKey);
+
+  const conn = await getConnection();
+
+  try {
+    const q = await conn.query(`
+      SELECT feature_id
+      FROM "${cacheKey}"
+    `);
+      
+    const rows = q.toArray().map(Object.fromEntries);
+    rows.columns = q.schema.fields.map((d) => d.name);
+
+    console.log(
+      `[updateDataInfo] (literal) rows=${rows.length}`
+    );
+    return rows;
+  } finally {
+    await conn.close();
+  }
+}
 
 export async function loadIndexData({ remoteUrl }) {
   const cacheKey = "index_data_table";
@@ -95,30 +122,22 @@ export async function getFeatureProperties({ cacheKey, feature_id }) {
 
 
 export async function loadVpuData(
-  model,
-  date,
-  forecast,
-  cycle,
-  time,
-  vpu,
+  cacheKey,
+  prefix,
   vpu_gpkg
 ) {
-  const cacheKey = getCacheKey(model, date, forecast, cycle, time, vpu);
   console.log("loadVpuData called with cacheKey:", cacheKey);
 
   let buffer = await loadArrowFromCache(cacheKey);
-
+  let fileSize;
   if (!buffer) {
-    const nc_files = await getNCFiles(model, date, forecast, cycle, time, vpu);
-    if (nc_files.length === 0) {
-      throw new Error(`No NC files found for VPU ${vpu} with prefix.`);
-    }
+    const ncFile = getNCFiles(prefix);
     const res = await appAPI.getParquetPerVpu({
-      nc_files,
+      ncFile,
       vpu_gpkg,
     });
     buffer = res; // ArrayBuffer from axios
-    await saveArrowToCache(cacheKey, buffer);
+    fileSize = await saveArrowToCache(cacheKey, buffer);
   }
 
   const arrowTable = tableFromIPC(new Uint8Array(buffer));
@@ -144,6 +163,7 @@ export async function loadVpuData(
     }
   } finally {
     await conn.close();
+    return fileSize;
   }
 }
 
@@ -162,6 +182,19 @@ export async function checkForTable(cacheKey) {
     await conn.close();
   }
 }
+
+export async function deleteTable(tableName){
+  const conn = await getConnection();
+  try {
+    await conn.query(`
+      DROP TABLE IF EXISTS "${tableName}"
+    `);
+    console.log(`Table ${tableName} has been deleted.`);
+  } finally {
+    await conn.close();
+  }
+}
+
 export async function dropAllVpuDataTables() {
   const conn = await getConnection();
 
@@ -217,6 +250,58 @@ export async function getVariables({ cacheKey }) {
     const rows = q.toArray();
     const cols = rows.map((r) => r.column_name);
     return cols;
+  } finally {
+    await conn.close();
+  }
+}
+
+
+function rowsToObjects(q) {
+  // matches your pattern: q.toArray().map(Object.fromEntries)
+  return q.toArray().map(Object.fromEntries);
+}
+
+export async function getDistinctFeatureIds(cacheKey) {
+  const conn = await getConnection();
+  try {
+    const q = await conn.query(`
+      SELECT DISTINCT feature_id
+      FROM "${cacheKey}"
+      ORDER BY feature_id
+    `);
+    const rows = rowsToObjects(q);
+    return rows.map((r) => r.feature_id);
+  } finally {
+    await conn.close();
+  }
+}
+
+export async function getDistinctTimes(cacheKey) {
+  const conn = await getConnection();
+  try {
+    const q = await conn.query(`
+      SELECT DISTINCT time
+      FROM "${cacheKey}"
+      ORDER BY time
+    `);
+    const rows = rowsToObjects(q);
+    return rows.map((r) => r.time);
+  } finally {
+    await conn.close();
+  }
+}
+
+// Returns a flattened array ordered by (feature_id, time)
+export async function getVpuVariableFlat(cacheKey, variable) {
+  const conn = await getConnection();
+  try {
+    const q = await conn.query(`
+      SELECT ${variable} AS v
+      FROM "${cacheKey}"
+      ORDER BY feature_id, time
+    `);
+    const rows = rowsToObjects(q);
+    return Float32Array.from(rows.map((r) => Number(r.v)));
   } finally {
     await conn.close();
   }

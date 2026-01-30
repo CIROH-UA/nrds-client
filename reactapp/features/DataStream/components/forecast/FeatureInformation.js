@@ -6,15 +6,14 @@ import { formatLabel } from 'features/DataStream/lib/utils';
 import { BasinSymbol } from 'features/DataStream/lib/layers';
 import { LayerInfoModal } from '../Modals';
 
-export const FeatureInformation = () => {
+export const FeatureInformation = React.memo(() => {
   const selectedFeature = useFeatureStore((state) => state.selected_feature);
   const [ modalFeatureInfoShow, setModalFeatureInfoShow ] = useState(false);
   
   if (!selectedFeature) {
-    return null; // or <Panel>No gauge selected</Panel>
+    return null; 
   }
 
-  // Pull out lat/lon so we can render them together
   const { lat, latitude, lon, longitude, ...restProps } = selectedFeature;
   const latVal = lat ?? latitude;
   const lonVal = lon ?? longitude;
@@ -88,4 +87,4 @@ export const FeatureInformation = () => {
       />
     </Fragment>
   );
-};
+});

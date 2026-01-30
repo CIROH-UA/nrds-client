@@ -1,0 +1,145 @@
+/* TimeSlider.css */
+
+.panel {
+ color: var(--map-panel-text);
+}
+
+.panel-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm, 8px);
+}
+
+.panel-title svg {
+  width: var(--space-md, 16px);
+  height: var(--space-md, 16px);
+}
+
+/* Time slider block */
+.time-control {
+  margin-top: 12px;
+}
+
+.time-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-sm, 8px);
+}
+
+.time-label {
+  font-size: 12px;
+  color: var(--accent-text,#009989);
+}
+
+.time-value {
+  /* font-family: "IBM Plex Mono", monospace; */
+  font-size: 14px;
+  color: var(--accent-text, #00d4ff);
+}
+
+/* Range slider styling */
+input[type="range"] {
+  width: 100%;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--accent-text);
+  border-radius: var(--radius-sm, 4px);
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: var(--space-md, 16px);
+  height: var(--space-md, 16px);
+  background: var(--select-option-selected-bg);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 10px var(--dropshadow-color, rgba(0, 212, 255, 0.15));
+}
+
+/* Firefox */
+input[type="range"]::-moz-range-thumb {
+  width: var(--space-md, 16px);
+  height: var(--space-md, 16px);
+  background: var(--select-option-selected-bg);
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 10px var(--dropshadow-color, rgba(0, 212, 255, 0.15));
+}
+
+input[type="range"]::-moz-range-track {
+  height: 6px;
+  background: var(--select-option-selected-bg, #0a0e14);
+  border-radius: var(--radius-sm, 4px);
+}
+
+/* Play controls row */
+.play-controls {
+  display: flex;
+  gap: var(--space-sm, 8px);
+  margin-top: 12px;
+  justify-content: center;
+}
+
+.play-btn {
+  /* flex: 1; */
+  padding: var(--space-sm, 8px);
+  background: var(--accent-text, #0a0e14);
+  border: 1px solid var(--border-color, #2a3a4a);
+  border-radius: var(--radius-sm, 4px);
+  color: var(--primary-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.play-btn:hover {
+  background-color: var(--select-option-selected-bg);
+  color: var(--text-color);
+}
+
+.play-btn.active {
+  background: var(--select-option-selected-bg);
+  border-color: var(--select-option-selected-bg);
+  color: var(--bg-primary, #0a0e14);
+}
+
+.play-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Speed control row */
+.speed-control {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm, 8px);
+  margin-top: 12px;
+}
+
+.speed-control label {
+  font-size: 11px;
+  color: var(--accent-text);
+  text-transform: uppercase;
+}
+
+.speed-control input {
+  flex: 1;
+}
+
+.speed-value {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+  color: var(--accent-text);
+  min-width: 40px;
+  text-align: right;
+}

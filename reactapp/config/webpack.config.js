@@ -1,8 +1,6 @@
 const path = require('path');
 const webpack = require('webpack');
-// const WebpackBundleAnalyzer = require("webpack-bundle-analyzer").BundleAnalyzerPlugin; // Uncomment to analyze bundle size
 const Dotenv = require('dotenv-webpack');
-// const TerserPlugin = require("terser-webpack-plugin");
 
 module.exports = (env, argv) => {
 	const dotEnvPath = `./reactapp/config/${argv.mode}.env`;
@@ -78,6 +76,25 @@ module.exports = (env, argv) => {
 						},
 					],
 				},
+				{
+				test: /\.(js|jsx)$/,
+				exclude: /node_modules/,
+				use: 
+					{
+						loader: 'babel-loader',
+						options: {
+							presets: [
+								['@babel/preset-env'],
+								['@babel/preset-react', {
+									runtime: 'automatic',
+									development: argv.mode === 'development',
+									importSource: '@welldone-software/why-did-you-render',
+								}],
+							],
+						},
+					},
+				}
+
 			],
 		},
 		optimization: {
@@ -94,15 +111,6 @@ module.exports = (env, argv) => {
 			],
 			open: true,
 		}
- 
-		// devServer: {
-		// 	proxy: {
-		// 		'!/static/nrds/frontend/**': {
-		// 			target: 'http://127.0.0.1:8000', // points to django dev server
-		// 			changeOrigin: true,
-		// 		},
-		// 	},
-		// 	open: true,
-		// },
+
 	}
 };

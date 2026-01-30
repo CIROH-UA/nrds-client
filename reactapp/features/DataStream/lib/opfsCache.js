@@ -1,5 +1,12 @@
 const CACHE_DIR = "nrds-arrow-cache";
-
+function formatBytes(bytes, decimals = 2) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
 async function getCacheDir() {
   if (!("storage" in navigator) || !navigator.storage.getDirectory) {
     // OPFS not supported (e.g., non-Chromium / http)
@@ -34,6 +41,8 @@ export async function saveArrowToCache(key, buffer) {
 
   await writable.write(dataToWrite);
   await writable.close();
+  const file = await fileHandle.getFile();
+  return formatBytes(file.size);
 }
 
 export async function loadArrowFromCache(key) {
@@ -50,10 +59,57 @@ export async function loadArrowFromCache(key) {
   }
 }
 
-
-export function getCacheKey(model, date, forecast, cycle, time, vpu) {
-  if (!time){
-    return `${model}_${date}_${forecast}_${cycle}_${vpu}`.replace(/\./g,'_').replace(/\//g,'_');  
+async function* getFilesRecursively(entry) {
+  if (entry.kind === "file") {
+    const file = await entry.getFile();
+    if (file !== null) {
+      yield file;
+    }
+  } else if (entry.kind === "directory") {
+    for await (const handle of entry.values()) {
+      yield* getFilesRecursively(handle);
+    }
   }
-  return `${model}_${date}_${forecast}_${cycle}_${time}_${vpu}`.replace(/\./g,'_').replace(/\//g,'_');
+}
+
+
+export async function getFilesFromCache() {
+  const dir = await getCacheDir();
+  if (!dir) return null;
+  const files = [];
+  const fileHandlers = await getFilesRecursively(dir);
+  
+  for await (const file of fileHandlers) {
+    const id = decodeURIComponent(file.name.replace(".arrow", ""));
+    files.push({id: id, name: id.replaceAll("_", "/"), size: formatBytes(file.size)});
+  }
+  return files;
+}
+
+export async function deleteFileFromCache(key) {
+  const dir = await getCacheDir();
+  if (!dir) return;
+  const safeName = encodeURIComponent(key) + ".arrow";
+  try {
+    await dir.removeEntry(safeName);
+    return true;
+  } catch (e) {
+    console.error("Error deleting file from cache:", e);
+    return false;
+  }
+}
+
+export async function clearCache() {
+  const dir = await getCacheDir();
+  if (!dir) return;
+  for await (const handle of dir.values()) {
+    await dir.removeEntry(handle.name);
+  }
+}
+
+export function getCacheKey(model, date, forecast, cycle, ensemble, vpu, outputFile) {
+  if (!ensemble){
+    return `${model}_${date}_${forecast}_${cycle}_${vpu}_${outputFile}`.replace(/\./g,'_').replace(/\//g,'_');
+  }
+  return `${model}_${date}_${forecast}_${cycle}_${ensemble}_${vpu}_${outputFile}`.replace(/\./g,'_').replace(/\//g,'_');
 }

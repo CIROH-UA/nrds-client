@@ -41,6 +41,7 @@ node_modules*
 tethysapp/nrds/public/frontend/
 reactapp/config/production.env
 coverage
+reactapp/wdyr.js
 
 
 # singularity

@@ -1,3 +1,34 @@
+// --- Read CSS variables for map styles/colors ---
+const rootStyles = getComputedStyle(document.documentElement);
+
+export const mapStyleUrl =
+  rootStyles.getPropertyValue('--map-style-url').trim() ||
+  'https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/styles/light-style.json';
+
+export const dividesOutlineColor =
+  rootStyles.getPropertyValue('--map-divides-outline-color').trim() ||
+  'rgba(91, 44, 111, 0.5)';
+export const dividesHighlightFillColor =
+  rootStyles.getPropertyValue('--map-divides-highlight-fill').trim() ||
+  'rgba(5, 49, 243, 0.32)';
+export const dividesHighlightOutlineColor =
+  rootStyles.getPropertyValue('--map-divides-highlight-outline').trim() ||
+  'rgba(253, 0, 253, 0.7)';
+
+export const flowpathsLineColor =
+  rootStyles.getPropertyValue('--map-flowpaths-color').trim() || '#000000';
+
+export const gaugesCircleColor =
+  rootStyles.getPropertyValue('--map-gauges-color').trim() || '#646464';
+
+export const nexusCircleColor =
+  rootStyles.getPropertyValue('--map-nexus-circle-color').trim() || '#1f78b4';
+export const nexusStrokeColor =
+  rootStyles.getPropertyValue('--map-nexus-stroke-color').trim() || '#ffffff';
+export const nexusHighlightCircleColor =
+  rootStyles.getPropertyValue('--map-nexus-highlight-circle-color').trim() ||
+  nexusCircleColor;
+
 export const reorderLayers = (map) => {
   if (!map) return;
   // Draw order from bottom → top
@@ -373,6 +404,23 @@ export const EnsembleIcon = (props) => (
   </svg>
 );
 
+export const FileIcon = (props) => (
+  <svg {...baseProps} {...props}>
+    <path
+      d="M6 2H14L20 8V20C20 21.1046 19.1046 22 18 22H6C4.89543 22 4 21.1046 4 20V4C4 2.89543 4.89543 2 6 2Z"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M14 2V8H20"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 // Variable: axes + curve
 export const VariableIcon = (props) => (
   <svg {...baseProps} {...props}>
@@ -399,3 +447,94 @@ export const VariableIcon = (props) => (
     />
   </svg>
 );
+
+export function getValueAtTimeFlat(varData, numTimes, featureIndex, timeIndex) {
+  if (!varData || featureIndex === undefined || featureIndex === null) return null;
+  const idx = featureIndex * numTimes + timeIndex;
+  if (idx < 0 || idx >= varData.length) return null;
+  return varData[idx];
+}
+
+export function valueToColor(value, bounds) {
+  const colorScale = [
+    [0, 119, 187],
+    [0, 180, 216],
+    [144, 224, 239],
+    [255, 186, 8],
+    [255, 107, 53],
+    [208, 0, 0],
+  ];
+  if (value === null || value === undefined || value <= -9998) return [100, 100, 100, 150];
+  if (!bounds || bounds.max === bounds.min) return colorScale[0];
+
+  const t = Math.max(0, Math.min(1, (value - bounds.min) / (bounds.max - bounds.min)));
+  const idx = t * (colorScale.length - 1);
+  const lower = Math.floor(idx);
+  const upper = Math.ceil(idx);
+  const frac = idx - lower;
+  if (lower === upper) return colorScale[lower];
+  return colorScale[lower].map((c, i) => Math.round(c + (colorScale[upper][i] - c) * frac));
+}
+
+export function computeBounds(varData) {
+  let min = Infinity, max = -Infinity;
+  for (let i = 0; i < varData.length; i++) {
+    const v = varData[i];
+    if (v <= -9998) continue;
+    if (v < min) min = v;
+    if (v > max) max = v;
+  }
+  if (!isFinite(min) || !isFinite(max)) return { min: 0, max: 1 };
+  return { min, max };
+}
+
+
+export function convertFeaturesToPaths(features, featureIdToIndex) {
+  const out = [];
+
+  for (const f of features) {
+    const rawId = f.id ?? f.properties?.id;
+    if (rawId == null) continue;
+
+    const id = String(rawId);
+    const featureIndex = featureIdToIndex[id];
+    if (featureIndex === undefined) continue;
+
+    const geom = f.geometry;
+    if (!geom) continue;
+
+    if (geom.type === "LineString") {
+      out.push({ id, featureIndex, path: geom.coordinates, properties: f.properties });
+    } else if (geom.type === "MultiLineString") {
+      geom.coordinates.forEach((line, i) => {
+        out.push({ id: `${id}-${i}`, featureIndex, path: line, properties: f.properties });
+      });
+    }
+  }
+
+  return out;
+}
+
+export function flowpathsSignature(features) {
+  const parts = [];
+
+  for (const f of features) {
+    const rawId = f.id ?? f.properties?.id;
+    if (rawId == null) continue;
+
+    const id = String(rawId);
+    const g = f.geometry;
+    if (!g) continue;
+
+    if (g.type === "LineString") {
+      parts.push(`${id}:L:${g.coordinates.length}`);
+    } else if (g.type === "MultiLineString") {
+      const lines = g.coordinates.length;
+      const totalPts = g.coordinates.reduce((sum, line) => sum + line.length, 0);
+      parts.push(`${id}:M:${lines}:${totalPts}`);
+    }
+  }
+
+  parts.sort(); // make stable regardless of render order
+  return parts.join("|");
+}

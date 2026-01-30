@@ -105,7 +105,7 @@ export const DataInfoModel = (props) => {
             </a>{' '}
             and represent the dates, models, and forecast for which data are available. 
           </p>
-          <p><strong>Note:</strong> Data are only available for certain dates based on the chosen model and forecast per individual VPU. Please verify a date’s availability before you proceed.</p>
+          <p><strong>Note:</strong> Data are only available for certain dates based on the chosen model and forecast per individual VPU. Please verify a date's availability before you proceed.</p>
         </div>
       </Modal.Body>
 

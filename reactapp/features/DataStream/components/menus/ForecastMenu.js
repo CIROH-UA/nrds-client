@@ -1,35 +1,46 @@
-import React, { Fragment, useMemo } from 'react';
-import DataMenu from '../forecast/DataMenu';
+import React, { Fragment, useMemo, useCallback } from 'react';
+import DataMenu from '../forecast/dataMenu';
+import VariablesMenu from '../forecast/variablesMenu';
 import { Content, Container } from '../styles/Styles';
 import TimeSeriesCard from '../forecast/TimeseriesCard';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
+import { useVPUStore } from 'features/DataStream/store/Layers';
 import { ForecastHeader } from '../forecast/ForecastHeader';
 import { FeatureInformation } from '../forecast/FeatureInformation';
+import { TimeSlider } from '../forecast/TimeSlider';
+import { useShallow } from 'zustand/react/shallow';
 
 const ForecastMenu = () => {
+  const { feature_id, layout, reset } = useTimeSeriesStore(
+    useShallow((state) => ({
+      feature_id: state.feature_id,
+      layout: state.layout,
+      reset: state.reset,
+    }))
+  );
+  const { resetVPU } = useVPUStore(
+    useShallow((state) => ({
+      resetVPU: state.resetVPU,
+    }))
+  );
 
-  // const feature_id = useTimeSeriesStore((state) => state.feature_id);
-  const series = useTimeSeriesStore((state) => state.series);
-  const layout = useTimeSeriesStore((state) => state.layout);
-  const reset_ts_store = useTimeSeriesStore((state) => state.reset);
   const isopen = useMemo(() => {
-    // return feature_id ? true : false;
-    return series.length > 0;
-  // }, [feature_id]);
-   }, [series]);
+      return feature_id != null;
+  }, [feature_id]);
 
-  // const set_feature_id = useTimeSeriesStore((state) => state.set_feature_id);
-
+  const onReset = useCallback(() => {
+    reset();
+    resetVPU();
+  }, [reset, resetVPU]);
+  
   return (
-    <Fragment>
-          
+    <Fragment>          
           <Container $isOpen={isopen}>
             <div>
                   {layout?.title && (
                     <ForecastHeader
                       title ={layout.title}
-                      // onClick={()=> {set_feature_id(null)}} 
-                      onClick={()=> {reset_ts_store()}} 
+                      onClick={onReset}
                     />
                   )}
             </div>
@@ -39,8 +50,12 @@ const ForecastMenu = () => {
               <DataMenu />
             </Content>
             <Content>
-              <FeatureInformation />
+                <VariablesMenu />
+                <TimeSlider />
             </Content>
+            <Content>
+              <FeatureInformation />
+            </Content>            
           </Container>
     </Fragment>
 
