@@ -62,22 +62,7 @@ const StaticSvgLayer = React.memo(function StaticSvgLayer({
       <RectClipPath id={clipId} x={0} y={0} width={innerWidth} height={innerHeight} />
 
       <Group left={margin.left} top={margin.top}>
-        {/* <GridRows
-          scale={yScale}
-          width={innerWidth}
-          height={innerHeight}
-          stroke={gridColor}
-          strokeOpacity={0.25}
-          strokeWidth={1}
-        />
-        <GridColumns
-          scale={xScale}
-          width={innerWidth}
-          height={innerHeight}
-          stroke={gridColor}
-          strokeOpacity={0.25}
-          strokeWidth={1}
-        /> */}
+
 
         <AxisLeft
           scale={yScale}
