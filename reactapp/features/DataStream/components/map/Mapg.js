@@ -58,21 +58,37 @@ const MainMap = () => {
       enabledHovering: s.hovered_enabled,
     }))
   );
+   const { selectedFeatureId, loading, set_feature_id } = useTimeSeriesStore(
+    useShallow((s) => ({
+      selectedFeatureId: s.feature_id,
+      loading: s.loading,
+      set_feature_id: s.set_feature_id,
+    }))
+  );
 
-  const selectedFeatureId = useTimeSeriesStore((state) => state.feature_id);
-  const loading = useTimeSeriesStore((state) => state.loading);
-  
-  const set_feature_id = useTimeSeriesStore((state) => state.set_feature_id);
-  const reset_series = useTimeSeriesStore((state) => state.reset_series);
 
-  const nexus_pmtiles = useDataStreamStore((state) => state.nexus_pmtiles);
-  const conus_pmtiles = useDataStreamStore((state) => state.community_pmtiles);
+  const {
+    nexus_pmtiles,
+    conus_pmtiles,
+    vpu,
+    set_vpu,
+  } = useDataStreamStore(
+    useShallow((s) => ({
+      nexus_pmtiles: s.nexus_pmtiles,
+      conus_pmtiles: s.community_pmtiles,
+      vpu: s.vpu,
+      set_vpu: s.set_vpu,
+    }))
+  );
 
-  const set_vpu = useDataStreamStore((state) => state.set_vpu);
-  const set_hovered_feature = useFeatureStore((state) => state.set_hovered_feature);
-  const hovered_feature = useFeatureStore((state) => state.hovered_feature);
-  const set_selected_feature = useFeatureStore((state) => state.set_selected_feature);
-  const selectedMapFeature = useFeatureStore((state) => state.selected_feature);
+  const { set_hovered_feature, set_selected_feature, selectedMapFeature, hovered_feature } = useFeatureStore(
+    useShallow((s) => ({
+      set_hovered_feature: s.set_hovered_feature,
+      set_selected_feature: s.set_selected_feature,
+      selectedMapFeature: s.selected_feature,
+      hovered_feature: s.hovered_feature,
+    }))
+  );
 
 
   const { currentTimeIndex, variable } = useTimeSeriesStore(
@@ -102,7 +118,7 @@ const MainMap = () => {
 
   const deckLayers = useMemo(() => {
     if (!isFlowPathsVisible) return EMPTY_LAYERS;
-    console.log('Rendering flow paths layer');
+    // console.log('Rendering flow paths layer');
     const varData = valuesByVar;
     const numTimes = timesArr?.length || 0;
 
@@ -325,7 +341,6 @@ const MainMap = () => {
    if (loading) {
       return;
     }
-    reset_series();
 
     const map = event.target;
 
@@ -338,16 +353,21 @@ const MainMap = () => {
 
     for (const feature of features) {
       const layerId = feature.layer.id;
+      const featureIdProperty = layerIdToFeatureType(layerId);
+      const unbiased_id = feature.properties[featureIdProperty];
+ 
       const {lon, lat} = getCentroid(feature);
       set_selected_feature({
         latitude: lat,
         longitude: lon,
+        layerId: layerId,
+        _id: unbiased_id,
         ...feature.properties,
       });
-      const featureIdProperty = layerIdToFeatureType(layerId);
-      const unbiased_id = feature.properties[featureIdProperty];
-      set_feature_id(unbiased_id);
       const vpu_str = `VPU_${feature.properties.vpuid}`;
+      if (vpu_str === vpu){
+        set_feature_id(unbiased_id);
+      }
       set_vpu(vpu_str);
       break;
     }

@@ -6,7 +6,7 @@ import MainMenu from 'features/DataStream/components/menus/MainMenu';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
 import useTimeSeriesStore from '../store/Timeseries';
 import { useCacheTablesStore } from '../store/CacheTables';
-import { useVPUStore } from '../store/Layers';
+import { useVPUStore, useFeatureStore } from '../store/Layers';
 import useS3DataStreamBucketStore from 'features/DataStream/store/s3Store';
 import { initialS3Data, makePrefix, makeGpkgUrl } from 'features/DataStream/lib/s3Utils';
 import { getCacheKey } from 'features/DataStream/lib/opfsCache';
@@ -27,8 +27,12 @@ function InitialS3Loader() {
   const { vpu } = useDataStreamStore(
     useShallow((s) => ({
       vpu: s.vpu,
+      ensemble: s.ensemble,
     }))
   );
+  // const {resetTimeSeriesStore} = useTimeSeriesStore(
+  //   useShallow((s) => ({ reset: s.reset}))
+  // );
   const { set_model, set_forecast, set_cycle, set_outputFile, set_date, set_ensemble, set_cache_key } = useDataStreamStore(
     useShallow((s) => ({
       set_model: s.set_model,
@@ -100,6 +104,8 @@ function InitialS3Loader() {
         console.error('Error fetching initial S3 data:', error);
       }
     }
+    
+    // resetTimeSeriesStore();
     fetchInitialData();
 
     return () => {
@@ -112,15 +118,20 @@ function InitialS3Loader() {
 }
 
 function TimeseriesLoader() {
-  const { cacheKey, outputFile, forecast, vpu, set_variables } = useDataStreamStore(
+  const { cacheKey, forecast, vpu, set_variables } = useDataStreamStore(
     useShallow((s) => ({
       cacheKey: s.cache_key,
-      outputFile: s.outputFile,
       forecast: s.forecast,
       vpu: s.vpu,
       set_variables: s.set_variables,
     }))
   );
+  const { selected_feature_id } = useFeatureStore(
+    useShallow((s) => ({
+      selected_feature_id: s.selected_feature ? s.selected_feature._id : null,
+    }))
+  );
+
   const { add_cacheTable } = useCacheTablesStore(
     useShallow((s) => ({
       add_cacheTable: s.add_cacheTable,
@@ -131,16 +142,18 @@ function TimeseriesLoader() {
     useShallow((s) => ({ prefix: s.prefix }))
   );
 
-  const { feature_id, loading, variable, set_variable, set_loading_text, set_series, set_layout, set_loading } = useTimeSeriesStore(
+  const { feature_id, loading, variable, set_feature_id, set_variable, set_loading_text, set_series, set_layout, set_loading, reset_series } = useTimeSeriesStore(
     useShallow((s) => ({ 
       feature_id: s.feature_id,
       loading: s.loading,
       variable: s.variable,
+      set_feature_id: s.set_feature_id,
       set_variable: s.set_variable,
       set_loading_text: s.set_loading_text,
       set_series: s.set_series,
       set_layout: s.set_layout,
       set_loading: s.set_loading,
+      reset_series: s.reset_series,
     }))
   );
   const { set_feature_ids, setVarData, setAnimationIndex } = useVPUStore(
@@ -150,12 +163,47 @@ function TimeseriesLoader() {
       setAnimationIndex: s.setAnimationIndex,
     }))
   );
+  useEffect(() => {
+    
+    async function getTsData(){
+      if (!feature_id || loading ) return;
+      console.log('Loading timeseries for feature_id:', feature_id, 'variable:', variable, 'cacheKey:', cacheKey);
+      reset_series();
+      const id = feature_id.split('-')[1];
+      set_loading(true);
+      set_loading_text('Loading feature properties...');
+      let currentVariable = variable;
+      try {
+        const series = await getTimeseries(id, cacheKey, currentVariable);
+        const xy = series.map((d) => ({
+          x: new Date(d.time),
+          y: d[currentVariable],
+        }));
+        set_loading_text(`Loaded ${xy.length} points for id: ${id}`);
+        set_series(xy);
+        set_layout({
+          yaxis: currentVariable,
+          xaxis: '',
+          title: makeTitle(forecast, feature_id),
+        });
+        set_loading_text('');
+        set_loading(false);
+      } 
+      catch (err) {
+          set_loading_text(`Failed to load timeseries for id: ${feature_id}`);
+          set_loading(false);
+          console.error('Failed to load timeseries for', feature_id, err);
+      }
+   }
+    getTsData();
+    
+  },[feature_id]);
 
-  useEffect( () => {   
-   async function getData(){
-    if (!outputFile || loading || !feature_id ) return;
+  useEffect( () => {
+   async function getVPUData(){
+    if (!cacheKey || loading ) return;
+    console.log('Loading VPU data for cacheKey:', cacheKey);
     const vpu_gpkg = makeGpkgUrl(vpu);
-    const id = feature_id.split('-')[1];
     set_loading(true);
     set_loading_text('Loading feature properties...');
     let currentVariable = variable;
@@ -169,33 +217,23 @@ function TimeseriesLoader() {
           console.error('No data for VPU', vpu, err);
           set_loading_text('No data available for selected VPU');
           set_loading(false);
-        }        
-        const featureIDs = await getFeatureIDs(cacheKey);
-        set_feature_ids(featureIDs);
-        const variables = await getVariables({ cacheKey });
-        set_variables(variables);
-        set_variable(variables[0]);
-        currentVariable = variables[0];
-        const [featureIds, times, flat] = await Promise.all([
-          getDistinctFeatureIds(cacheKey),
-          getDistinctTimes(cacheKey),
-          getVpuVariableFlat(cacheKey, currentVariable),
-        ]);
-        setAnimationIndex(featureIds, times);
-        setVarData(currentVariable, flat);
-     }
-      const series = await getTimeseries(id, cacheKey, currentVariable);
-      const xy = series.map((d) => ({
-        x: new Date(d.time),
-        y: d[currentVariable],
-      }));
-      set_loading_text(`Loaded ${xy.length} points for id: ${id}`);
-      set_series(xy);
-      set_layout({
-        yaxis: currentVariable,
-        xaxis: '',
-        title: makeTitle(forecast, feature_id),
-      });
+        }
+      }
+      const featureIDs = await getFeatureIDs(cacheKey);
+      set_feature_ids(featureIDs);
+      const variables = await getVariables({ cacheKey });
+      set_variables(variables);
+      set_variable(variables[0]);
+      currentVariable = variables[0];
+      const [featureIds, times, flat] = await Promise.all([
+        getDistinctFeatureIds(cacheKey),
+        getDistinctTimes(cacheKey),
+        getVpuVariableFlat(cacheKey, currentVariable),
+      ]);
+      setAnimationIndex(featureIds, times);
+      setVarData(currentVariable, flat);
+      set_feature_id(selected_feature_id);
+
       set_loading_text('');
       set_loading(false);
     } 
@@ -205,10 +243,9 @@ function TimeseriesLoader() {
         console.error('Failed to load timeseries for', id, err);
     }
    }
-   getData();
+   getVPUData();
 
-  }, [cacheKey, feature_id]);
-
+  }, [cacheKey]);
 
   return null;
 }
