@@ -24,21 +24,11 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { useShallow } from "zustand/react/shallow";
 
 function InitialS3Loader() {
-  // const { vpu, ensemble, setAllState } = useDataStreamStore(
-  //   useShallow((s) => ({
-  //     vpu: s.vpu,
-  //     ensemble: s.ensemble,
-  //     setAllState: s.setAllState,
-  //   }))
-  // );
-
-  const { vpu, ensemble } = useDataStreamStore(
+  const { vpu } = useDataStreamStore(
     useShallow((s) => ({
       vpu: s.vpu,
-      ensemble: s.ensemble,
     }))
   );
-
   const { set_model, set_forecast, set_cycle, set_outputFile, set_date, set_ensemble, set_cache_key } = useDataStreamStore(
     useShallow((s) => ({
       set_model: s.set_model,
@@ -61,7 +51,7 @@ function InitialS3Loader() {
     async function fetchInitialData() {
       if (!vpu) return;
       try {
-        const { models, dates, forecasts, cycles, outputFiles } =
+        const { models, dates, forecasts, cycles, ensembles, outputFiles } =
           await initialS3Data(vpu, { signal: controller.signal });
 
         if (!alive) return; // <- prevents any setState after unmount/dep change
@@ -73,7 +63,7 @@ function InitialS3Loader() {
           dates[1]?.value,
           forecasts[0]?.value,
           cycles[0]?.value,
-          ensemble,
+          ensembles[0]?.value || null,
           vpu,
           outputFiles[0]?.value
         );
@@ -83,24 +73,15 @@ function InitialS3Loader() {
         set_cycle(cycles[0]?.value);
         set_outputFile(outputFiles[0]?.value);
         set_date(dates[1]?.value);
-        set_ensemble(ensemble);
+        set_ensemble(ensembles[0]?.value || null);
         set_cache_key(cacheKey);
-        // setAllState({
-        //   model: _models[0]?.value,
-        //   date: dates[1]?.value,
-        //   forecast: forecasts[0]?.value,
-        //   cycle: cycles[0]?.value,
-        //   ensemble: null,
-        //   outputFile: outputFiles[0]?.value,
-        //   cache_key: cacheKey,
-        // });
 
         const _prefix = makePrefix(
           _models[0]?.value,
           dates[1]?.value,
           forecasts[0]?.value,
           cycles[0]?.value,
-          ensemble,
+          ensembles[0]?.value || null,
           vpu,
           outputFiles[0]?.value
         );
@@ -115,12 +96,10 @@ function InitialS3Loader() {
         });
 
       } catch (error) {
-        // fetch abort throws DOMException with name AbortError
         if (error?.name === 'AbortError') return;
         console.error('Error fetching initial S3 data:', error);
       }
     }
-
     fetchInitialData();
 
     return () => {
@@ -217,7 +196,7 @@ function TimeseriesLoader() {
         xaxis: '',
         title: makeTitle(forecast, feature_id),
       });
-     set_loading_text('');
+      set_loading_text('');
       set_loading(false);
     } 
     catch (err) {

@@ -61,9 +61,9 @@ const MainMap = () => {
 
   const selectedFeatureId = useTimeSeriesStore((state) => state.feature_id);
   const loading = useTimeSeriesStore((state) => state.loading);
-  const set_loading_text = useTimeSeriesStore((state) => state.set_loading_text);
+  
   const set_feature_id = useTimeSeriesStore((state) => state.set_feature_id);
-  const reset = useTimeSeriesStore((state) => state.reset);
+  const reset_series = useTimeSeriesStore((state) => state.reset_series);
 
   const nexus_pmtiles = useDataStreamStore((state) => state.nexus_pmtiles);
   const conus_pmtiles = useDataStreamStore((state) => state.community_pmtiles);
@@ -102,7 +102,7 @@ const MainMap = () => {
 
   const deckLayers = useMemo(() => {
     if (!isFlowPathsVisible) return EMPTY_LAYERS;
-
+    console.log('Rendering flow paths layer');
     const varData = valuesByVar;
     const numTimes = timesArr?.length || 0;
 
@@ -325,7 +325,7 @@ const MainMap = () => {
    if (loading) {
       return;
     }
-    // reset();
+    reset_series();
 
     const map = event.target;
 
