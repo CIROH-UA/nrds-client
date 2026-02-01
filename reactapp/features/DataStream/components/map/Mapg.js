@@ -123,7 +123,7 @@ const MainMap = () => {
     const numTimes = timesArr?.length || 0;
 
     const pathData = pathDataRef.current;
-
+    
     if (!varData || !numTimes || !pathData?.length) return EMPTY_LAYERS;
     const bounds = computeBounds(varData);
     return [

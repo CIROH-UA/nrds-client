@@ -105,7 +105,6 @@ function InitialS3Loader() {
       }
     }
     
-    // resetTimeSeriesStore();
     fetchInitialData();
 
     return () => {
@@ -142,7 +141,7 @@ function TimeseriesLoader() {
     useShallow((s) => ({ prefix: s.prefix }))
   );
 
-  const { feature_id, loading, variable, set_feature_id, set_variable, set_loading_text, set_series, set_layout, set_loading, reset_series } = useTimeSeriesStore(
+  const { feature_id, loading, variable, set_feature_id, set_variable, set_loading_text, set_series, set_layout, set_loading, reset_series, reset } = useTimeSeriesStore(
     useShallow((s) => ({ 
       feature_id: s.feature_id,
       loading: s.loading,
@@ -154,6 +153,7 @@ function TimeseriesLoader() {
       set_layout: s.set_layout,
       set_loading: s.set_loading,
       reset_series: s.reset_series,
+      reset: s.reset,
     }))
   );
   const { set_feature_ids, setVarData, setAnimationIndex } = useVPUStore(
@@ -164,7 +164,6 @@ function TimeseriesLoader() {
     }))
   );
   useEffect(() => {
-    
     async function getTsData(){
       if (!feature_id || loading ) return;
       console.log('Loading timeseries for feature_id:', feature_id, 'variable:', variable, 'cacheKey:', cacheKey);
@@ -203,6 +202,7 @@ function TimeseriesLoader() {
    async function getVPUData(){
     if (!cacheKey || loading ) return;
     console.log('Loading VPU data for cacheKey:', cacheKey);
+    reset();
     const vpu_gpkg = makeGpkgUrl(vpu);
     set_loading(true);
     set_loading_text('Loading feature properties...');

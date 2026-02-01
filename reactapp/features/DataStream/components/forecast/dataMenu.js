@@ -156,7 +156,7 @@ const DataMenuControls = React.memo(function DataMenuControls() {
       set_loading_text('');
       return;
     }
-    reset();
+    // reset();
     const cacheKey = getCacheKey(model, date, forecast, cycle, ensemble, vpu, outputFile);
     console.log('Generated cache key:', cacheKey);
     set_cache_key(cacheKey);
