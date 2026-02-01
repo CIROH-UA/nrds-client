@@ -410,3 +410,20 @@ export const ViewContainer = styled.div`
   flex-direction: column;
   overflow: hidden;
 `;
+
+export const ChartContainer = styled.div`
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+`;
+
+export const NoData = styled.div`
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-style: italic;
+  font-size: 1rem;
+  color: var(--chart-empty-text-color, #6b7280);
+`;

@@ -5,12 +5,11 @@ import { IoLayers } from "react-icons/io5";
 import { MdInfoOutline } from "react-icons/md";
 import { IconLabel, Row, Title, SButton} from '../styles/Styles';
 import { NexusSymbol, CatchmentSymbol, FlowPathSymbol, GaugeSymbol, symbologyColors, CursorSymbol } from '../../lib/layers';
-import useTheme from 'hooks/useTheme';
 import { LayerInfoModal } from '../Modals';
+import { useTheme } from 'styled-components';
 
 export const LayerControl = () => {
-  const theme = useTheme();
-  
+  const theme = useTheme()
   const [modalLayerInfoShow, setModalLayerInfoShow] = useState(false);
   
   const nexusLayer = useLayersStore((state) => state.nexus);
