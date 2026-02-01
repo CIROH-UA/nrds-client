@@ -49,7 +49,7 @@ export const CacheTable = React.memo(({ tables }) => {
           onClick={deleteAllCache}
           disabled={disableAllButtons}
           aria-busy={deletingAll}
-          title={deletingAll ? 'Deleting…' : 'Delete all cached tables'}
+          title={deletingAll ? 'Deleting...' : 'Delete all cached tables'}
           style={{ opacity: disableAllButtons ? 0.6 : 1, cursor: disableAllButtons ? 'not-allowed' : 'pointer' }}
         >
           <IoSkullOutline size={15} />
@@ -58,7 +58,7 @@ export const CacheTable = React.memo(({ tables }) => {
         {/* optional tiny status */}
         {deletingAll && (
           <span style={{ marginLeft: 8, fontSize: 12, color: '#666' }}>
-            Deleting…
+            Deleting...
           </span>
         )}
       </IconLabel>
@@ -90,12 +90,12 @@ export const CacheTable = React.memo(({ tables }) => {
                       onClick={() => deleteSingleCache(table.id)}
                       disabled={disableAllButtons}
                       aria-busy={isDeletingThis}
-                      title={isDeletingThis ? 'Deleting…' : 'Delete table'}
+                      title={isDeletingThis ? 'Deleting...' : 'Delete table'}
                       style={{ opacity: disableAllButtons ? 0.6 : 1, cursor: disableAllButtons ? 'not-allowed' : 'pointer' }}
                     >
                       {/* optional: show X or text while deleting */}
                       {isDeletingThis ? (
-                        <span style={{ fontSize: 10 }}>…</span>
+                        <span style={{ fontSize: 10 }}>...</span>
                       ) : (
                         <IoClose size={15} />
                       )}
