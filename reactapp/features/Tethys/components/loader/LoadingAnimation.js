@@ -8,9 +8,11 @@ const LoadingAnimation = ({delay}) => {
 
   useEffect(() => {
     // Option to delay display of animated loader for longer resolutions
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       setShow(true);
-    }, delay);
+    }, Number(delay) || 0);
+
+    return () => clearTimeout(timeoutId);
   }, [delay]);
 
   return (

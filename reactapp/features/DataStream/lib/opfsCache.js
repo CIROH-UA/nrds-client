@@ -1,4 +1,6 @@
 const CACHE_DIR = "nrds-arrow-cache";
+let cacheDirPromise = null;
+
 function formatBytes(bytes, decimals = 2) {
   if (bytes === 0) return '0 Bytes';
   const k = 1024;
@@ -12,8 +14,20 @@ async function getCacheDir() {
     // OPFS not supported (e.g., non-Chromium / http)
     return null;
   }
-  const root = await navigator.storage.getDirectory();
-  return await root.getDirectoryHandle(CACHE_DIR, { create: true });
+
+  if (!cacheDirPromise) {
+    cacheDirPromise = (async () => {
+      const root = await navigator.storage.getDirectory();
+      return await root.getDirectoryHandle(CACHE_DIR, { create: true });
+    })();
+  }
+
+  try {
+    return await cacheDirPromise;
+  } catch (e) {
+    cacheDirPromise = null;
+    throw e;
+  }
 }
 
 export async function saveArrowToCache(key, buffer) {
@@ -31,7 +45,7 @@ export async function saveArrowToCache(key, buffer) {
     dataToWrite = new Uint8Array(buffer);
   } else if (ArrayBuffer.isView(buffer)) {
     // covers Uint8Array, DataView, etc.
-    dataToWrite = new Uint8Array(buffer.buffer);
+    dataToWrite = new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
   } else if (buffer instanceof Blob) {
     dataToWrite = buffer;
   } else {
@@ -59,27 +73,14 @@ export async function loadArrowFromCache(key) {
   }
 }
 
-async function* getFilesRecursively(entry) {
-  if (entry.kind === "file") {
-    const file = await entry.getFile();
-    if (file !== null) {
-      yield file;
-    }
-  } else if (entry.kind === "directory") {
-    for await (const handle of entry.values()) {
-      yield* getFilesRecursively(handle);
-    }
-  }
-}
-
-
 export async function getFilesFromCache() {
   const dir = await getCacheDir();
   if (!dir) return null;
   const files = [];
-  const fileHandlers = await getFilesRecursively(dir);
-  
-  for await (const file of fileHandlers) {
+
+  for await (const handle of dir.values()) {
+    if (handle.kind !== "file") continue;
+    const file = await handle.getFile();
     const id = decodeURIComponent(file.name.replace(".arrow", ""));
     files.push({id: id, name: id.replaceAll("_", "/"), size: formatBytes(file.size)});
   }

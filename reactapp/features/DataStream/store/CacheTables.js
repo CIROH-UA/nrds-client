@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { deleteFileFromCache, clearCache } from '../lib/opfsCache';
 import { deleteTable, dropAllVpuDataTables } from '../lib/queryData';
+import { terminateDatabase } from '../lib/duckdbClient';
 
 const EMPTY_TABLE = [];
 
@@ -37,6 +38,11 @@ export const useCacheTablesStore = create((set) => ({
 
     await clearCache().catch((e) => {
       console.warn('[cacheTables] clearCache failed:', e);
+    });
+
+    // Release worker/database memory; next query will lazily recreate the DB.
+    await terminateDatabase().catch((e) => {
+      console.warn('[cacheTables] terminateDatabase failed:', e);
     });
 
     set({ cacheTables: EMPTY_TABLE });

@@ -7,20 +7,29 @@ import { AppContext } from 'features/Tethys/context/context';
 
 const APP_ID = process.env.TETHYS_APP_ID;
 const LOADER_DELAY = process.env.TETHYS_LOADER_DELAY;
+const LOADER_DELAY_MS = Number(LOADER_DELAY) || 0;
 
 function Loader({children}) {
   const [error, setError] = useState(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [appContext, setAppContext] = useState(null);
- 
-  const handleError = (error) => {
-    // Delay setting the error to avoid flashing the loading animation
-    setTimeout(() => {
-      setError(error);
-    }, LOADER_DELAY);
-  };
 
-  useEffect(() => {  
+  useEffect(() => {
+    let active = true;
+    const timeoutIds = [];
+    const schedule = (callback) => {
+      const timeoutId = setTimeout(() => {
+        if (active) callback();
+      }, LOADER_DELAY_MS);
+      timeoutIds.push(timeoutId);
+    };
+    const handleError = (nextError) => {
+      // Delay setting the error to avoid flashing the loading animation
+      schedule(() => {
+        setError(nextError);
+      });
+    };
+
     // Get the session first
     tethysAPI.getSession()
       .then(() => {
@@ -32,15 +41,21 @@ function Loader({children}) {
           ])
           .then(([tethysApp, user, csrf]) => {
             // Update app context
+            if (!active) return;
             setAppContext({tethysApp, user, csrf});
 
             // Allow for minimum delay to display loader
-            setTimeout(() => {
+            schedule(() => {
               setIsLoaded(true)
-            }, LOADER_DELAY);
+            });
           })
           .catch(handleError);
       }).catch(handleError);
+
+    return () => {
+      active = false;
+      timeoutIds.forEach((id) => clearTimeout(id));
+    };
   }, []);
 
   if (error) {

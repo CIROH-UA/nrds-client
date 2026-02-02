@@ -19,6 +19,7 @@ import { checkForTable,
   getVpuVariableFlat, 
   getVariables 
 } from 'features/DataStream/lib/queryData';
+import { terminateDatabase } from 'features/DataStream/lib/duckdbClient';
 import { makeTitle } from 'features/DataStream/lib/utils';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useShallow } from "zustand/react/shallow";
@@ -156,14 +157,17 @@ function TimeseriesLoader() {
       reset: s.reset,
     }))
   );
-  const { set_feature_ids, setVarData, setAnimationIndex } = useVPUStore(
+  const { set_feature_ids, setVarData, setAnimationIndex, resetVPU } = useVPUStore(
     useShallow((s) => ({
       set_feature_ids: s.set_feature_ids,
       setVarData: s.setVarData,
       setAnimationIndex: s.setAnimationIndex,
+      resetVPU: s.resetVPU,
     }))
   );
   useEffect(() => {
+    let alive = true;
+
     async function getTsData(){
       if (!feature_id || loading ) return;
       console.log('Loading timeseries for feature_id:', feature_id, 'variable:', variable, 'cacheKey:', cacheKey);
@@ -174,6 +178,8 @@ function TimeseriesLoader() {
       let currentVariable = variable;
       try {
         const series = await getTimeseries(id, cacheKey, currentVariable);
+        if (!alive) return;
+
         const xy = series.map((d) => ({
           x: new Date(d.time),
           y: d[currentVariable],
@@ -186,42 +192,56 @@ function TimeseriesLoader() {
           title: makeTitle(forecast, feature_id),
         });
         set_loading_text('');
-        set_loading(false);
       } 
       catch (err) {
+          if (!alive) return;
           set_loading_text(`Failed to load timeseries for id: ${feature_id}`);
-          set_loading(false);
           console.error('Failed to load timeseries for', feature_id, err);
+      } finally {
+        if (!alive) return;
+        set_loading(false);
       }
    }
     getTsData();
-    
-  },[feature_id]);
+
+    return () => {
+      alive = false;
+    };
+  }, [feature_id]);
 
   useEffect( () => {
+   let alive = true;
+
    async function getVPUData(){
     if (!cacheKey || loading ) return;
     console.log('Loading VPU data for cacheKey:', cacheKey);
     reset();
+    resetVPU();
     const vpu_gpkg = makeGpkgUrl(vpu);
     set_loading(true);
     set_loading_text('Loading feature properties...');
     let currentVariable = variable;
     try {
       const tableExists = await checkForTable(cacheKey);
+      if (!alive) return;
+
       if (!tableExists) {
         try{
           const fileSize = await loadVpuData(cacheKey, prefix, vpu_gpkg);
+          if (!alive) return;
           add_cacheTable({id: cacheKey, name: cacheKey.replaceAll('_',' '), size: fileSize});
         }catch(err){
+          if (!alive) return;
           console.error('No data for VPU', vpu, err);
           set_loading_text('No data available for selected VPU');
-          set_loading(false);
+          return;
         }
       }
       const featureIDs = await getFeatureIDs(cacheKey);
+      if (!alive) return;
       set_feature_ids(featureIDs);
       const variables = await getVariables({ cacheKey });
+      if (!alive) return;
       set_variables(variables);
       set_variable(variables[0]);
       currentVariable = variables[0];
@@ -230,21 +250,27 @@ function TimeseriesLoader() {
         getDistinctTimes(cacheKey),
         getVpuVariableFlat(cacheKey, currentVariable),
       ]);
+      if (!alive) return;
       setAnimationIndex(featureIds, times);
       setVarData(currentVariable, flat);
       set_feature_id(selected_feature_id);
 
       set_loading_text('');
-      set_loading(false);
     } 
     catch (err) {
-        set_loading_text(`Failed to load timeseries for id: ${id}`);
-        set_loading(false);
-        console.error('Failed to load timeseries for', id, err);
+        if (!alive) return;
+        set_loading_text(`Failed to load VPU data for cacheKey: ${cacheKey}`);
+        console.error('Failed to load VPU data for cacheKey:', cacheKey, err);
+    } finally {
+      if (!alive) return;
+      set_loading(false);
     }
    }
    getVPUData();
 
+   return () => {
+    alive = false;
+   };
   }, [cacheKey]);
 
   return null;
@@ -252,6 +278,14 @@ function TimeseriesLoader() {
 
 
 const DataStreamView = () => {
+  useEffect(() => {
+    return () => {
+      void terminateDatabase().catch((err) => {
+        console.warn('Failed to terminate DuckDB worker on DataStreamView unmount:', err);
+      });
+    };
+  }, []);
+
   return (
     <ViewContainer>
       <InitialS3Loader />

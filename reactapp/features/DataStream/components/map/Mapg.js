@@ -109,6 +109,7 @@ const MainMap = () => {
   const EMPTY_LAYERS = useMemo(() => [], []);
 
   const mapRef = useRef(null);
+  const hoverMapRef = useRef(null);
   const lastSigRef = useRef("");
   const pathDataRef = useRef([]);
 
@@ -163,18 +164,63 @@ const MainMap = () => {
   ]);
 
 
+  const hoverLayers = useMemo(() => ["divides", "nexus-points"], []);
+
+  const isMapUsable = useCallback((map) => {
+    if (!map || typeof map.on !== "function" || typeof map.off !== "function") return false;
+    if (typeof map.getCanvas !== "function") return false;
+    try {
+      return !!map.getCanvas();
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const setPointerCursor = useCallback((e) => {
+    const canvas = e?.target?.getCanvas?.();
+    if (canvas?.style) canvas.style.cursor = "pointer";
+  }, []);
+
+  const resetPointerCursor = useCallback((e) => {
+    const canvas = e?.target?.getCanvas?.();
+    if (canvas?.style) canvas.style.cursor = "";
+  }, []);
+
+  const removeHoverListeners = useCallback((map) => {
+    if (!isMapUsable(map)) return;
+    hoverLayers.forEach((layer) => {
+      map.off("mouseenter", layer, setPointerCursor);
+      map.off("mouseleave", layer, resetPointerCursor);
+    });
+  }, [hoverLayers, isMapUsable, setPointerCursor, resetPointerCursor]);
+
   const handleMapLoad = useCallback((event) => {
     const map = event.target;
-    
-    // keep your existing onMapLoad behavior
-    const hoverLayers = ["divides", "nexus-points"];
+    if (!isMapUsable(map)) return;
+
+    if (hoverMapRef.current && hoverMapRef.current !== map) {
+      removeHoverListeners(hoverMapRef.current);
+    }
+
+    // De-dupe in case onLoad fires multiple times for the same map instance.
+    removeHoverListeners(map);
     hoverLayers.forEach((layer) => {
-      map.on("mouseenter", layer, () => (map.getCanvas().style.cursor = "pointer"));
-      map.on("mouseleave", layer, () => (map.getCanvas().style.cursor = ""));
+      map.on("mouseenter", layer, setPointerCursor);
+      map.on("mouseleave", layer, resetPointerCursor);
     });
+    hoverMapRef.current = map;
+
     reorderLayers(map);
 
-  }, []);
+  }, [hoverLayers, isMapUsable, removeHoverListeners, resetPointerCursor, setPointerCursor]);
+
+  useEffect(() => {
+    return () => {
+      removeHoverListeners(hoverMapRef.current);
+      hoverMapRef.current = null;
+    };
+  }, [removeHoverListeners]);
+
   const onHover = useCallback((event) => {
     if (!enabledHovering) return;
 
@@ -404,4 +450,3 @@ const MainMap = () => {
 const MapComponent = React.memo(MainMap);
 
 export default MapComponent;
-

@@ -33,6 +33,8 @@ const buildFeatureIdToIndex = (featureIds) => {
 const featureKey = (f) =>
   f?.id ?? f?.properties?.id ?? f?.properties?.feature_id ?? null;
 
+const MAX_CACHED_VARS = 3;
+
 export const useLayersStore = create(
   subscribeWithSelector((set, get) => ({
     nexus: { visible: false },
@@ -120,6 +122,7 @@ export const useVPUStore = create(
     featureIdToIndex: {},
     times: [],
     valuesByVar: {},
+    varDataOrder: [],
 
     // Optional convenience getters
     getVarData: (variable) => get().valuesByVar?.[variable],
@@ -160,15 +163,31 @@ export const useVPUStore = create(
     setVarData: (variable, flatValues) =>
       set((s) => {
         const prev = s.valuesByVar?.[variable];
+        let nextOrder = [...s.varDataOrder.filter((v) => v !== variable), variable];
+        let nextValuesByVar =
+          prev === flatValues ? s.valuesByVar : { ...s.valuesByVar, [variable]: flatValues };
 
-        // if same reference, no update (most important guard)
-        if (prev === flatValues) return s;
+        if (nextOrder.length > MAX_CACHED_VARS) {
+          const evicted = nextOrder.slice(0, nextOrder.length - MAX_CACHED_VARS);
+          nextOrder = nextOrder.slice(-MAX_CACHED_VARS);
 
-        const nextValuesByVar = { ...s.valuesByVar, [variable]: flatValues };
+          let copied = nextValuesByVar !== s.valuesByVar;
+          for (const key of evicted) {
+            if (!Object.prototype.hasOwnProperty.call(nextValuesByVar, key)) continue;
+            if (!copied) {
+              nextValuesByVar = { ...nextValuesByVar };
+              copied = true;
+            }
+            delete nextValuesByVar[key];
+          }
+        }
 
-        if (shallowEqualObj(s.valuesByVar, nextValuesByVar)) return s;
+        const sameOrder = sameArrayRefOrValues(s.varDataOrder, nextOrder);
+        const sameValues =
+          nextValuesByVar === s.valuesByVar || shallowEqualObj(s.valuesByVar, nextValuesByVar);
+        if (sameOrder && sameValues) return s;
 
-        return { valuesByVar: nextValuesByVar };
+        return { valuesByVar: nextValuesByVar, varDataOrder: nextOrder };
       }),
 
     resetVPU: () =>
@@ -178,11 +197,18 @@ export const useVPUStore = create(
           s.featureIds.length === 0 &&
           s.times.length === 0 &&
           Object.keys(s.featureIdToIndex).length === 0 &&
-          Object.keys(s.valuesByVar).length === 0
+          Object.keys(s.valuesByVar).length === 0 &&
+          s.varDataOrder.length === 0
         ) {
           return s;
         }
-        return { featureIds: [], times: [], featureIdToIndex: emptyObj, valuesByVar: emptyObj };
+        return {
+          featureIds: [],
+          times: [],
+          featureIdToIndex: emptyObj,
+          valuesByVar: emptyObj,
+          varDataOrder: [],
+        };
       }),
   }))
 );

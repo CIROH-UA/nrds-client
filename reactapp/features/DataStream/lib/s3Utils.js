@@ -85,10 +85,7 @@ export const makePrefix = (model, avail_date,ngen_forecast,ngen_cycle, ngen_ense
     return prefix_path;
 }
 
-// export function getNCFiles(model, date, forecast, cycle, time, vpu, outputFile) {
 export function getNCFiles(prefix) {
-    // const prefix = makePrefix(model, date, forecast, cycle, time, vpu);
-    // const ncFileParsed = `s3://ciroh-community-ngen-datastream/${prefix}${outputFile}`;
     const ncFileParsed = `s3://ciroh-community-ngen-datastream/${prefix}`;
     return ncFileParsed
 }
