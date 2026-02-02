@@ -33,11 +33,12 @@ function Loader({children}) {
         tethysAPI.getAppData(APP_ID), 
         tethysAPI.getUserData(),
         tethysAPI.getJWTToken(),
+        tethysAPI.getCSRF(),
       ])
-      .then(([tethysApp, user, jwt]) => {
+      .then(([tethysApp, user, jwt, csrf]) => {
         // Update app context
         if (!active) return;
-        setAppContext({tethysApp, user, jwt});
+        setAppContext({tethysApp, user, jwt, csrf});
 
         // Allow for minimum delay to display loader
         schedule(() => {
@@ -45,7 +46,7 @@ function Loader({children}) {
         });
       })
       .catch(handleError);
-      
+
     return () => {
       active = false;
       timeoutIds.forEach((id) => clearTimeout(id));

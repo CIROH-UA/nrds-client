@@ -31,9 +31,7 @@ function InitialS3Loader() {
       ensemble: s.ensemble,
     }))
   );
-  // const {resetTimeSeriesStore} = useTimeSeriesStore(
-  //   useShallow((s) => ({ reset: s.reset}))
-  // );
+
   const { set_model, set_forecast, set_cycle, set_outputFile, set_date, set_ensemble, set_cache_key } = useDataStreamStore(
     useShallow((s) => ({
       set_model: s.set_model,
@@ -118,6 +116,7 @@ function InitialS3Loader() {
 }
 
 function TimeseriesLoader() {
+  
   const { cacheKey, forecast, vpu, set_variables } = useDataStreamStore(
     useShallow((s) => ({
       cacheKey: s.cache_key,

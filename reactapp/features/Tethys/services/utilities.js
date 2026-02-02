@@ -35,3 +35,8 @@ export function getTethysAppRoot() {
   let fp = `/${tethys_prefix_url}/${tethys_app_root_url}`;
   return fp.replace(/\/{2,}/g, "/");
 }
+
+export function getCookie(name) {
+  const m = document.cookie.match(new RegExp(`(^|; )${name}=([^;]*)`));
+  return m ? decodeURIComponent(m[2]) : null;
+}

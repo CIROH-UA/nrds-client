@@ -38,11 +38,18 @@ function getAppData(tethys_app_url) {
   return apiClient.get(`/api/apps/${tethys_app_url}/`);
 }
 
+function getCSRF() {
+  return apiClient.get("/api/csrf/").then((response) => {
+    return response.headers["x-csrftoken"];
+  });
+}
+
 const tethysAPI = {
   getJWTToken,
   refreshJWTToken,
   getAppData,
   getUserData,
+  getCSRF,
 };
 
 export default tethysAPI;

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-import { getTethysPortalHost } from 'features/Tethys/services/utilities';
+import { getTethysPortalHost, getCookie } from 'features/Tethys/services/utilities';
 
 const TETHYS_PORTAL_HOST = getTethysPortalHost();
 
@@ -9,7 +9,7 @@ axios.defaults.xsrfCookieName = "csrftoken"
 
 const apiClient = axios.create({
   baseURL: `${TETHYS_PORTAL_HOST}`,
-  // withCredentials: true,
+  withCredentials: true,
   headers: {
     'Accept': 'application/json',
     'Content-Type': 'application/json'
@@ -29,6 +29,11 @@ function handleError(error) {
   }
   return Promise.reject(error);
 }
+axios.interceptors.request.use((config) => {
+  const csrf = getCookie('csrftoken');
+  if (csrf) config.headers['X-CSRFToken'] = csrf;
+  return config;
+});
 
 apiClient.interceptors.response.use(handleSuccess, handleError);
 
