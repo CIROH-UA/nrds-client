@@ -112,7 +112,7 @@ const useTimeSeriesStore = create(
       reset_series: () =>
         set((s) => {
           if (s.series === EMPTY_SERIES && s.currentTimeIndex === 0 && s.isPlaying === false) return s;
-          return { series: EMPTY_SERIES, currentTimeIndex: 0, isPlaying: false };
+          return { series: EMPTY_SERIES, currentTimeIndex: 0, isPlaying: false};
         }),
 
       reset: () =>

@@ -4,15 +4,30 @@ import { loadIndexData, getFeatureProperties } from 'features/DataStream/lib/que
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
 import {useFeatureStore} from 'features/DataStream/store/Layers';
+import {useShallow} from 'zustand/react/shallow';
 
 const SearchBar = ({ placeholder = 'Search for an id' }) => {
 
-  const hydrofabric_index_url = useDataStreamStore((state) => state.hydrofabric_index);
-  const set_vpu = useDataStreamStore((state) => state.set_vpu);
+  const { hydrofabric_index_url, vpu, set_vpu } = useDataStreamStore(
+    useShallow((s) => ({
+      hydrofabric_index_url: s.hydrofabric_index,
+      vpu: s.vpu,
+      set_vpu: s.set_vpu,
+    }))
+  );
 
-  const feature_id = useTimeSeriesStore((state) => state.feature_id);
-  const set_feature_id = useTimeSeriesStore((state) => state.set_feature_id);
-  const set_selected_feature = useFeatureStore((state) => state.set_selected_feature);
+  const { feature_id, set_feature_id } = useTimeSeriesStore(
+    useShallow((s) => ({
+      feature_id: s.feature_id,
+      set_feature_id: s.set_feature_id,
+    }))
+  );
+  
+  const { set_selected_feature } = useFeatureStore(
+    useShallow((s) => ({
+      set_selected_feature: s.set_selected_feature,
+    }))
+  );
 
   const handleChange = async (e) => {
     const unbiased_id = e.target.value;
@@ -21,10 +36,16 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
       return 
     };
     const feature = features.length > 0 ? features[0] : null;
-    set_selected_feature(feature || null);
+
+    set_selected_feature({
+      _id: unbiased_id,
+      ...feature,
+    });
     const vpu_str = `VPU_${feature.vpuid}`;
+    if (vpu_str === vpu){
+      set_feature_id(unbiased_id);
+    }
     set_vpu(vpu_str);
-    set_feature_id(unbiased_id);
   }
 
   useEffect(() => {

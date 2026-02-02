@@ -466,8 +466,8 @@ export function valueToColor(value, bounds) {
   ];
   if (value === null || value === undefined || value <= -9998) return [100, 100, 100, 150];
   if (!bounds || bounds.max === bounds.min) return colorScale[0];
-
-  const t = Math.max(0, Math.min(1, (value - bounds.min) / (bounds.max - bounds.min)));
+  const t = Math.pow((value - bounds.min) / (bounds.max - bounds.min), 0.5)
+  // const t = Math.max(0, Math.min(1, (value - bounds.min) / (bounds.max - bounds.min)));
   const idx = t * (colorScale.length - 1);
   const lower = Math.floor(idx);
   const upper = Math.ceil(idx);

@@ -4,20 +4,26 @@ import VariablesMenu from '../forecast/variablesMenu';
 import { Content, Container } from '../styles/Styles';
 import TimeSeriesCard from '../forecast/TimeseriesCard';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
-import { useVPUStore } from 'features/DataStream/store/Layers';
+import { useVPUStore, useFeatureStore } from 'features/DataStream/store/Layers';
 import { ForecastHeader } from '../forecast/ForecastHeader';
 import { FeatureInformation } from '../forecast/FeatureInformation';
 import { TimeSlider } from '../forecast/TimeSlider';
 import { useShallow } from 'zustand/react/shallow';
 
 const ForecastMenu = () => {
-  const { feature_id, layout, reset } = useTimeSeriesStore(
+  const { layout, reset } = useTimeSeriesStore(
     useShallow((state) => ({
       feature_id: state.feature_id,
       layout: state.layout,
       reset: state.reset,
     }))
   );
+  const { feature_id } = useFeatureStore(
+    useShallow((state) => ({
+      feature_id: state.selected_feature ? state.selected_feature._id : null,
+    }))
+  );
+  
   const { resetVPU } = useVPUStore(
     useShallow((state) => ({
       resetVPU: state.resetVPU,

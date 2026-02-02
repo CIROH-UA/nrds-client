@@ -85,10 +85,7 @@ export const makePrefix = (model, avail_date,ngen_forecast,ngen_cycle, ngen_ense
     return prefix_path;
 }
 
-// export function getNCFiles(model, date, forecast, cycle, time, vpu, outputFile) {
 export function getNCFiles(prefix) {
-    // const prefix = makePrefix(model, date, forecast, cycle, time, vpu);
-    // const ncFileParsed = `s3://ciroh-community-ngen-datastream/${prefix}${outputFile}`;
     const ncFileParsed = `s3://ciroh-community-ngen-datastream/${prefix}`;
     return ncFileParsed
 }
@@ -99,27 +96,32 @@ export const makeGpkgUrl = (vpu) => {
 }
 
 export const initialS3Data = async(vpu, { signal } = {}) => {
-  let _models = await getOptionsFromURL(`outputs`, { signal });
-  if (_models.length === 0){
-    return {models: [], dates: [], forecasts: [], cycles: [], outputFiles: []};
+  try{
+    let _models = await getOptionsFromURL(`outputs`, { signal });
+    if (_models.length === 0){
+      return {models: [], dates: [], forecasts: [], cycles: [], ensembles: [], outputFiles: []};
+    }
+    const models = _models.filter(m => m.value !== 'test'); 
+    const dates = (await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/`, { signal })).reverse();
+    if (dates.length === 0){
+      return {models, dates: [], forecasts: [], cycles: [], ensembles:[], outputFiles: []};
+    }
+    const forecasts = (await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${dates[1]?.value}/`, { signal })).reverse();
+    if (forecasts.length === 0){
+      return {models, dates, forecasts: [], cycles: [], ensembles:[], outputFiles: []};
+    }
+    const cycles = await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${dates[1]?.value}/${forecasts[0]?.value}/`, { signal });
+    if (cycles.length === 0){
+      return {models, dates, forecasts, cycles: [], ensembles:[], outputFiles: []};
+    }
+    if (!vpu) {
+      return {models, dates, forecasts, cycles, ensembles:[], outputFiles: []};
+    }
+    const outputFiles = await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${dates[1]?.value}/${forecasts[0]?.value}/${cycles[0]?.value}/${vpu}/ngen-run/outputs/troute/`, { signal });
+    return {models, dates, forecasts, cycles, ensembles:[], outputFiles};
+  }catch(error){
+    throw error;
   }
-  const models = _models.filter(m => m.value !== 'test'); 
-  const dates = (await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/`, { signal })).reverse();
-  if (dates.length === 0){
-    return {models, dates: [], forecasts: [], cycles: [], outputFiles: []};
-  }
-  const forecasts = (await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${dates[1]?.value}/`, { signal })).reverse();
-  if (forecasts.length === 0){
-    return {models, dates, forecasts: [], cycles: [], outputFiles: []};
-  }
-  const cycles = await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${dates[1]?.value}/${forecasts[0]?.value}/`, { signal });
-  if (cycles.length === 0){
-    return {models, dates, forecasts, cycles: [], outputFiles: []};
-  }
-  if (!vpu) {
-    return {models, dates, forecasts, cycles, outputFiles: []};
-  }
-  const outputFiles = await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${dates[1]?.value}/${forecasts[0]?.value}/${cycles[0]?.value}/${vpu}/ngen-run/outputs/troute/`, { signal });
-  return {models, dates, forecasts, cycles, outputFiles};
+
 }
 

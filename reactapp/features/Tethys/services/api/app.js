@@ -9,7 +9,7 @@ const appAPI = {
             { ...data },
             {
                 responseType: "arraybuffer",          // key point: binary, not JSON
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json"},
             }
             // { headers: { ...headers } }
        );

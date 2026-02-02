@@ -124,8 +124,15 @@ $theme-colors: (
   --chart-crosshair-color: #4b5563;
   --chart-glyph-stroke-color: #ffffff;
   --chart-empty-text-color: #6b7280;
+
   /* comma-separated line colors */
   --chart-line-colors: #1d4ed8, #f97316, #16a34a, #dc2626, #7c3aed;
+
+  --chart-line-0: #1d4ed8;
+  --chart-line-1: #f97316;
+  --chart-line-2: #16a34a;
+  --chart-line-3: #dc2626;
+  --chart-line-4: #7c3aed;
 
 }
 
@@ -219,7 +226,11 @@ $theme-colors: (
     --chart-empty-text-color: #9ca3af;
 
     --chart-line-colors: #2dd4bf, #f97316, #a855f7, #38bdf8, #facc15;
-
+    --chart-line-0: #2dd4bf;
+    --chart-line-1: #f97316;
+    --chart-line-2: #a855f7;
+    --chart-line-3: #38bdf8;
+    --chart-line-4: #facc15;
   }
 }
 

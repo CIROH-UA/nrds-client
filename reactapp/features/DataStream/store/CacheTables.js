@@ -1,31 +1,53 @@
-import {create} from 'zustand';
+import { create } from 'zustand';
 import { deleteFileFromCache, clearCache } from '../lib/opfsCache';
 import { deleteTable, dropAllVpuDataTables } from '../lib/queryData';
+import { terminateDatabase } from '../lib/duckdbClient';
 
-const EMPTY_TABLE = []
+const EMPTY_TABLE = [];
 
 export const useCacheTablesStore = create((set) => ({
-    cacheTables: EMPTY_TABLE,
-    add_cacheTable: (newCacheTable) => set((state) => ({
-        cacheTables: [...state.cacheTables, newCacheTable],
-    })),
-    delete_cacheTable: async (tableId) => 
-    {   
-        await deleteFileFromCache(tableId);
-        await deleteTable(tableId);
-        set(
-            (state) => ({
-                cacheTables: state.cacheTables.filter(
-                    (table) => table.id !== tableId
-                ),
-            })
-        ) 
-    },
-    reset: async () => {
-        await dropAllVpuDataTables();
-        await clearCache();
-        set({ cacheTables: EMPTY_TABLE });
-    },
+  cacheTables: EMPTY_TABLE,
 
-   set_cacheTables: (newCacheTables) => set({ cacheTables: newCacheTables }),
+  add_cacheTable: (newCacheTable) =>
+    set((state) => ({
+      cacheTables: [...state.cacheTables, newCacheTable],
+    })),
+
+  delete_cacheTable: async (tableId) => {
+    // best-effort: don't abort if one step fails
+    await deleteFileFromCache(tableId).catch((e) => {
+      console.warn('[cacheTables] deleteFileFromCache failed:', tableId, e);
+    });
+
+    await deleteTable(tableId).catch((e) => {
+      console.warn('[cacheTables] deleteTable failed:', tableId, e);
+    });
+
+    set((state) => ({
+      cacheTables: state.cacheTables.filter((table) => table.id !== tableId),
+    }));
+
+    return true;
+  },
+
+  reset: async () => {
+    // best-effort: attempt both regardless of failures
+    await dropAllVpuDataTables().catch((e) => {
+      console.warn('[cacheTables] dropAllVpuDataTables failed:', e);
+    });
+
+    await clearCache().catch((e) => {
+      console.warn('[cacheTables] clearCache failed:', e);
+    });
+
+    // Release worker/database memory; next query will lazily recreate the DB.
+    await terminateDatabase().catch((e) => {
+      console.warn('[cacheTables] terminateDatabase failed:', e);
+    });
+
+    set({ cacheTables: EMPTY_TABLE });
+    return true;
+  },
+
+  set_cacheTables: (newCacheTables) => set({ cacheTables: newCacheTables }),
 }));

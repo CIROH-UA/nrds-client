@@ -1,10 +1,9 @@
 import React, { useCallback, useMemo, useEffect, useRef, useId } from 'react';
 import { Group } from '@visx/group';
 import { scaleLinear, scaleTime } from '@visx/scale';
-import { AxisLeft, AxisBottom } from '@visx/axis';
+import { AxisBottom } from '@visx/axis';
 import { LinePath, Line } from '@visx/shape';
 import { extent, bisector } from 'd3-array';
-import { GridRows, GridColumns } from '@visx/grid';
 import { useTooltip, TooltipWithBounds, defaultStyles } from '@visx/tooltip';
 import { localPoint } from '@visx/event';
 import { GlyphCircle } from '@visx/glyph';
@@ -13,11 +12,17 @@ import { RectClipPath } from '@visx/clip-path';
 import { getVariableUnits } from '../../lib/data';
 import useDataStreamStore from '../../store/Datastream';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
-
+import { ChartContainer, NoData } from '../styles/Styles';
 
 const MARGIN = Object.freeze({ top: 40, right: 20, bottom: 30, left: 50 });
+const axisLabelColor = 'var(--chart-axis-label-color, #111827)';
+const axisTickTextColor = 'var(--chart-axis-tick-text-color, #111827)';
+const tooltipBg = 'var(--chart-tooltip-bg, rgba(255, 255, 255, 0.95))';
+const tooltipTextColor = 'var(--chart-tooltip-text, #111827)';
+const tooltipBorderColor = 'var(--chart-tooltip-border-color, rgba(148, 163, 184, 0.6))';
+const crosshairColor = 'var(--chart-crosshair-color, #4b5563)';
+const glyphStrokeColor = 'var(--chart-glyph-stroke-color, #ffffff)';
 
-/** -------------------- Static SVG layer (no tooltip props) -------------------- */
 const StaticSvgLayer = React.memo(function StaticSvgLayer({
   width,
   height,
@@ -26,29 +31,18 @@ const StaticSvgLayer = React.memo(function StaticSvgLayer({
   innerHeight,
   clipId,
 
-  // colors/theme
   axisLabelColor,
-  axisStrokeColor,
-  axisTickColor,
-  axisTickTextColor,
-  gridColor,
   colors,
 
-  // label + scales
   yAxisLabel,
   xScale,
   yScale,
   xTickValues,
   formatDate,
-
-  // series + accessors
   data,
   getDate,
   getYValue,
-
-  // memoized axis props
   axisLabelProps,
-  leftTickLabelProps,
   bottomTickLabelProps,
 }) {
   return (
@@ -62,40 +56,15 @@ const StaticSvgLayer = React.memo(function StaticSvgLayer({
       <RectClipPath id={clipId} x={0} y={0} width={innerWidth} height={innerHeight} />
 
       <Group left={margin.left} top={margin.top}>
-        {/* <GridRows
-          scale={yScale}
-          width={innerWidth}
-          height={innerHeight}
-          stroke={gridColor}
-          strokeOpacity={0.25}
-          strokeWidth={1}
-        />
-        <GridColumns
-          scale={xScale}
-          width={innerWidth}
-          height={innerHeight}
-          stroke={gridColor}
-          strokeOpacity={0.25}
-          strokeWidth={1}
-        /> */}
-
-        <AxisLeft
-          scale={yScale}
-          labelProps={axisLabelProps}
-          stroke={axisStrokeColor}
-          tickStroke={axisTickColor}
-          tickLabelProps={leftTickLabelProps}
-        />
 
         <AxisBottom
           scale={xScale}
           top={innerHeight}
           labelProps={axisLabelProps}
-          stroke={axisStrokeColor}
           tickFormat={formatDate}
-          tickStroke={axisTickColor}
           tickLabelProps={bottomTickLabelProps}
           tickValues={xTickValues}
+          hideAxisLine={true}
         />
 
         <Group clipPath={`url(#${clipId})`}>
@@ -186,38 +155,17 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout })
   const fontSize = screenWidth <= 1300 ? 13 : 18;
   const fontWeight = screenWidth <= 1300 ? 600 : 500;
 
-  const rootStyles = getComputedStyle(document.documentElement);
-  const axisLabelColor =
-    rootStyles.getPropertyValue('--chart-axis-label-color').trim() || '#111827';
-  const axisStrokeColor =
-    rootStyles.getPropertyValue('--chart-axis-stroke-color').trim() || '#111827';
-  const axisTickColor =
-    rootStyles.getPropertyValue('--chart-axis-tick-color').trim() || '#111827';
-  const axisTickTextColor =
-    rootStyles.getPropertyValue('--chart-axis-tick-text-color').trim() || '#111827';
-  const gridColor =
-    rootStyles.getPropertyValue('--chart-grid-color').trim() || '#e5e7eb';
-  const tooltipBg =
-    rootStyles.getPropertyValue('--chart-tooltip-bg').trim() || 'rgba(255, 255, 255, 0.95)';
-  const tooltipTextColor =
-    rootStyles.getPropertyValue('--chart-tooltip-text').trim() || '#111827';
-  const tooltipBorderColor =
-    rootStyles.getPropertyValue('--chart-tooltip-border-color').trim() ||
-    'rgba(148, 163, 184, 0.6)';
-  const crosshairColor =
-    rootStyles.getPropertyValue('--chart-crosshair-color').trim() || '#4b5563';
-  const glyphStrokeColor =
-    rootStyles.getPropertyValue('--chart-glyph-stroke-color').trim() || '#ffffff';
-  const noDataTextColor =
-    rootStyles.getPropertyValue('--chart-empty-text-color').trim() || '#6b7280';
 
-  const lineColorsVar = rootStyles.getPropertyValue('--chart-line-colors').trim();
+
   const colors = useMemo(
-    () =>
-      lineColorsVar
-        ? lineColorsVar.split(/\s*,\s*/)
-        : ['#1d4ed8', '#f97316', '#16a34a', '#dc2626', '#7c3aed'],
-    [lineColorsVar]
+    () => [
+      'var(--chart-line-0, #1d4ed8)',
+      'var(--chart-line-1, #f97316)',
+      'var(--chart-line-2, #16a34a)',
+      'var(--chart-line-3, #dc2626)',
+      'var(--chart-line-4, #7c3aed)',
+    ],
+    []
   );
 
   // axis props (stable references)
@@ -445,22 +393,12 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout })
   const noData = !hasData;
 
   return (
-    <div style={{ position: 'relative', width, height, borderRadius: 10, overflow: 'hidden' }}>
+    <ChartContainer style={{ width, height }}>
       {noData ? (
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontStyle: 'italic',
-            fontSize: '1rem',
-            color: noDataTextColor,
-          }}
+        <NoData
         >
           🛠 No data to display
-        </div>
+        </NoData>
       ) : (
         <>
           {/* STATIC layer (won't rerender on tooltip changes) */}
@@ -472,10 +410,6 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout })
             innerHeight={innerHeight}
             clipId={clipId}
             axisLabelColor={axisLabelColor}
-            axisStrokeColor={axisStrokeColor}
-            axisTickColor={axisTickColor}
-            axisTickTextColor={axisTickTextColor}
-            gridColor={gridColor}
             colors={colors}
             yAxisLabel={yAxisLabel}
             xScale={xScale}
@@ -552,7 +486,7 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout })
           )}
         </>
       )}
-    </div>
+    </ChartContainer>
   );
 });
 

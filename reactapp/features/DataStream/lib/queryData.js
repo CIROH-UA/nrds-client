@@ -5,28 +5,45 @@ import { saveArrowToCache, loadArrowFromCache } from "./opfsCache";
 import { getConnection } from "./duckdbClient";
 import { getNCFiles } from "./s3Utils";
 
+const DEBUG = process.env.NODE_ENV !== "production";
+const debugLog = (...args) => {
+  if (DEBUG) console.log(...args);
+};
+
 export async function getTimeseries(id, cacheKey, variable) {
   const conn = await getConnection();
   
   try {
-    const q = await conn.query(`
+    const rows = [];
+    const stream = await conn.send(`
       SELECT time, ${variable}
       FROM ${cacheKey}
       WHERE feature_id = ${id}
       ORDER BY time
     `);
-    console.log("Query executed:", `
+    debugLog("Query executed:", `
       SELECT time, ${variable}
       FROM ${cacheKey}
       WHERE feature_id = ${id}
       ORDER BY time
     `);
 
-    const rows = q.toArray().map(Object.fromEntries);
-    rows.columns = q.schema.fields.map((d) => d.name);
+    for await (const batch of stream) {
+      const times = batch.getChild('time');
+      const values = batch.getChildAt(1);
+      if (!times || !values) continue;
 
-    console.log(
-      `[getTimeseries] (literal) id=${id} rows=${rows.length}`, rows
+      const n = Math.min(times.length, values.length);
+      for (let i = 0; i < n; i++) {
+        rows.push({
+          time: times.get(i),
+          [variable]: values.get(i),
+        });
+      }
+    }
+
+    debugLog(
+      `[getTimeseries] (literal) id=${id} rows=${rows.length}`
     );
     return rows;
   } finally {
@@ -35,23 +52,29 @@ export async function getTimeseries(id, cacheKey, variable) {
 }
 
 export async function getFeatureIDs(cacheKey) {
-  console.log("getFeatureIDs called with cacheKey:", cacheKey);
+  debugLog("getFeatureIDs called with cacheKey:", cacheKey);
 
   const conn = await getConnection();
 
   try {
-    const q = await conn.query(`
+    const featureIds = [];
+    const stream = await conn.send(`
       SELECT feature_id
       FROM "${cacheKey}"
     `);
-      
-    const rows = q.toArray().map(Object.fromEntries);
-    rows.columns = q.schema.fields.map((d) => d.name);
 
-    console.log(
-      `[updateDataInfo] (literal) rows=${rows.length}`
+    for await (const batch of stream) {
+      const ids = batch.getChild('feature_id');
+      if (!ids) continue;
+      for (let i = 0; i < ids.length; i++) {
+        featureIds.push(ids.get(i));
+      }
+    }
+
+    debugLog(
+      `[updateDataInfo] (literal) rows=${featureIds.length}`
     );
-    return rows;
+    return featureIds;
   } finally {
     await conn.close();
   }
@@ -59,7 +82,7 @@ export async function getFeatureIDs(cacheKey) {
 
 export async function loadIndexData({ remoteUrl }) {
   const cacheKey = "index_data_table";
-  console.log("loadIndexData called with cacheKey:", cacheKey);
+  debugLog("loadIndexData called with cacheKey:", cacheKey);
 
   const conn = await getConnection();
 
@@ -77,7 +100,7 @@ export async function loadIndexData({ remoteUrl }) {
     const exists = rows[0].cnt > 0;
 
     if (exists) {
-      console.log(`Table "${cacheKey}" already exists, skipping load.`);
+      debugLog(`Table "${cacheKey}" already exists, skipping load.`);
       return;
     }
 
@@ -89,7 +112,7 @@ export async function loadIndexData({ remoteUrl }) {
       SELECT * FROM read_parquet('${remoteUrl}')
     `);
 
-    console.log(`Created table "${cacheKey}" from remote parquet ${remoteUrl}`);
+    debugLog(`Created table "${cacheKey}" from remote parquet ${remoteUrl}`);
   } finally {
     await conn.close();
   }
@@ -97,24 +120,38 @@ export async function loadIndexData({ remoteUrl }) {
 
 
 export async function getFeatureProperties({ cacheKey, feature_id }) {
-  console.log("getFeature called with cacheKey:", cacheKey, "feature_id:", feature_id);
+  debugLog("getFeature called with cacheKey:", cacheKey, "feature_id:", feature_id);
 
   const conn = await getConnection();
 
   try {
-    const q = await conn.query(`
+    const stream = await conn.send(`
       SELECT *
       FROM "${cacheKey}"
       WHERE id = '${feature_id}'
+      LIMIT 1
     `);
 
-    const rows = q.toArray().map(Object.fromEntries);
-    rows.columns = q.schema.fields.map((d) => d.name);
+    for await (const batch of stream) {
+      if (!batch.numRows) continue;
 
-    console.log(
-      `[getFeatureProperties] (literal) id=${feature_id} rows=${rows.length}`
+      const row = {};
+      for (let i = 0; i < batch.schema.fields.length; i++) {
+        const field = batch.schema.fields[i];
+        const col = batch.getChildAt(i);
+        row[field.name] = col ? col.get(0) : null;
+      }
+
+      debugLog(
+        `[getFeatureProperties] (literal) id=${feature_id} rows=1`
+      );
+      return [row];
+    }
+
+    debugLog(
+      `[getFeatureProperties] (literal) id=${feature_id} rows=0`
     );
-    return rows;
+    return [];
   } finally {
     await conn.close();
   }
@@ -126,7 +163,7 @@ export async function loadVpuData(
   prefix,
   vpu_gpkg
 ) {
-  console.log("loadVpuData called with cacheKey:", cacheKey);
+  debugLog("loadVpuData called with cacheKey:", cacheKey);
 
   let buffer = await loadArrowFromCache(cacheKey);
   let fileSize;
@@ -157,14 +194,14 @@ export async function loadVpuData(
     if (!exists) {
       await conn.insertArrowTable(arrowTable, { name: cacheKey });
     } else {
-      console.log(
+      debugLog(
         `Table "${cacheKey}" already exists, skipping insertArrowTable.`
       );
     }
   } finally {
     await conn.close();
-    return fileSize;
   }
+  return fileSize;
 }
 
 export async function checkForTable(cacheKey) {
@@ -189,7 +226,7 @@ export async function deleteTable(tableName){
     await conn.query(`
       DROP TABLE IF EXISTS "${tableName}"
     `);
-    console.log(`Table ${tableName} has been deleted.`);
+    debugLog(`Table ${tableName} has been deleted.`);
   } finally {
     await conn.close();
   }
@@ -211,7 +248,7 @@ export async function dropAllVpuDataTables() {
     const rows = result.toArray();
 
     if (!rows.length) {
-      console.log('No VPU cache tables found to drop (excluding index_data_table).');
+      debugLog('No VPU cache tables found to drop (excluding index_data_table).');
       return;
     }
 
@@ -220,12 +257,12 @@ export async function dropAllVpuDataTables() {
       const name = row.table_name;
 
       const fullName = `"${schema}"."${name}"`;
-      console.log(`Dropping table ${fullName}...`);
+      debugLog(`Dropping table ${fullName}...`);
 
       await conn.query(`DROP TABLE IF EXISTS ${fullName}`);
     }
 
-    console.log('Finished dropping VPU cache tables (index_data_table preserved).');
+    debugLog('Finished dropping VPU cache tables (index_data_table preserved).');
   } finally {
     await conn.close();
   }
@@ -233,12 +270,13 @@ export async function dropAllVpuDataTables() {
 
 
 export async function getVariables({ cacheKey }) {
-  console.log("getVariables called with cacheKey:", cacheKey);
+  debugLog("getVariables called with cacheKey:", cacheKey);
 
   const conn = await getConnection();
 
   try {
-    const q = await conn.query(`
+    const cols = [];
+    const stream = await conn.send(`
       SELECT column_name
       FROM information_schema.columns
       WHERE table_name = '${cacheKey}'
@@ -247,30 +285,39 @@ export async function getVariables({ cacheKey }) {
         )
     `);
 
-    const rows = q.toArray();
-    const cols = rows.map((r) => r.column_name);
+    for await (const batch of stream) {
+      const names = batch.getChild('column_name');
+      if (!names) continue;
+      for (let i = 0; i < names.length; i++) {
+        cols.push(names.get(i));
+      }
+    }
+
     return cols;
   } finally {
     await conn.close();
   }
 }
 
-
-function rowsToObjects(q) {
-  // matches your pattern: q.toArray().map(Object.fromEntries)
-  return q.toArray().map(Object.fromEntries);
-}
-
 export async function getDistinctFeatureIds(cacheKey) {
   const conn = await getConnection();
   try {
-    const q = await conn.query(`
+    const featureIds = [];
+    const stream = await conn.send(`
       SELECT DISTINCT feature_id
       FROM "${cacheKey}"
       ORDER BY feature_id
     `);
-    const rows = rowsToObjects(q);
-    return rows.map((r) => r.feature_id);
+
+    for await (const batch of stream) {
+      const ids = batch.getChild('feature_id');
+      if (!ids) continue;
+      for (let i = 0; i < ids.length; i++) {
+        featureIds.push(ids.get(i));
+      }
+    }
+
+    return featureIds;
   } finally {
     await conn.close();
   }
@@ -279,13 +326,22 @@ export async function getDistinctFeatureIds(cacheKey) {
 export async function getDistinctTimes(cacheKey) {
   const conn = await getConnection();
   try {
-    const q = await conn.query(`
+    const times = [];
+    const stream = await conn.send(`
       SELECT DISTINCT time
       FROM "${cacheKey}"
       ORDER BY time
     `);
-    const rows = rowsToObjects(q);
-    return rows.map((r) => r.time);
+
+    for await (const batch of stream) {
+      const t = batch.getChild('time');
+      if (!t) continue;
+      for (let i = 0; i < t.length; i++) {
+        times.push(t.get(i));
+      }
+    }
+
+    return times;
   } finally {
     await conn.close();
   }
@@ -295,16 +351,41 @@ export async function getDistinctTimes(cacheKey) {
 export async function getVpuVariableFlat(cacheKey, variable) {
   const conn = await getConnection();
   try {
-    const q = await conn.query(`
+    const countResult = await conn.query(`
+      SELECT COUNT(*) AS n
+      FROM "${cacheKey}"
+    `);
+    const countCol = countResult.getChild('n');
+    const totalRows = Number(countCol?.get(0) ?? 0);
+    if (!Number.isFinite(totalRows) || totalRows <= 0) {
+      return new Float32Array();
+    }
+
+    const out = new Float32Array(totalRows);
+    let offset = 0;
+
+    const stream = await conn.send(`
       SELECT ${variable} AS v
       FROM "${cacheKey}"
       ORDER BY feature_id, time
     `);
-    const rows = rowsToObjects(q);
-    return Float32Array.from(rows.map((r) => Number(r.v)));
+
+    for await (const batch of stream) {
+      const values = batch.getChild('v');
+      if (!values) continue;
+      for (let i = 0; i < values.length; i++) {
+        out[offset++] = Number(values.get(i));
+      }
+    }
+
+    if (offset === out.length) return out;
+    // Defensive resize in case rows changed during stream.
+    const resized = new Float32Array(offset);
+    for (let i = 0; i < offset; i++) {
+      resized[i] = out[i];
+    }
+    return resized;
   } finally {
     await conn.close();
   }
 }
-
-

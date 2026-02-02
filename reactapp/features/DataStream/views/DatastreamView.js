@@ -6,7 +6,7 @@ import MainMenu from 'features/DataStream/components/menus/MainMenu';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
 import useTimeSeriesStore from '../store/Timeseries';
 import { useCacheTablesStore } from '../store/CacheTables';
-import { useVPUStore } from '../store/Layers';
+import { useVPUStore, useFeatureStore } from '../store/Layers';
 import useS3DataStreamBucketStore from 'features/DataStream/store/s3Store';
 import { initialS3Data, makePrefix, makeGpkgUrl } from 'features/DataStream/lib/s3Utils';
 import { getCacheKey } from 'features/DataStream/lib/opfsCache';
@@ -19,20 +19,13 @@ import { checkForTable,
   getVpuVariableFlat, 
   getVariables 
 } from 'features/DataStream/lib/queryData';
+import { terminateDatabase } from 'features/DataStream/lib/duckdbClient';
 import { makeTitle } from 'features/DataStream/lib/utils';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useShallow } from "zustand/react/shallow";
 
 function InitialS3Loader() {
-  // const { vpu, ensemble, setAllState } = useDataStreamStore(
-  //   useShallow((s) => ({
-  //     vpu: s.vpu,
-  //     ensemble: s.ensemble,
-  //     setAllState: s.setAllState,
-  //   }))
-  // );
-
-  const { vpu, ensemble } = useDataStreamStore(
+  const { vpu } = useDataStreamStore(
     useShallow((s) => ({
       vpu: s.vpu,
       ensemble: s.ensemble,
@@ -61,7 +54,7 @@ function InitialS3Loader() {
     async function fetchInitialData() {
       if (!vpu) return;
       try {
-        const { models, dates, forecasts, cycles, outputFiles } =
+        const { models, dates, forecasts, cycles, ensembles, outputFiles } =
           await initialS3Data(vpu, { signal: controller.signal });
 
         if (!alive) return; // <- prevents any setState after unmount/dep change
@@ -73,7 +66,7 @@ function InitialS3Loader() {
           dates[1]?.value,
           forecasts[0]?.value,
           cycles[0]?.value,
-          ensemble,
+          ensembles[0]?.value || null,
           vpu,
           outputFiles[0]?.value
         );
@@ -83,24 +76,15 @@ function InitialS3Loader() {
         set_cycle(cycles[0]?.value);
         set_outputFile(outputFiles[0]?.value);
         set_date(dates[1]?.value);
-        set_ensemble(ensemble);
+        set_ensemble(ensembles[0]?.value || null);
         set_cache_key(cacheKey);
-        // setAllState({
-        //   model: _models[0]?.value,
-        //   date: dates[1]?.value,
-        //   forecast: forecasts[0]?.value,
-        //   cycle: cycles[0]?.value,
-        //   ensemble: null,
-        //   outputFile: outputFiles[0]?.value,
-        //   cache_key: cacheKey,
-        // });
 
         const _prefix = makePrefix(
           _models[0]?.value,
           dates[1]?.value,
           forecasts[0]?.value,
           cycles[0]?.value,
-          ensemble,
+          ensembles[0]?.value || null,
           vpu,
           outputFiles[0]?.value
         );
@@ -115,12 +99,11 @@ function InitialS3Loader() {
         });
 
       } catch (error) {
-        // fetch abort throws DOMException with name AbortError
         if (error?.name === 'AbortError') return;
         console.error('Error fetching initial S3 data:', error);
       }
     }
-
+    
     fetchInitialData();
 
     return () => {
@@ -133,15 +116,21 @@ function InitialS3Loader() {
 }
 
 function TimeseriesLoader() {
-  const { cacheKey, outputFile, forecast, vpu, set_variables } = useDataStreamStore(
+  
+  const { cacheKey, forecast, vpu, set_variables } = useDataStreamStore(
     useShallow((s) => ({
       cacheKey: s.cache_key,
-      outputFile: s.outputFile,
       forecast: s.forecast,
       vpu: s.vpu,
       set_variables: s.set_variables,
     }))
   );
+  const { selected_feature_id } = useFeatureStore(
+    useShallow((s) => ({
+      selected_feature_id: s.selected_feature ? s.selected_feature._id : null,
+    }))
+  );
+
   const { add_cacheTable } = useCacheTablesStore(
     useShallow((s) => ({
       add_cacheTable: s.add_cacheTable,
@@ -152,90 +141,150 @@ function TimeseriesLoader() {
     useShallow((s) => ({ prefix: s.prefix }))
   );
 
-  const { feature_id, loading, variable, set_variable, set_loading_text, set_series, set_layout, set_loading } = useTimeSeriesStore(
+  const { feature_id, loading, variable, set_feature_id, set_variable, set_loading_text, set_series, set_layout, set_loading, reset_series, reset } = useTimeSeriesStore(
     useShallow((s) => ({ 
       feature_id: s.feature_id,
       loading: s.loading,
       variable: s.variable,
+      set_feature_id: s.set_feature_id,
       set_variable: s.set_variable,
       set_loading_text: s.set_loading_text,
       set_series: s.set_series,
       set_layout: s.set_layout,
       set_loading: s.set_loading,
+      reset_series: s.reset_series,
+      reset: s.reset,
     }))
   );
-  const { set_feature_ids, setVarData, setAnimationIndex } = useVPUStore(
+  const { set_feature_ids, setVarData, setAnimationIndex, resetVPU } = useVPUStore(
     useShallow((s) => ({
       set_feature_ids: s.set_feature_ids,
       setVarData: s.setVarData,
       setAnimationIndex: s.setAnimationIndex,
+      resetVPU: s.resetVPU,
     }))
   );
+  useEffect(() => {
+    let alive = true;
 
-  useEffect( () => {   
-   async function getData(){
-    if (!outputFile || loading || !feature_id ) return;
+    async function getTsData(){
+      if (!feature_id || loading ) return;
+      console.log('Loading timeseries for feature_id:', feature_id, 'variable:', variable, 'cacheKey:', cacheKey);
+      reset_series();
+      const id = feature_id.split('-')[1];
+      set_loading(true);
+      set_loading_text('Loading feature properties...');
+      let currentVariable = variable;
+      try {
+        const series = await getTimeseries(id, cacheKey, currentVariable);
+        if (!alive) return;
+
+        const xy = series.map((d) => ({
+          x: new Date(d.time),
+          y: d[currentVariable],
+        }));
+        set_loading_text(`Loaded ${xy.length} points for id: ${id}`);
+        set_series(xy);
+        set_layout({
+          yaxis: currentVariable,
+          xaxis: '',
+          title: makeTitle(forecast, feature_id),
+        });
+        set_loading_text('');
+      } 
+      catch (err) {
+          if (!alive) return;
+          set_loading_text(`Failed to load timeseries for id: ${feature_id}`);
+          console.error('Failed to load timeseries for', feature_id, err);
+      } finally {
+        if (!alive) return;
+        set_loading(false);
+      }
+   }
+    getTsData();
+
+    return () => {
+      alive = false;
+    };
+  }, [feature_id]);
+
+  useEffect( () => {
+   let alive = true;
+
+   async function getVPUData(){
+    if (!cacheKey || loading ) return;
+    console.log('Loading VPU data for cacheKey:', cacheKey);
+    reset();
+    resetVPU();
     const vpu_gpkg = makeGpkgUrl(vpu);
-    const id = feature_id.split('-')[1];
     set_loading(true);
     set_loading_text('Loading feature properties...');
     let currentVariable = variable;
     try {
       const tableExists = await checkForTable(cacheKey);
+      if (!alive) return;
+
       if (!tableExists) {
         try{
           const fileSize = await loadVpuData(cacheKey, prefix, vpu_gpkg);
+          if (!alive) return;
           add_cacheTable({id: cacheKey, name: cacheKey.replaceAll('_',' '), size: fileSize});
         }catch(err){
+          if (!alive) return;
           console.error('No data for VPU', vpu, err);
           set_loading_text('No data available for selected VPU');
-          set_loading(false);
-        }        
-        const featureIDs = await getFeatureIDs(cacheKey);
-        set_feature_ids(featureIDs);
-        const variables = await getVariables({ cacheKey });
-        set_variables(variables);
-        set_variable(variables[0]);
-        currentVariable = variables[0];
-        const [featureIds, times, flat] = await Promise.all([
-          getDistinctFeatureIds(cacheKey),
-          getDistinctTimes(cacheKey),
-          getVpuVariableFlat(cacheKey, currentVariable),
-        ]);
-        setAnimationIndex(featureIds, times);
-        setVarData(currentVariable, flat);
-     }
-      const series = await getTimeseries(id, cacheKey, currentVariable);
-      const xy = series.map((d) => ({
-        x: new Date(d.time),
-        y: d[currentVariable],
-      }));
-      set_loading_text(`Loaded ${xy.length} points for id: ${id}`);
-      set_series(xy);
-      set_layout({
-        yaxis: currentVariable,
-        xaxis: '',
-        title: makeTitle(forecast, feature_id),
-      });
-     set_loading_text('');
-      set_loading(false);
+          return;
+        }
+      }
+      const featureIDs = await getFeatureIDs(cacheKey);
+      if (!alive) return;
+      set_feature_ids(featureIDs);
+      const variables = await getVariables({ cacheKey });
+      if (!alive) return;
+      set_variables(variables);
+      set_variable(variables[0]);
+      currentVariable = variables[0];
+      const [featureIds, times, flat] = await Promise.all([
+        getDistinctFeatureIds(cacheKey),
+        getDistinctTimes(cacheKey),
+        getVpuVariableFlat(cacheKey, currentVariable),
+      ]);
+      if (!alive) return;
+      setAnimationIndex(featureIds, times);
+      setVarData(currentVariable, flat);
+      set_feature_id(selected_feature_id);
+
+      set_loading_text('');
     } 
     catch (err) {
-        set_loading_text(`Failed to load timeseries for id: ${id}`);
-        set_loading(false);
-        console.error('Failed to load timeseries for', id, err);
+        if (!alive) return;
+        set_loading_text(`Failed to load VPU data for cacheKey: ${cacheKey}`);
+        console.error('Failed to load VPU data for cacheKey:', cacheKey, err);
+    } finally {
+      if (!alive) return;
+      set_loading(false);
     }
    }
-   getData();
+   getVPUData();
 
-  }, [cacheKey, feature_id]);
-
+   return () => {
+    alive = false;
+   };
+  }, [cacheKey]);
 
   return null;
 }
 
 
 const DataStreamView = () => {
+  useEffect(() => {
+    return () => {
+      void terminateDatabase().catch((err) => {
+        console.warn('Failed to terminate DuckDB worker on DataStreamView unmount:', err);
+      });
+    };
+  }, []);
+
   return (
     <ViewContainer>
       <InitialS3Loader />

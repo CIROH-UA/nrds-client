@@ -8,6 +8,7 @@ import { getCacheKey } from 'features/DataStream/lib/opfsCache';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
 import useS3DataStreamBucketStore from 'features/DataStream/store/s3Store';
+import { useFeatureStore } from 'features/DataStream/store/Layers';
 import { useShallow } from 'zustand/react/shallow';
 import {
   ModelIcon,
@@ -89,9 +90,11 @@ const DataMenuControls = React.memo(function DataMenuControls() {
       set_cache_key: state.set_cache_key,
     }))
   );
-
-  const feature_id = useTimeSeriesStore((s) => s.feature_id);
-
+  const { selected_feature_id } = useFeatureStore(
+    useShallow((s) => ({
+      selected_feature_id: s.selected_feature ? s.selected_feature._id : null,
+    }))
+  );
   const {
     availableModelsList,
     availableDatesList,
@@ -130,7 +133,7 @@ const DataMenuControls = React.memo(function DataMenuControls() {
 
   const handleVisulization = useEvent(async () => {
     const { loading, set_loading_text } = useTimeSeriesStore.getState();
-    if (!feature_id || !vpu) {
+    if (!selected_feature_id || !vpu) {
       set_loading_text('Please select a feature on the map first');
       set_loading_text('');
       return;
@@ -145,11 +148,13 @@ const DataMenuControls = React.memo(function DataMenuControls() {
       set_loading_text('');
       return;
     }
-
+    // reset();
     const cacheKey = getCacheKey(model, date, forecast, cycle, ensemble, vpu, outputFile);
+    console.log('Generated cache key:', cacheKey);
     set_cache_key(cacheKey);
 
     const _prefix = makePrefix(model, date, forecast, cycle, ensemble, vpu, outputFile);
+    console.log('Generated S3 prefix:', _prefix);
     set_prefix(_prefix);
   });
 
