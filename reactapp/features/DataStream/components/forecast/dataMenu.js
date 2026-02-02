@@ -95,14 +95,6 @@ const DataMenuControls = React.memo(function DataMenuControls() {
       selected_feature_id: s.selected_feature ? s.selected_feature._id : null,
     }))
   );
-  const { reset } = useTimeSeriesStore(
-    useShallow((state) => ({
-      reset: state.reset,
-    }))
-  );
-
-
-
   const {
     availableModelsList,
     availableDatesList,
