@@ -29,29 +29,23 @@ function Loader({children}) {
         setError(nextError);
       });
     };
+    Promise.all([
+        tethysAPI.getAppData(APP_ID), 
+        tethysAPI.getUserData(),
+        tethysAPI.getJWTToken(),
+      ])
+      .then(([tethysApp, user, jwt]) => {
+        // Update app context
+        if (!active) return;
+        setAppContext({tethysApp, user, jwt});
 
-    // Get the session first
-    tethysAPI.getSession()
-      .then(() => {
-        // Then load all other app data
-        Promise.all([
-            tethysAPI.getAppData(APP_ID), 
-            tethysAPI.getUserData(), 
-            tethysAPI.getCSRF(),
-          ])
-          .then(([tethysApp, user, csrf]) => {
-            // Update app context
-            if (!active) return;
-            setAppContext({tethysApp, user, csrf});
-
-            // Allow for minimum delay to display loader
-            schedule(() => {
-              setIsLoaded(true)
-            });
-          })
-          .catch(handleError);
-      }).catch(handleError);
-
+        // Allow for minimum delay to display loader
+        schedule(() => {
+          setIsLoaded(true)
+        });
+      })
+      .catch(handleError);
+      
     return () => {
       active = false;
       timeoutIds.forEach((id) => clearTimeout(id));
