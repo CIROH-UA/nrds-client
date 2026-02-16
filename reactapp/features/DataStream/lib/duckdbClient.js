@@ -31,8 +31,14 @@ export function getDuckDB() {
 
 export async function getConnection() {
   const db = await getDuckDB();
-  return await db.connect();
+
+  // enable OPFS support once (safe to set repeatedly)
+  db.config.opfs = { fileHandling: "auto" };
+
+  const conn = await db.connect();
+  return { db, conn };
 }
+
 
 // OPTIONAL: wipe all DB state (tables, etc) but keep worker
 export async function resetDatabase() {

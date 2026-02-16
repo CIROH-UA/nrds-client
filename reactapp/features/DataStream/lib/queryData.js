@@ -1,9 +1,7 @@
 // // nexusTimeseries.js
-import { tableFromIPC } from "apache-arrow";
-import appAPI from "features/Tethys/services/api/app";
-import { saveArrowToCache, loadArrowFromCache } from "./opfsCache";
+import { statFromCache, saveDataToCache, createTableFromOPFS, formatBytes } from "./opfsCache";
+
 import { getConnection } from "./duckdbClient";
-import { getNCFiles } from "./s3Utils";
 
 const DEBUG = process.env.NODE_ENV !== "production";
 const debugLog = (...args) => {
@@ -11,19 +9,19 @@ const debugLog = (...args) => {
 };
 
 export async function getTimeseries(id, cacheKey, variable) {
-  const conn = await getConnection();
-  
+  const { conn } = await getConnection();
+  const tableName = cacheKey.split('.')[0]; 
   try {
     const rows = [];
     const stream = await conn.send(`
       SELECT time, ${variable}
-      FROM ${cacheKey}
+      FROM ${tableName}
       WHERE feature_id = ${id}
       ORDER BY time
     `);
     debugLog("Query executed:", `
       SELECT time, ${variable}
-      FROM ${cacheKey}
+      FROM ${tableName}
       WHERE feature_id = ${id}
       ORDER BY time
     `);
@@ -54,13 +52,13 @@ export async function getTimeseries(id, cacheKey, variable) {
 export async function getFeatureIDs(cacheKey) {
   debugLog("getFeatureIDs called with cacheKey:", cacheKey);
 
-  const conn = await getConnection();
-
+  const { conn } = await getConnection();
+  const tableName = cacheKey.split('.')[0];
   try {
     const featureIds = [];
     const stream = await conn.send(`
       SELECT feature_id
-      FROM "${cacheKey}"
+      FROM "${tableName}"
     `);
 
     for await (const batch of stream) {
@@ -84,7 +82,7 @@ export async function loadIndexData({ remoteUrl }) {
   const cacheKey = "index_data_table";
   debugLog("loadIndexData called with cacheKey:", cacheKey);
 
-  const conn = await getConnection();
+  const { conn } = await getConnection();
 
   try {
     const tableName = cacheKey.replace(/"/g, '""');
@@ -106,7 +104,8 @@ export async function loadIndexData({ remoteUrl }) {
 
     await conn.query("INSTALL httpfs; LOAD httpfs;");
     await conn.query("INSTALL parquet; LOAD parquet;");
-
+    await conn.query("SET enable_http_metadata_cache=true;");
+    
     await conn.query(`
       CREATE TABLE "${tableName}" AS
       SELECT * FROM read_parquet('${remoteUrl}')
@@ -122,12 +121,12 @@ export async function loadIndexData({ remoteUrl }) {
 export async function getFeatureProperties({ cacheKey, feature_id }) {
   debugLog("getFeature called with cacheKey:", cacheKey, "feature_id:", feature_id);
 
-  const conn = await getConnection();
-
+  const { conn } = await getConnection();
+  const tableName = cacheKey.split('.')[0];
   try {
     const stream = await conn.send(`
       SELECT *
-      FROM "${cacheKey}"
+      FROM "${tableName}"
       WHERE id = '${feature_id}'
       LIMIT 1
     `);
@@ -157,55 +156,35 @@ export async function getFeatureProperties({ cacheKey, feature_id }) {
   }
 }
 
-
 export async function loadVpuData(
   cacheKey,
   prefix,
-  vpu_gpkg
 ) {
   debugLog("loadVpuData called with cacheKey:", cacheKey);
 
-  let buffer = await loadArrowFromCache(cacheKey);
+  let meta = await statFromCache(cacheKey);
   let fileSize;
-  if (!buffer) {
-    const ncFile = getNCFiles(prefix);
-    const res = await appAPI.getParquetPerVpu({
-      ncFile,
-      vpu_gpkg,
-    });
-    buffer = res; // ArrayBuffer from axios
-    fileSize = await saveArrowToCache(cacheKey, buffer);
+
+  if (!meta) {
+    fileSize = await saveDataToCache(cacheKey, prefix);
+    meta = await statFromCache(cacheKey);
+    if (!meta) throw new Error(`Saved to cache but can't stat file: ${cacheKey}`);
+  } else {
+    fileSize = formatBytes(meta.sizeBytes);
   }
 
-  const arrowTable = tableFromIPC(new Uint8Array(buffer));
-  buffer = null; // this local reference can be cleared now
-
-  const conn = await getConnection();
-
+  const { db, conn } = await getConnection();
   try {
-    const existsResult = await conn.query(`
-      SELECT COUNT(*) AS cnt
-      FROM information_schema.tables
-      WHERE table_name = '${cacheKey}'
-    `);
-
-    const exists = existsResult.toArray()[0].cnt > 0;
-    
-    if (!exists) {
-      await conn.insertArrowTable(arrowTable, { name: cacheKey });
-    } else {
-      debugLog(
-        `Table "${cacheKey}" already exists, skipping insertArrowTable.`
-      );
-    }
+    await createTableFromOPFS({ db, conn, key: cacheKey, safeName: meta.safeName });
   } finally {
     await conn.close();
   }
+
   return fileSize;
 }
 
 export async function checkForTable(cacheKey) {
-  const conn = await getConnection(); 
+  const { db, conn } = await getConnection(); 
   try {
     const existsResult = await conn.query(`
       SELECT COUNT(*) AS cnt
@@ -221,7 +200,7 @@ export async function checkForTable(cacheKey) {
 }
 
 export async function deleteTable(tableName){
-  const conn = await getConnection();
+  const { db, conn } = await getConnection();
   try {
     await conn.query(`
       DROP TABLE IF EXISTS "${tableName}"
@@ -233,7 +212,7 @@ export async function deleteTable(tableName){
 }
 
 export async function dropAllVpuDataTables() {
-  const conn = await getConnection();
+  const { db, conn } = await getConnection();
 
   try {
     const result = await conn.query(`
@@ -272,7 +251,7 @@ export async function dropAllVpuDataTables() {
 export async function getVariables({ cacheKey }) {
   debugLog("getVariables called with cacheKey:", cacheKey);
 
-  const conn = await getConnection();
+  const { db, conn } = await getConnection();
 
   try {
     const cols = [];
@@ -300,7 +279,7 @@ export async function getVariables({ cacheKey }) {
 }
 
 export async function getDistinctFeatureIds(cacheKey) {
-  const conn = await getConnection();
+  const { db, conn } = await getConnection();
   try {
     const featureIds = [];
     const stream = await conn.send(`
@@ -324,7 +303,7 @@ export async function getDistinctFeatureIds(cacheKey) {
 }
 
 export async function getDistinctTimes(cacheKey) {
-  const conn = await getConnection();
+  const { db, conn } = await getConnection();
   try {
     const times = [];
     const stream = await conn.send(`
@@ -349,7 +328,7 @@ export async function getDistinctTimes(cacheKey) {
 
 // Returns a flattened array ordered by (feature_id, time)
 export async function getVpuVariableFlat(cacheKey, variable) {
-  const conn = await getConnection();
+  const { db, conn } = await getConnection();
   try {
     const countResult = await conn.query(`
       SELECT COUNT(*) AS n
