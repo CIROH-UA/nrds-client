@@ -1,7 +1,7 @@
 // // nexusTimeseries.js
-import { statFromCache, saveDataToCache, createTableFromOPFS, formatBytes, inspectCachedFile } from "./opfsCache";
+import { statFromCache, saveDataToCache, createTableFromOPFS, formatBytes } from "./opfsCache";
 
-import { getConnection, getDuckDB } from "./duckdbClient";
+import { getConnection } from "./duckdbClient";
 
 const DEBUG = process.env.NODE_ENV !== "production";
 const debugLog = (...args) => {
@@ -172,7 +172,6 @@ export async function loadVpuData(
   } else {
     fileSize = formatBytes(meta.sizeBytes);
   }
-  inspectCachedFile(cacheKey)
   const conn = await getConnection();
   try {
     await createTableFromOPFS({ conn, key: cacheKey, safeName: meta.safeName });

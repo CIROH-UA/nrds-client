@@ -169,7 +169,6 @@ function TimeseriesLoader() {
 
     async function getTsData(){
       if (!feature_id || loading ) return;
-      console.log('Loading timeseries for feature_id:', feature_id, 'variable:', variable, 'cacheKey:', cacheKey);
       reset_series();
       const id = feature_id.split('-')[1];
       set_loading(true);
@@ -213,7 +212,6 @@ function TimeseriesLoader() {
 
    async function getVPUData(){
     if (!cacheKey || loading ) return;
-    console.log('Loading VPU data for cacheKey:', cacheKey);
     reset();
     resetVPU();
     // const vpu_gpkg = makeGpkgUrl(vpu);
@@ -238,11 +236,9 @@ function TimeseriesLoader() {
         }
       }
       const featureIDs = await getFeatureIDs(cacheKey);
-      console.log('Feature IDs loaded for cacheKey:', cacheKey, 'Count:', featureIDs.length);
       if (!alive) return;
       set_feature_ids(featureIDs);
       const variables = await getVariables({ cacheKey });
-      console.log('Variables loaded for cacheKey:', cacheKey, 'Variables:', variables);
       if (!alive) return;
       set_variables(variables);
       set_variable(variables[0]);

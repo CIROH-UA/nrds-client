@@ -119,7 +119,6 @@ const MainMap = () => {
 
   const deckLayers = useMemo(() => {
     if (!isFlowPathsVisible) return EMPTY_LAYERS;
-    // console.log('Rendering flow paths layer');
     const varData = valuesByVar;
     const numTimes = timesArr?.length || 0;
 

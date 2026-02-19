@@ -76,7 +76,6 @@ async function cacheParquetToOPFS(url, writable) {
     // Stream to disk; avoids loading the entire file in memory
     if (!res.body) {
       const buf = await res.arrayBuffer();
-      console.log(buf)
       await writable.write(new Uint8Array(buf));
       await writable.close();
     } else {
@@ -110,7 +109,6 @@ export async function saveDataToCache(key, url) {
   const safeName = encodeURIComponent(key);
   const fileHandle = await dir.getFileHandle(safeName, { create: true });
   const writable = await fileHandle.createWritable();
-  console.log(`Saving to cache with key: ${key}, url: ${url}`);
   if (isArrowFile(key)) {
     await saveArrowToCache(url, writable);
   } else {
@@ -123,29 +121,6 @@ function ascii4(u8) {
   return String.fromCharCode(...u8);
 }
 
-export async function inspectCachedFile(key) {
-  const dir = await getCacheDir();
-  const safeName = encodeURIComponent(key);
-  const fh = await dir.getFileHandle(safeName);
-  const file = await fh.getFile();
-
-  const head = new Uint8Array(await file.slice(0, 4).arrayBuffer());
-  const tail = new Uint8Array(await file.slice(Math.max(0, file.size - 4)).arrayBuffer());
-
-  console.log("OPFS file:", {
-    key,
-    safeName,
-    size: file.size,
-    headBytes: [...head],
-    headAscii: ascii4(head),
-    tailBytes: [...tail],
-    tailAscii: ascii4(tail),
-  });
-
-  // Optional: peek text (helpful if it’s an error page)
-  const preview = await file.slice(0, 200).text().catch(() => "");
-  console.log("Preview (first 200 chars):", preview);
-}
 
 export async function loadFromCache(key) {
   const dir = await getCacheDir();

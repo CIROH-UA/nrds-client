@@ -7,15 +7,13 @@ export const CacheTable = React.memo(({ tables }) => {
   const deleteCacheTable = useCacheTablesStore((state) => state.delete_cacheTable);
   const resetCacheTables = useCacheTablesStore((state) => state.reset);
 
-  // ✅ local loading state
   const [deletingAll, setDeletingAll] = useState(false);
   const [deletingId, setDeletingId] = useState(null); // table id currently deleting
 
   const deleteSingleCache = useCallback(
     async (tableId) => {
       if (deletingAll || deletingId) return; // avoid concurrent deletes
-      console.log("Delete cache table:", tableId);
-      setDeletingId(tableId);
+       setDeletingId(tableId);
       try {
         await deleteCacheTable(tableId);
       } finally {
@@ -27,7 +25,6 @@ export const CacheTable = React.memo(({ tables }) => {
 
   const deleteAllCache = useCallback(async () => {
     if (deletingAll || deletingId) return;
-    console.log("Delete all cache tables");
     setDeletingAll(true);
     try {
       await resetCacheTables();

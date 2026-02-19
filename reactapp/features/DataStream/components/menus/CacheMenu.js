@@ -12,7 +12,6 @@ export const CacheMenu = () => {
   useEffect(() => {
     const fetchCacheTables = async () => {
         const files = await getFilesFromCache()
-        console.log("Fetched cache tables:", files);
         set_cacheTables(files);
     };
     fetchCacheTables();
