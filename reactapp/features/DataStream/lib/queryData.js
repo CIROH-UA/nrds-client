@@ -1,7 +1,7 @@
 // // nexusTimeseries.js
-import { statFromCache, saveDataToCache, createTableFromOPFS, formatBytes } from "./opfsCache";
+import { statFromCache, saveDataToCache, createTableFromOPFS, formatBytes, inspectCachedFile } from "./opfsCache";
 
-import { getConnection } from "./duckdbClient";
+import { getConnection, getDuckDB } from "./duckdbClient";
 
 const DEBUG = process.env.NODE_ENV !== "production";
 const debugLog = (...args) => {
@@ -9,7 +9,7 @@ const debugLog = (...args) => {
 };
 
 export async function getTimeseries(id, cacheKey, variable) {
-  const { conn } = await getConnection();
+  const conn = await getConnection();
   const tableName = cacheKey.split('.')[0]; 
   try {
     const rows = [];
@@ -52,7 +52,7 @@ export async function getTimeseries(id, cacheKey, variable) {
 export async function getFeatureIDs(cacheKey) {
   debugLog("getFeatureIDs called with cacheKey:", cacheKey);
 
-  const { conn } = await getConnection();
+  const conn = await getConnection();
   const tableName = cacheKey.split('.')[0];
   try {
     const featureIds = [];
@@ -82,7 +82,7 @@ export async function loadIndexData({ remoteUrl }) {
   const cacheKey = "index_data_table";
   debugLog("loadIndexData called with cacheKey:", cacheKey);
 
-  const { conn } = await getConnection();
+  const conn = await getConnection();
 
   try {
     const tableName = cacheKey.replace(/"/g, '""');
@@ -121,7 +121,7 @@ export async function loadIndexData({ remoteUrl }) {
 export async function getFeatureProperties({ cacheKey, feature_id }) {
   debugLog("getFeature called with cacheKey:", cacheKey, "feature_id:", feature_id);
 
-  const { conn } = await getConnection();
+  const conn = await getConnection();
   const tableName = cacheKey.split('.')[0];
   try {
     const stream = await conn.send(`
@@ -160,7 +160,7 @@ export async function loadVpuData(
   cacheKey,
   prefix,
 ) {
-  debugLog("loadVpuData called with cacheKey:", cacheKey);
+  debugLog("loadVpuData called with cacheKey:", cacheKey, "prefix:", prefix);
 
   let meta = await statFromCache(cacheKey);
   let fileSize;
@@ -172,10 +172,10 @@ export async function loadVpuData(
   } else {
     fileSize = formatBytes(meta.sizeBytes);
   }
-
-  const { db, conn } = await getConnection();
+  inspectCachedFile(cacheKey)
+  const conn = await getConnection();
   try {
-    await createTableFromOPFS({ db, conn, key: cacheKey, safeName: meta.safeName });
+    await createTableFromOPFS({ conn, key: cacheKey, safeName: meta.safeName });
   } finally {
     await conn.close();
   }
@@ -184,7 +184,7 @@ export async function loadVpuData(
 }
 
 export async function checkForTable(cacheKey) {
-  const { db, conn } = await getConnection(); 
+  const conn = await getConnection(); 
   try {
     const existsResult = await conn.query(`
       SELECT COUNT(*) AS cnt
@@ -200,7 +200,7 @@ export async function checkForTable(cacheKey) {
 }
 
 export async function deleteTable(tableName){
-  const { db, conn } = await getConnection();
+  const conn = await getConnection();
   try {
     await conn.query(`
       DROP TABLE IF EXISTS "${tableName}"
@@ -212,7 +212,7 @@ export async function deleteTable(tableName){
 }
 
 export async function dropAllVpuDataTables() {
-  const { db, conn } = await getConnection();
+  const conn = await getConnection();
 
   try {
     const result = await conn.query(`
@@ -250,15 +250,15 @@ export async function dropAllVpuDataTables() {
 
 export async function getVariables({ cacheKey }) {
   debugLog("getVariables called with cacheKey:", cacheKey);
-
-  const { db, conn } = await getConnection();
+  const conn = await getConnection();
+  const tableName = cacheKey.split('.')[0];
 
   try {
     const cols = [];
     const stream = await conn.send(`
       SELECT column_name
       FROM information_schema.columns
-      WHERE table_name = '${cacheKey}'
+      WHERE table_name = '${tableName}'
         AND column_name NOT IN (
           'ngen_id', 'usgs_id', 'nwm_id', 'feature_id', 'time', 'type'
         )
@@ -279,15 +279,22 @@ export async function getVariables({ cacheKey }) {
 }
 
 export async function getDistinctFeatureIds(cacheKey) {
-  const { db, conn } = await getConnection();
+  const conn  = await getConnection();
+  const tableName = cacheKey.split('.')[0];
   try {
     const featureIds = [];
-    const stream = await conn.send(`
+    debugLog(`Getting distinct feature_ids from table "${tableName}"...`);
+    debugLog(`
       SELECT DISTINCT feature_id
-      FROM "${cacheKey}"
+      FROM "${tableName}"
       ORDER BY feature_id
     `);
-
+    const stream = await conn.send(`
+      SELECT DISTINCT feature_id
+      FROM "${tableName}"
+      ORDER BY feature_id
+    `);
+    
     for await (const batch of stream) {
       const ids = batch.getChild('feature_id');
       if (!ids) continue;
@@ -303,12 +310,19 @@ export async function getDistinctFeatureIds(cacheKey) {
 }
 
 export async function getDistinctTimes(cacheKey) {
-  const { db, conn } = await getConnection();
+  const conn = await getConnection();
+  const tableName = cacheKey.split('.')[0];
   try {
     const times = [];
+    debugLog(`Getting distinct times from table "${cacheKey}"...`);
+    debugLog(`
+      SELECT DISTINCT time
+      FROM "${tableName}"
+      ORDER BY time
+    `);
     const stream = await conn.send(`
       SELECT DISTINCT time
-      FROM "${cacheKey}"
+      FROM "${tableName}"
       ORDER BY time
     `);
 
@@ -328,11 +342,18 @@ export async function getDistinctTimes(cacheKey) {
 
 // Returns a flattened array ordered by (feature_id, time)
 export async function getVpuVariableFlat(cacheKey, variable) {
-  const { db, conn } = await getConnection();
+  const conn = await getConnection();
+  const tableName = cacheKey.split('.')[0];
   try {
+    debugLog(`Getting variable "${variable}" data from table "${tableName}"...`);
+    debugLog(`
+      SELECT ${variable} AS v
+      FROM "${tableName}"
+      ORDER BY feature_id, time
+    `);
     const countResult = await conn.query(`
       SELECT COUNT(*) AS n
-      FROM "${cacheKey}"
+      FROM "${tableName}"
     `);
     const countCol = countResult.getChild('n');
     const totalRows = Number(countCol?.get(0) ?? 0);
@@ -345,7 +366,7 @@ export async function getVpuVariableFlat(cacheKey, variable) {
 
     const stream = await conn.send(`
       SELECT ${variable} AS v
-      FROM "${cacheKey}"
+      FROM "${tableName}"
       ORDER BY feature_id, time
     `);
 

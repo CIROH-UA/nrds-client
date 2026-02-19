@@ -216,7 +216,7 @@ function TimeseriesLoader() {
     console.log('Loading VPU data for cacheKey:', cacheKey);
     reset();
     resetVPU();
-    const vpu_gpkg = makeGpkgUrl(vpu);
+    // const vpu_gpkg = makeGpkgUrl(vpu);
     set_loading(true);
     set_loading_text('Loading feature properties...');
     let currentVariable = variable;
@@ -226,7 +226,8 @@ function TimeseriesLoader() {
 
       if (!tableExists) {
         try{
-          const fileSize = await loadVpuData(cacheKey, prefix, vpu_gpkg);
+          // const fileSize = await loadVpuData(cacheKey, prefix, vpu_gpkg);
+          const fileSize = await loadVpuData(cacheKey, prefix);
           if (!alive) return;
           add_cacheTable({id: cacheKey, name: cacheKey.replaceAll('_',' '), size: fileSize});
         }catch(err){
@@ -237,9 +238,11 @@ function TimeseriesLoader() {
         }
       }
       const featureIDs = await getFeatureIDs(cacheKey);
+      console.log('Feature IDs loaded for cacheKey:', cacheKey, 'Count:', featureIDs.length);
       if (!alive) return;
       set_feature_ids(featureIDs);
       const variables = await getVariables({ cacheKey });
+      console.log('Variables loaded for cacheKey:', cacheKey, 'Variables:', variables);
       if (!alive) return;
       set_variables(variables);
       set_variable(variables[0]);

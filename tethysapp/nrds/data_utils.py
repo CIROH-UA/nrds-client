@@ -219,7 +219,7 @@ def convert_nc_2_df(s3_nc_url: str) -> pd.DataFrame:
     # )
     # usgs_nwm_xwalk_df = get_usgs_nwm_xwalk_df()
     # complete_df = merge_usgs_nwm30_crosswalk_nc(df,ngen_usgs_gages,usgs_nwm_xwalk_df)
-    usgs_nwm_xwalk_df = get_usgs_nwm_xwalk_df()
-    complete_df = merge_usgs_nwm30_crosswalk_nc(df,usgs_nwm_xwalk_df)
-    return complete_df
+    # usgs_nwm_xwalk_df = get_usgs_nwm_xwalk_df()
+    # complete_df = merge_usgs_nwm30_crosswalk_nc(df,usgs_nwm_xwalk_df)
+    return df
 

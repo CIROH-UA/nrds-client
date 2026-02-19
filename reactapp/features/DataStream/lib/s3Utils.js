@@ -62,7 +62,7 @@ export async function getOptionsFromURL(url, { signal } = {}) {
   try{
     if (url.split('/').includes('troute')){
       const files = await listPublicS3Files(url, { signal });
-      const ncFiles = files.filter(f => f.endsWith('.nc'));
+      const ncFiles = files.filter(f => f.endsWith('.nc') || f.endsWith('.parquet'));
       // const ncFilesParsed = ncFiles.map(f => `s3://ciroh-community-ngen-datastream/${f}`);
       const options = ncFiles.map((d) => ({ value: d.split('/').pop(), label: d.split('/').pop() }));
       const sortedOptions = Array.from(options).sort().reverse();
@@ -97,6 +97,7 @@ export const makeGpkgUrl = (vpu) => {
 
 export const initialS3Data = async(vpu, { signal } = {}) => {
   try{
+    console.log("Fetching initial S3 data with vpu:", vpu);
     let _models = await getOptionsFromURL(`outputs`, { signal });
     if (_models.length === 0){
       return {models: [], dates: [], forecasts: [], cycles: [], ensembles: [], outputFiles: []};
@@ -118,6 +119,7 @@ export const initialS3Data = async(vpu, { signal } = {}) => {
       return {models, dates, forecasts, cycles, ensembles:[], outputFiles: []};
     }
     const outputFiles = await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${dates[1]?.value}/${forecasts[0]?.value}/${cycles[0]?.value}/${vpu}/ngen-run/outputs/troute/`, { signal });
+    console.log("Fetched output files:", outputFiles);
     return {models, dates, forecasts, cycles, ensembles:[], outputFiles};
   }catch(error){
     throw error;

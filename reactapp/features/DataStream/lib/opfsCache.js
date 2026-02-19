@@ -1,8 +1,10 @@
 import appAPI from "features/Tethys/services/api/app";
 import { tableFromIPC  } from "apache-arrow";
 import { getNCFiles } from "./s3Utils";
+import { DuckDBDataProtocol } from "@duckdb/duckdb-wasm";
 
 
+const BUCKET_NAME = "ciroh-community-ngen-datastream";
 const CACHE_DIR = "nrds-arrow-cache";
 let cacheDirPromise = null;
 
@@ -68,16 +70,19 @@ async function saveArrowToCache(url, writable) {
 
 async function cacheParquetToOPFS(url, writable) {
   try {
-    const res = await fetch(url, { cache: "no-store" });
+    const PARQUETURL=`https://ciroh-community-ngen-datastream.s3.us-east-1.amazonaws.com/${url}`;
+    const res = await fetch(PARQUETURL, { cache: "no-store" });
     if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
 
     // Stream to disk; avoids loading the entire file in memory
     if (!res.body) {
       const buf = await res.arrayBuffer();
+      console.log(buf)
       await writable.write(new Uint8Array(buf));
       await writable.close();
     } else {
       // WritableStream from OPFS supports pipeTo in modern browsers
+
       await res.body.pipeTo(writable);
       // pipeTo closes the destination by default
     }
@@ -106,6 +111,7 @@ export async function saveDataToCache(key, url) {
   const safeName = encodeURIComponent(key);
   const fileHandle = await dir.getFileHandle(safeName, { create: true });
   const writable = await fileHandle.createWritable();
+  console.log(`Saving to cache with key: ${key}, url: ${url}`);
   if (isArrowFile(key)) {
     await saveArrowToCache(url, writable);
   } else {
@@ -114,7 +120,33 @@ export async function saveDataToCache(key, url) {
   const file = await fileHandle.getFile();
   return formatBytes(file.size);
 }
+function ascii4(u8) {
+  return String.fromCharCode(...u8);
+}
 
+export async function inspectCachedFile(key) {
+  const dir = await getCacheDir();
+  const safeName = encodeURIComponent(key);
+  const fh = await dir.getFileHandle(safeName);
+  const file = await fh.getFile();
+
+  const head = new Uint8Array(await file.slice(0, 4).arrayBuffer());
+  const tail = new Uint8Array(await file.slice(Math.max(0, file.size - 4)).arrayBuffer());
+
+  console.log("OPFS file:", {
+    key,
+    safeName,
+    size: file.size,
+    headBytes: [...head],
+    headAscii: ascii4(head),
+    tailBytes: [...tail],
+    tailAscii: ascii4(tail),
+  });
+
+  // Optional: peek text (helpful if it’s an error page)
+  const preview = await file.slice(0, 200).text().catch(() => "");
+  console.log("Preview (first 200 chars):", preview);
+}
 
 export async function loadFromCache(key) {
   const dir = await getCacheDir();
@@ -142,19 +174,40 @@ async function doesTableExist(conn, tableName) {
   return res.toArray().length > 0;
 }
 
-async function createTableFromOPFSParquet({ db, conn, key }) {
-  db.config.opfs = { fileHandling: "auto" };
+// async function createTableFromOPFSParquet({ db, conn, key }) {
+//   const safeName = encodeURIComponent(key);
+//   const fileUrl = `opfs://${CACHE_DIR}/${safeName}`;
+//   const tableName = key.replace(/\.parquet$/i, "");
 
+//   await conn.query(`
+//     CREATE TABLE ${sqlIdent(tableName)} AS
+//     SELECT * FROM read_parquet(${sqlStr(fileUrl)});
+//   `);
+// }
+async function createTableFromOPFSParquet({ conn, key }) {
+  // 1) Get the OPFS file handle from your cache directory
+  const cacheDir = await getCacheDir();
   const safeName = encodeURIComponent(key);
-  const fileUrl = `opfs://${CACHE_DIR}/${safeName}`;
-  const tableName = key.replace(/\.parquet$/i, "");
+  const fileHandle = await cacheDir.getFileHandle(safeName);
 
+  // 2) Register it in DuckDB under some virtual path/name
+  const duckPath = `${CACHE_DIR}/${safeName}`; // can be any string you like
+  const bindings = conn.bindings; // This is the AsyncDuckDB instance
+
+  await bindings.registerFileHandle(
+    duckPath,
+    fileHandle,
+    DuckDBDataProtocol.BROWSER_FSACCESS,
+    true
+  );
+
+  // 3) Create table from that registered file name
+  const tableName = tableNameForKey(key);
   await conn.query(`
     CREATE TABLE ${sqlIdent(tableName)} AS
-    SELECT * FROM read_parquet(${sqlStr(fileUrl)});
+    SELECT * FROM read_parquet(${sqlStr(duckPath)});
   `);
 }
-
 async function createTableFromOPFSArrow({ conn, key }) {
   const buffer = await loadFromCache(key);
   if (!buffer) throw new Error(`Arrow cache missing after save: ${key}`);
@@ -165,7 +218,7 @@ async function createTableFromOPFSArrow({ conn, key }) {
   await conn.insertArrowTable(arrowTable, { name: tableName });
 }
 
-export async function createTableFromOPFS({ db, conn, key, safeName }) {
+export async function createTableFromOPFS({ conn, key, safeName }) {
   const tableName = tableNameForKey(key);
 
   if (await doesTableExist(conn, tableName)) {
@@ -177,7 +230,7 @@ export async function createTableFromOPFS({ db, conn, key, safeName }) {
     return createTableFromOPFSArrow({ conn, key });
   }
   if (isParquetFile(key)) {
-    return createTableFromOPFSParquet({ db, conn, key, safeName });
+    return createTableFromOPFSParquet({ conn, key, safeName });
   }
 
   throw new Error(`Unsupported file type for key: ${key}`);
@@ -193,7 +246,11 @@ export async function getFilesFromCache() {
   for await (const handle of dir.values()) {
     if (handle.kind !== "file") continue;
     const file = await handle.getFile();
-    const id = decodeURIComponent(file.name.replace(".arrow", "") || file.name.replace(".parquet", ""));
+    // const id = decodeURIComponent(file.name.replace(".arrow", "") || file.name.replace(".parquet", ""));
+    const id = decodeURIComponent(
+      file.name.replace(/\.arrow$/i, "").replace(/\.parquet$/i, "")
+    );
+
     files.push({id: id, name: id.replaceAll("_", "/"), size: formatBytes(file.size)});
   }
   return files;
