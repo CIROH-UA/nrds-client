@@ -4,7 +4,6 @@ import { getNCFiles } from "./s3Utils";
 import { DuckDBDataProtocol } from "@duckdb/duckdb-wasm";
 
 
-const BUCKET_NAME = "ciroh-community-ngen-datastream";
 const CACHE_DIR = "nrds-arrow-cache";
 let cacheDirPromise = null;
 
@@ -246,11 +245,7 @@ export async function getFilesFromCache() {
   for await (const handle of dir.values()) {
     if (handle.kind !== "file") continue;
     const file = await handle.getFile();
-    // const id = decodeURIComponent(file.name.replace(".arrow", "") || file.name.replace(".parquet", ""));
-    const id = decodeURIComponent(
-      file.name.replace(/\.arrow$/i, "").replace(/\.parquet$/i, "")
-    );
-
+    const id = decodeURIComponent(file.name);
     files.push({id: id, name: id.replaceAll("_", "/"), size: formatBytes(file.size)});
   }
   return files;
