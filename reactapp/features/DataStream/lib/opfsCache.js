@@ -4,7 +4,7 @@ import { getNCFiles } from "./s3Utils";
 import { DuckDBDataProtocol } from "@duckdb/duckdb-wasm";
 
 
-const CACHE_DIR = "nrds-arrow-cache";
+const CACHE_DIR = "nrds-cache";
 let cacheDirPromise = null;
 
 export function formatBytes(bytes, decimals = 2) {
