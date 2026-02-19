@@ -150,11 +150,9 @@ const DataMenuControls = React.memo(function DataMenuControls() {
     }
     // reset();
     const cacheKey = getCacheKey(model, date, forecast, cycle, ensemble, vpu, outputFile);
-    console.log('Generated cache key:', cacheKey);
     set_cache_key(cacheKey);
 
     const _prefix = makePrefix(model, date, forecast, cycle, ensemble, vpu, outputFile);
-    console.log('Generated S3 prefix:', _prefix);
     set_prefix(_prefix);
   });
 

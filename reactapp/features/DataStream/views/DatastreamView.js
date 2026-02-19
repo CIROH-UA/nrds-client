@@ -169,7 +169,6 @@ function TimeseriesLoader() {
 
     async function getTsData(){
       if (!feature_id || loading ) return;
-      console.log('Loading timeseries for feature_id:', feature_id, 'variable:', variable, 'cacheKey:', cacheKey);
       reset_series();
       const id = feature_id.split('-')[1];
       set_loading(true);
@@ -213,10 +212,9 @@ function TimeseriesLoader() {
 
    async function getVPUData(){
     if (!cacheKey || loading ) return;
-    console.log('Loading VPU data for cacheKey:', cacheKey);
     reset();
     resetVPU();
-    const vpu_gpkg = makeGpkgUrl(vpu);
+    // const vpu_gpkg = makeGpkgUrl(vpu);
     set_loading(true);
     set_loading_text('Loading feature properties...');
     let currentVariable = variable;
@@ -226,7 +224,8 @@ function TimeseriesLoader() {
 
       if (!tableExists) {
         try{
-          const fileSize = await loadVpuData(cacheKey, prefix, vpu_gpkg);
+          // const fileSize = await loadVpuData(cacheKey, prefix, vpu_gpkg);
+          const fileSize = await loadVpuData(cacheKey, prefix);
           if (!alive) return;
           add_cacheTable({id: cacheKey, name: cacheKey.replaceAll('_',' '), size: fileSize});
         }catch(err){

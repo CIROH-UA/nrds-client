@@ -1,7 +1,6 @@
 import * as duckdb from "@duckdb/duckdb-wasm";
 
 let dbPromise = null;
-
 export function getDuckDB() {
   if (!dbPromise) {
     dbPromise = (async () => {
@@ -19,6 +18,11 @@ export function getDuckDB() {
       const db = new duckdb.AsyncDuckDB(logger, worker);
 
       await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+      
+      await db.open({
+        accessMode: duckdb.DuckDBAccessMode.READ_WRITE,
+        opfs: { fileHandling: "auto" },
+      });
 
       // Optional cleanup
       URL.revokeObjectURL(workerUrl);
@@ -31,8 +35,10 @@ export function getDuckDB() {
 
 export async function getConnection() {
   const db = await getDuckDB();
-  return await db.connect();
+  const conn = await db.connect();
+  return conn;
 }
+
 
 // OPTIONAL: wipe all DB state (tables, etc) but keep worker
 export async function resetDatabase() {

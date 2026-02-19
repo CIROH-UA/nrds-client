@@ -205,27 +205,8 @@ def get_usgs_nwm_xwalk_df() -> pd.DataFrame:
     return usgs_nwm_xwalk_df
 
 
-def convert_nc_2_df(s3_nc_url: str, s3_gpkg_url: str) -> pd.DataFrame:
+def convert_nc_2_df(s3_nc_url: str) -> pd.DataFrame:
     """Convert NetCDF files to Parquet format."""
-    
     df = get_troute_df(s3_nc_url)
-    ngen_usgs_gages = get_gages_from_hydrofabric_remote(
-        s3_gpkg_url,
-        anon=True,
-    )
-    usgs_nwm_xwalk_df = get_usgs_nwm_xwalk_df()
-    complete_df = merge_usgs_nwm30_crosswalk_nc(df,ngen_usgs_gages,usgs_nwm_xwalk_df)
-    return complete_df
-
-def convert_df_2_bytes(df: pd.DataFrame) -> bytes:
-    """Convert NetCDF files to Parquet format."""
-    
-    table = pa.Table.from_pandas(df)
-    buf = io.BytesIO()
-    with pa.ipc.new_stream(buf, table.schema) as writer:
-        writer.write_table(table)
-
-    buf.seek(0)
-    return buf.read()
-
+    return df
 

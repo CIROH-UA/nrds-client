@@ -62,7 +62,7 @@ export async function getOptionsFromURL(url, { signal } = {}) {
   try{
     if (url.split('/').includes('troute')){
       const files = await listPublicS3Files(url, { signal });
-      const ncFiles = files.filter(f => f.endsWith('.nc'));
+      const ncFiles = files.filter(f => f.endsWith('.nc') || f.endsWith('.parquet'));
       // const ncFilesParsed = ncFiles.map(f => `s3://ciroh-community-ngen-datastream/${f}`);
       const options = ncFiles.map((d) => ({ value: d.split('/').pop(), label: d.split('/').pop() }));
       const sortedOptions = Array.from(options).sort().reverse();

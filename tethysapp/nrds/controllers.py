@@ -29,16 +29,13 @@ def home(request):
 
 
 @controller
-def getParquetPerVpu(request):
+def getArrowPerVpu(request):
     print("Getting parquet file per vpu...")
     
     file_prefix =  json.loads(request.body.decode("utf-8"))['ncFile']
-    vpu_gpkg = json.loads(request.body.decode("utf-8"))['vpu_gpkg']
     print("file_prefix", file_prefix)
-    print("vpu_gpkg", vpu_gpkg)
     complete_df = convert_nc_2_df(
         s3_nc_url=file_prefix,
-        s3_gpkg_url=vpu_gpkg,
     )
     table = pa.Table.from_pandas(complete_df)
 
