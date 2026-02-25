@@ -117,8 +117,9 @@ function InitialS3Loader() {
 
 function TimeseriesLoader() {
   
-  const { cacheKey, forecast, vpu, set_variables } = useDataStreamStore(
+  const { variables,cacheKey, forecast, vpu, set_variables } = useDataStreamStore(
     useShallow((s) => ({
+      variables: s.variables,
       cacheKey: s.cache_key,
       forecast: s.forecast,
       vpu: s.vpu,
@@ -168,12 +169,13 @@ function TimeseriesLoader() {
     let alive = true;
 
     async function getTsData(){
+
       if (!feature_id || loading ) return;
       reset_series();
       const id = feature_id.split('-')[1];
       set_loading(true);
       set_loading_text('Loading feature properties...');
-      let currentVariable = variable;
+      let currentVariable = !variable ? variables[0] : variable;
       try {
         const series = await getTimeseries(id, cacheKey, currentVariable);
         if (!alive) return;

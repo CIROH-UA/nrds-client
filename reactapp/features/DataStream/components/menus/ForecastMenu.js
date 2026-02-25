@@ -11,18 +11,14 @@ import { TimeSlider } from '../forecast/TimeSlider';
 import { useShallow } from 'zustand/react/shallow';
 
 const ForecastMenu = () => {
-  const { layout, reset } = useTimeSeriesStore(
+  const { layout, reset, feature_id } = useTimeSeriesStore(
     useShallow((state) => ({
       feature_id: state.feature_id,
       layout: state.layout,
       reset: state.reset,
     }))
   );
-  const { feature_id } = useFeatureStore(
-    useShallow((state) => ({
-      feature_id: state.selected_feature ? state.selected_feature._id : null,
-    }))
-  );
+
   
   const { resetVPU } = useVPUStore(
     useShallow((state) => ({
@@ -31,6 +27,7 @@ const ForecastMenu = () => {
   );
 
   const isopen = useMemo(() => {
+      console.log("ForecastMenu isopen computed with feature_id:", feature_id);
       return feature_id != null;
   }, [feature_id]);
 
