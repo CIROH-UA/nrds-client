@@ -31,7 +31,7 @@ services:
   provision:
     build:
       context: .
-      dockerfile: Dockerfile.uvx
+      dockerfile: Dockerfile
     image: nrds-uvx:local
     # tethys-uvx publishes linux/amd64 ONLY. That matches the t3.medium EC2 instances, but
     # means an Apple Silicon dev box builds/runs this emulated -- and that our CI can no

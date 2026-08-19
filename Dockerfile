@@ -33,19 +33,23 @@ RUN mv reactapp/config/development.env reactapp/config/production.env \
   && sed -i "s#TETHYS_APP_ROOT_URL.*#TETHYS_APP_ROOT_URL = ${TETHYS_APP_ROOT_URL}#g" reactapp/config/production.env \
   && npm run build
 
-# Install the app (frontend bundle included via package-data) plus:
-#   django-analytical - not in the base image; required to render the GA tag
-#   urllib3>=2        - overrides the base's urllib3<2 pin (keeps our CVE fix)
-# constraints.txt holds pandas<3 (pandas 3.x is untested against controllers/data_utils).
-# setuptools-scm reads the version from .git, which is owned by another uid in the build context.
+# to fix grype scan error
 RUN git config --global --add safe.directory '*' \
-  && uv pip install --no-cache -c conf/constraints.txt . django-analytical "urllib3>=2" \
+  && uv pip install --no-cache -c conf/constraints.txt . django-analytical \
+       "urllib3>=2" "cryptography>=50" "sqlparse>=0.6" \
   && chmod -R a+rX /opt/conda
 
 ###############################################################################
 # runtime - slim base + the app-augmented venv
 ###############################################################################
 FROM ghcr.io/aquaveo/tethys-uvx:runtime-base-a3148d5
+
+# Patch the OS packages inherited from the base
+USER root
+RUN apt-get update \
+  && apt-get upgrade -y --no-install-recommends \
+  && rm -rf /var/lib/apt/lists/*
+USER 1000:1000
 
 # Interpreter and venv must land at the same paths (pyvenv.cfg hardcodes /opt/python)
 COPY --from=builder /opt/python /opt/python
