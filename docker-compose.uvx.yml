@@ -1,0 +1,71 @@
+# Local prototype harness for the tethys-uvx based image (Dockerfile.uvx).
+#
+# Mirrors the EC2 topology so the static-file wiring can be validated before touching a server:
+#   nginx (:8081)  ->  static from the persist bind mount + proxy to web
+#   web   (:8080)  ->  uvicorn on 8000, the only thing the EC2 host nginx talks to
+#
+# The persist dir is a BIND mount (not a named volume) because on EC2 the host nginx runs
+# outside Docker and must read STATIC_ROOT directly. uid 1000 owns it in the container --
+# which is also ec2-user's uid on Amazon Linux, so the same mount works unchanged there.
+#
+#   docker compose -f docker-compose.uvx.yml build       # no service arg: only `provision`
+#                                                        # carries the build; web reuses its image
+#   docker compose -f docker-compose.uvx.yml up          # then open http://localhost:8081
+#
+# Production deploys do NOT use this file -- the CD pipeline runs the same image with `docker run`.
+
+x-portal-env: &portal-env
+  # portal-config.sh hard-fails without this; a stable value keeps sessions alive across deploys
+  TETHYS_SECRET_KEY: local-prototype-only-not-a-real-secret
+  TETHYS_DB_ENGINE: django.db.backends.sqlite3
+  # comma-separated (NOT the JSON list the old salt-based image wanted)
+  PORTAL_ALLOWED_HOSTS: localhost,127.0.0.1
+  PORTAL_SUPERUSER_NAME: admin
+  PORTAL_SUPERUSER_PASSWORD: pass
+  # staging measurement ID, to verify the GA tag renders
+  GOOGLE_ANALYTICS_GTAG_PROPERTY_ID: G-E4KQSXDM25
+
+services:
+  # One-shot: migrate + collectstatic + superuser. On EC2 this is a deploy-pipeline step,
+  # not something the web container does at startup.
+  provision:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nrds-uvx:local
+    # tethys-uvx publishes linux/amd64 ONLY. That matches the t3.medium EC2 instances, but
+    # means an Apple Silicon dev box builds/runs this emulated -- and that our CI can no
+    # longer produce the arm64 leg it builds today.
+    platform: linux/amd64
+    command: ["/usr/local/bin/bootstrap-provision.sh"]
+    environment: *portal-env
+    volumes:
+      - ./.data/uvx-persist:/home/tethys/persist
+    restart: "no"
+
+  web:
+    image: nrds-uvx:local
+    platform: linux/amd64
+    depends_on:
+      provision:
+        condition: service_completed_successfully
+    environment: *portal-env
+    ports:
+      - "127.0.0.1:8080:8000"
+    volumes:
+      - ./.data/uvx-persist:/home/tethys/persist
+    restart: unless-stopped
+
+  # Stand-in for the EC2 host nginx. The /static/ block here is what gets added to
+  # /etc/nginx/conf.d/nrds.conf on the instances.
+  nginx:
+    image: nginxinc/nginx-unprivileged:stable-alpine
+    depends_on:
+      web:
+        condition: service_started
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./conf/nginx-local.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./.data/uvx-persist:/home/tethys/persist:ro
+    restart: unless-stopped

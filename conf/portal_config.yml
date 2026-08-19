@@ -1,0 +1,51 @@
+# NRDS portal settings: declarative replacement for salt/patches.sls.
+# Mounted at /config/portal_config.yml; portal-config.sh copies it into TETHYS_HOME
+# at container start and injects SECRET_KEY, the DB connection, and PORTAL_ALLOWED_HOSTS.
+version: 2.0
+name: nrds
+apps: {}
+
+settings:
+  DEBUG: false
+
+  # Extended at runtime from PORTAL_ALLOWED_HOSTS (comma-separated); CSRF_TRUSTED_ORIGINS
+  # is derived from it as https://<host> by portal-config.sh.
+  ALLOWED_HOSTS:
+    - localhost
+    - 127.0.0.1
+
+  DATABASES:
+    default:
+      ENGINE: django.db.backends.sqlite3
+
+  CHANNEL_LAYERS:
+    default:
+      BACKEND: channels.layers.InMemoryChannelLayer
+
+  TETHYS_PORTAL_CONFIG:
+    # no login page
+    ENABLE_OPEN_PORTAL: true
+    # Serve nrds at / instead of the portal apps library
+    MULTIPLE_APP_MODE: false
+    STANDALONE_APP: nrds
+
+    # These MUST point at the persist mount: nothing in this container serves static,
+    # so collectstatic has to land where the reverse proxy can read it.
+    STATIC_ROOT: /home/tethys/persist/static
+    MEDIA_ROOT: /home/tethys/persist/media
+    MEDIA_URL: /media/
+    TETHYS_WORKSPACES_ROOT: /home/tethys/persist/workspaces
+
+  # Behind host nginx terminating TLS: let Django know the original scheme was https
+  SECURE_PROXY_SSL_HEADER:
+    - HTTP_X_FORWARDED_PROTO
+    - https
+
+  # Google Analytics is per-environment; conf/portal-config.d/10-analytics.sh injects
+  # GOOGLE_ANALYTICS_GTAG_PROPERTY_ID here at startup when the env var is set.
+  ANALYTICS_CONFIG: {}
+
+site_settings:
+  GENERAL_SETTINGS:
+    SITE_TITLE: NRDS Visualizer
+    BRAND_TEXT: NextGen Research DataStream

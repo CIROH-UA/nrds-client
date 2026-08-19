@@ -1,90 +1,68 @@
+# syntax=docker/dockerfile:1
+#
+# PROTOTYPE: NRDS portal image built on tethys-uvx (uv venv, no conda/salt/nginx/supervisor).
+# Served by uvicorn on ${TETHYS_PORT} (8000) as uid 1000. Static files are NOT served by this
+# container -- a reverse proxy serves them from STATIC_ROOT on the mounted persist volume.
+#
+# Base tags are pinned to a sha: tethys-uvx is young and its script/env contract still moves.
 
-FROM tethysplatform/tethys-core:dev-py3.12-dj5.2 
+###############################################################################
+# builder - React build + install the app into the base venv
+###############################################################################
+FROM ghcr.io/aquaveo/tethys-uvx:builder-a3148d5 AS builder
 
+# React build-time config (was ENV in the conda-image Dockerfile)
+ARG TETHYS_DEBUG_MODE=false
+ARG TETHYS_LOADER_DELAY=500
+ARG TETHYS_PORTAL_HOST=""
+ARG TETHYS_APP_ROOT_URL="/"
 
-###################
-# BUILD ARGUMENTS #
-###################
+WORKDIR /build
 
-ARG MICRO_TETHYS=true \
-    MAMBA_DOCKERFILE_ACTIVATE=1
+# npm deps first so the (slow) install layer caches independently of app source
+COPY package.json package-lock.json ./
+RUN npm ci
 
+COPY . .
 
-#########################
-# ADD APPLICATION FILES #
-#########################
-COPY . ${TETHYS_HOME}/apps/nrds
-COPY run.sh ${TETHYS_HOME}/run.sh
+# The repo ships development.env; production values are substituted in here.
+RUN mv reactapp/config/development.env reactapp/config/production.env \
+  && sed -i "s#TETHYS_DEBUG_MODE.*#TETHYS_DEBUG_MODE = ${TETHYS_DEBUG_MODE}#g" reactapp/config/production.env \
+  && sed -i "s#TETHYS_LOADER_DELAY.*#TETHYS_LOADER_DELAY = ${TETHYS_LOADER_DELAY}#g" reactapp/config/production.env \
+  && sed -i "s#TETHYS_PORTAL_HOST.*#TETHYS_PORTAL_HOST = ${TETHYS_PORTAL_HOST}#g" reactapp/config/production.env \
+  && sed -i "s#TETHYS_APP_ROOT_URL.*#TETHYS_APP_ROOT_URL = ${TETHYS_APP_ROOT_URL}#g" reactapp/config/production.env \
+  && npm run build
 
-###############
-# ENVIRONMENT #
-###############
-ENV TETHYS_DB_ENGINE=django.db.backends.sqlite3
-ENV SKIP_DB_SETUP=True
-ENV TETHYS_DB_NAME=
-ENV TETHYS_DB_USERNAME=
-ENV TETHYS_DB_PASSWORD=
-ENV TETHYS_DB_HOST=
-ENV TETHYS_DB_PORT=
-ENV ENABLE_OPEN_PORTAL=True
-ENV MULTIPLE_APP_MODE=False
-ENV STANDALONE_APP=nrds
-ENV PORTAL_SUPERUSER_NAME=admin
-ENV PORTAL_SUPERUSER_PASSWORD=pass
-ENV PROJ_LIB=/opt/conda/envs/tethys/share/proj
+# to fix grype scan error
+RUN git config --global --add safe.directory '*' \
+  && uv pip install --no-cache -c conf/constraints.txt . django-analytical \
+       "urllib3>=2" "cryptography>=50" "sqlparse>=0.6" \
+  && chmod -R a+rX /opt/conda
 
-ENV NVM_DIR=/usr/local/nvm
-ENV NODE_VERSION=24.18.0
-ENV NODE_VERSION_DIR=${NVM_DIR}/versions/node/v${NODE_VERSION}
-ENV NODE_PATH=${NODE_VERSION_DIR}/lib/node_modules
-ENV PATH=${NODE_VERSION_DIR}/bin:$PATH
-ENV NPM=${NODE_VERSION_DIR}/bin/npm
-ENV PDM="/root/.local/bin/pdm"
-ENV APP_SRC_ROOT=${TETHYS_HOME}/apps/nrds
+###############################################################################
+# runtime - slim base + the app-augmented venv
+###############################################################################
+FROM ghcr.io/aquaveo/tethys-uvx:runtime-base-a3148d5
 
-ENV DEV_REACT_CONFIG="${APP_SRC_ROOT}/reactapp/config/development.env"
-ENV PROD_REACT_CONFIG="${APP_SRC_ROOT}/reactapp/config/production.env"
-ENV TETHYS_DEBUG_MODE="false"
-ENV TETHYS_APP_PACKAGE=nrds
-ENV TETHYS_APP_ROOT_URL="/"
-ENV TETHYS_LOADER_DELAY=500
-ENV TETHYS_PORTAL_HOST=""
+# Patch the OS packages inherited from the base
+USER root
+RUN apt-get update \
+  && apt-get upgrade -y --no-install-recommends \
+  && rm -rf /var/lib/apt/lists/*
+USER 1000:1000
 
-# SETUP
-RUN mkdir -p ${NVM_DIR} \
-    && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | /bin/bash \
-    && . ${NVM_DIR}/nvm.sh \
-    && nvm install ${NODE_VERSION} \
-    && nvm alias default ${NODE_VERSION} \
-    && nvm use default \
-    && npm install -g npm@latest \
-    && ls -la ${NODE_VERSION_DIR} \
-    && ls -la ${NODE_VERSION_DIR}/lib \
-    && pip install --user pdm \
-    && ${PDM} self update \
-    && cd ${APP_SRC_ROOT} \ 
-    && git config --global --add safe.directory '*' \
-    && git update-index --assume-unchanged
+# Interpreter and venv must land at the same paths (pyvenv.cfg hardcodes /opt/python)
+COPY --from=builder /opt/python /opt/python
+COPY --from=builder /opt/conda  /opt/conda
 
+# Declarative portal settings (replaces salt/patches.sls) + per-environment config hooks
+COPY --chown=1000:1000 conf/portal_config.yml /config/portal_config.yml
+COPY --chown=1000:1000 conf/portal-config.d/ /opt/portal/portal-config.d/
 
-RUN mv ${DEV_REACT_CONFIG} ${PROD_REACT_CONFIG} \
-  && sed -i "s#TETHYS_DEBUG_MODE.*#TETHYS_DEBUG_MODE = ${TETHYS_DEBUG_MODE}#g" ${PROD_REACT_CONFIG} \
-  && sed -i "s#TETHYS_LOADER_DELAY.*#TETHYS_LOADER_DELAY = ${TETHYS_LOADER_DELAY}#g" ${PROD_REACT_CONFIG} \
-  && sed -i "s#TETHYS_PORTAL_HOST.*#TETHYS_PORTAL_HOST = ${TETHYS_PORTAL_HOST}#g" ${PROD_REACT_CONFIG} \
-  && sed -i "s#TETHYS_APP_ROOT_URL.*#TETHYS_APP_ROOT_URL = ${TETHYS_APP_ROOT_URL}#g" ${PROD_REACT_CONFIG}
+# Provision wrapper that can bootstrap an empty DB (see the script for why)
+COPY --chmod=0755 conf/bootstrap-provision.sh /usr/local/bin/bootstrap-provision.sh
 
-RUN cd ${APP_SRC_ROOT} \
-    && ${NPM} install \
-    && ${NPM} run build \
-    && rm -rf node_modules \
-    && ${PDM} install --no-editable --production \
-    # node is only needed to build the frontend; remove it so node CVEs
-    # don't flag the runtime image in security scans
-    && rm -rf ${NVM_DIR}
+HEALTHCHECK --start-period=60s --interval=30s --retries=3 \
+    CMD curl -fsS -o /dev/null http://127.0.0.1:8000/ || exit 1
 
-ADD salt/ /srv/salt/
-
-CMD bash run.sh
-
-HEALTHCHECK --start-period=30s --retries=12 \
-    CMD ./liveness-probe.sh
+# CMD (serve.sh) is inherited from the base

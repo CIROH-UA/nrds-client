@@ -31,6 +31,14 @@ on:
 env:
   REGISTRY_IMAGE: awiciroh/tethys-nrds
   CONTAINER_NAME: tethys-nrds
+  # Host directory backing TETHYS_PERSIST. The container writes collected static here as
+  # uid 1000 (= ec2-user on Amazon Linux) and the host nginx serves ${PERSIST_DIR}/static
+  # directly -- the image has no internal nginx of its own.
+  PERSIST_DIR: /srv/nrds/persist
+  # Host port stays 8080 so the existing nginx proxy_pass needs no change; only the
+  # container port moved (uvicorn listens on 8000, the old image's nginx was on 80).
+  HOST_BIND: 127.0.0.1:8080
+  CONTAINER_PORT: 8000
 
 jobs:
   deploy:
@@ -40,35 +48,80 @@ jobs:
       - ${{ inputs.environment }}
     environment: ${{ inputs.environment }}
 
+    # Set once for the whole job so both the provision and web containers get identical
+    # config. `docker run -e NAME` (no value) forwards the value from this environment,
+    # which keeps secrets out of the command line and avoids all shell quoting issues.
+    env:
+      TETHYS_SECRET_KEY: ${{ secrets.TETHYS_SECRET_KEY }}
+      PORTAL_SUPERUSER_NAME: ${{ vars.PORTAL_SUPERUSER_NAME || 'admin' }}
+      PORTAL_SUPERUSER_PASSWORD: ${{ secrets.PORTAL_SUPERUSER_PASSWORD }}
+      # Comma-separated. portal-config.sh merges these into ALLOWED_HOSTS and derives
+      # CSRF_TRUSTED_ORIGINS as https://<host> for each non-IP entry.
+      PORTAL_ALLOWED_HOSTS: ${{ vars.PORTAL_ALLOWED_HOSTS }}
+      # Per-environment GA measurement ID; unset => conf/portal-config.d/10-analytics.sh no-ops
+      GOOGLE_ANALYTICS_GTAG_PROPERTY_ID: ${{ vars.GA_TRACKING_ID }}
+      TETHYS_DB_ENGINE: django.db.backends.sqlite3
+      DOCKER_ENV_FLAGS: >-
+        -e TETHYS_SECRET_KEY
+        -e PORTAL_SUPERUSER_NAME
+        -e PORTAL_SUPERUSER_PASSWORD
+        -e PORTAL_ALLOWED_HOSTS
+        -e GOOGLE_ANALYTICS_GTAG_PROPERTY_ID
+        -e TETHYS_DB_ENGINE
+
     steps:
+      - name: Check prerequisites
+        run: |
+          if [ -z "$TETHYS_SECRET_KEY" ]; then
+            echo "::error::TETHYS_SECRET_KEY secret is not set for the '${{ inputs.environment }}' environment."
+            echo "Generate one with: python3 -c 'import secrets; print(secrets.token_urlsafe(50))'"
+            exit 1
+          fi
+          if [ -z "$PORTAL_ALLOWED_HOSTS" ]; then
+            echo "::error::PORTAL_ALLOWED_HOSTS variable is not set for the '${{ inputs.environment }}' environment."
+            echo "Expected a comma-separated list, e.g. nrds.ciroh.org,localhost,127.0.0.1"
+            exit 1
+          fi
+          if [ ! -d "$PERSIST_DIR" ]; then
+            echo "::error::$PERSIST_DIR does not exist on this runner (one-time host setup)."
+            echo "Run on the instance:  sudo mkdir -p $PERSIST_DIR && sudo chown -R 1000:1000 /srv/nrds"
+            exit 1
+          fi
+          if [ ! -w "$PERSIST_DIR" ]; then
+            echo "::error::$PERSIST_DIR is not writable by the runner user (needs uid 1000)."
+            echo "Run on the instance:  sudo chown -R 1000:1000 /srv/nrds"
+            exit 1
+          fi
+
       - name: Pull image
         run: docker pull "$REGISTRY_IMAGE:${{ inputs.image_tag }}"
 
+      # One-shot: migrate the DB, collect static into PERSIST_DIR, create the superuser.
+      # The web container does none of this -- serve.sh only renders config and serves.
+      - name: Provision
+        run: |
+          docker run --rm \
+            $DOCKER_ENV_FLAGS \
+            -v "$PERSIST_DIR:/home/tethys/persist" \
+            "$REGISTRY_IMAGE:${{ inputs.image_tag }}" \
+            /usr/local/bin/bootstrap-provision.sh
+
       - name: Replace container
         run: |
-          # Google Analytics: only injected when the environment defines GA_TRACKING_ID
-          GA_ARGS=()
-          if [ -n "${{ vars.GA_TRACKING_ID }}" ]; then
-            GA_ARGS=(-e "GOOGLE_ANALYTICS_GTAG_PROPERTY_ID=${{ vars.GA_TRACKING_ID }}")
-          fi
-
           docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
           docker run -d \
             --name "$CONTAINER_NAME" \
             --restart unless-stopped \
-            -p 127.0.0.1:8080:80 \
-            -e NGINX_PORT=80 \
-            -e SKIP_DB_SETUP=false \
-            -e ALLOWED_HOSTS='${{ vars.ALLOWED_HOSTS }}' \
-            -e CSRF_TRUSTED_ORIGINS='${{ vars.CSRF_TRUSTED_ORIGINS }}' \
-            "${GA_ARGS[@]}" \
+            -p "$HOST_BIND:$CONTAINER_PORT" \
+            $DOCKER_ENV_FLAGS \
+            -v "$PERSIST_DIR:/home/tethys/persist" \
             "$REGISTRY_IMAGE:${{ inputs.image_tag }}"
 
       - name: Health check
         run: |
-          echo "Waiting for app to come up (first boot runs salt setup)..."
+          echo "Waiting for uvicorn to accept requests..."
           for i in $(seq 1 30); do
-            if curl -fsSL -o /dev/null http://127.0.0.1:8080/; then
+            if curl -fsSL -o /dev/null "http://$HOST_BIND/"; then
               echo "App is up after ~$((i * 5))s"
               exit 0
             fi
@@ -78,8 +131,21 @@ jobs:
           docker logs --tail 100 "$CONTAINER_NAME"
           exit 1
 
+      # Static is served by the host nginx off the bind mount, so verify it actually
+      # landed there -- a missing STATIC_ROOT would leave the UI unstyled/broken.
+      - name: Verify collected static
+        run: |
+          count=$(find "$PERSIST_DIR/static" -type f 2>/dev/null | wc -l)
+          echo "static files present: $count"
+          if [ "$count" -lt 10 ]; then
+            echo "::error::$PERSIST_DIR/static looks empty -- collectstatic did not run as expected."
+            exit 1
+          fi
+
       - name: Remove unused images
         run: docker image prune -f
 
       - name: Summary
-        run: echo "Deployed \`$REGISTRY_IMAGE:${{ inputs.image_tag }}\` to **${{ inputs.environment }}**" >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          echo "Deployed \`$REGISTRY_IMAGE:${{ inputs.image_tag }}\` to **${{ inputs.environment }}**" \
+            >> "$GITHUB_STEP_SUMMARY"

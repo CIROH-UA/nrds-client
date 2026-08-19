@@ -1,0 +1,2 @@
+# Resolution constraints for the portal image build (uv pip install -c).
+pandas<3
