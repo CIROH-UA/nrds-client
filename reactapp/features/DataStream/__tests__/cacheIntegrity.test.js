@@ -68,7 +68,7 @@ describe('statFromCache', () => {
     expect(await statFromCache('vpu.parquet')).toBe(null);
     // Removed as well, so the next attempt downloads instead of tripping over it again.
     expect(files.size).toBe(0);
-    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/incomplete cached file/), 'vpu.parquet', 0, 'bytes');
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/^Refetching vpu\.parquet: .*\(0 bytes/));
     warn.mockRestore();
   });
 
@@ -79,7 +79,7 @@ describe('statFromCache', () => {
 
     // Half a download passes a size check and still is not a parquet.
     expect(await statFromCache('vpu.parquet')).toBe(null);
-    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/incomplete cached file/), 'vpu.parquet', 404, 'bytes');
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/^Refetching vpu\.parquet: .*\(404 bytes/));
     warn.mockRestore();
   });
 
@@ -89,7 +89,7 @@ describe('statFromCache', () => {
     const { statFromCache } = load();
 
     expect(await statFromCache('vpu.parquet')).toBe(null);
-    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/incomplete cached file/), 'vpu.parquet', 29, 'bytes');
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/^Refetching vpu\.parquet: .*\(29 bytes/));
     warn.mockRestore();
   });
 

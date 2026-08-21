@@ -9,6 +9,20 @@ const CACHE_DIR = "nrds-cache";
 let cacheDirPromise = null;
 
 /**
+ * The name a download writes under before it is allowed to be the cached file.
+ *
+ * getFileHandle with create makes the entry at once and the bytes are staged in a .crswap that
+ * only lands on close, so a page that went away mid-download left the real key on disk holding
+ * 0 bytes. Every "incomplete cached file" warning was that: not a failed download, a download
+ * that never got to finish, with S3 holding the data all along. Writing under this suffix and
+ * moving on success means an interruption leaves nothing under the name callers look up.
+ */
+const PARTIAL_SUFFIX = ".partial";
+
+// Downloads this session has open, so a prune running alongside one cannot sweep it away.
+const writingNow = new Set();
+
+/**
  * Files the app manages for itself: never evicted, and not offered as something to clear.
  *
  * The id index is the only one. The search depends on it, it is 103 MB, and refetching it is
@@ -60,7 +74,33 @@ export async function pruneCache(keep) {
     await dropCachedTable(id);
     if (await deleteFileFromCache(id)) evicted.push(id);
   }
+  await sweepLeftovers(dir);
   return evicted;
+}
+
+/**
+ * Remove what an interrupted download left behind.
+ *
+ * A .partial never became a data file and a .crswap is the staging file behind createWritable,
+ * so eviction, the clear button and the cached-files listing all walked past them: an
+ * interrupted 103 MB index left 103 MB on disk that nothing in the interface could see or
+ * reclaim. Anything written to in the last minute is left alone, since another tab downloading
+ * the same file is not this one's to delete.
+ */
+async function sweepLeftovers(dir) {
+  const stale = [];
+  for await (const handle of dir.values()) {
+    if (handle.kind !== "file") continue;
+    const name = handle.name;
+    if (!name.endsWith(PARTIAL_SUFFIX) && !name.endsWith(".crswap")) continue;
+    if (writingNow.has(name) || writingNow.has(name.replace(/\.crswap$/, ""))) continue;
+    const file = await handle.getFile().catch(() => null);
+    if (file && Date.now() - file.lastModified < 60_000) continue;
+    stale.push(name);
+  }
+
+  for (const name of stale) await dir.removeEntry(name).catch(() => {});
+  return stale;
 }
 
 
@@ -164,18 +204,50 @@ function isArrowFile(key) {  return key.endsWith('.arrow');}
 
 function isParquetFile(key) { return key.endsWith('.parquet'); }
 
+/**
+ * Download a file into the cache under the name callers read only once it is whole.
+ *
+ * See PARTIAL_SUFFIX for why writing straight to that name could not be interrupted safely.
+ * move() replaces the destination in one step, so there is no moment where the key exists
+ * holding part of a file. Firefox and Safari have OPFS without move(); there the download goes
+ * to the real name as before and statFromCache stays the net that catches a short file.
+ *
+ * releaseFromDuckDB before the swap because a registration held over from earlier in the
+ * session would make OPFS refuse to replace the file underneath it.
+ */
 export async function saveDataToCache(key, url) {
   const dir = await getCacheDir();
   if (!dir) return; // noop if OPFS unavailable
-  const safeName = encodeURIComponent(key);
-  const fileHandle = await dir.getFileHandle(safeName, { create: true });
-  const writable = await fileHandle.createWritable();
-  if (isArrowFile(key)) {
-    await saveArrowToCache(url, writable);
-  } else {
-    await cacheParquetToOPFS(url, writable);
+  const safeName = safeNameForKey(key);
+  const partialName = `${safeName}${PARTIAL_SUFFIX}`;
+
+  let handle = await dir.getFileHandle(partialName, { create: true });
+  const canSwap = typeof handle.move === "function";
+  if (!canSwap) {
+    await dir.removeEntry(partialName).catch(() => {});
+    handle = await dir.getFileHandle(safeName, { create: true });
   }
-  const file = await fileHandle.getFile();
+
+  writingNow.add(partialName);
+  try {
+    const writable = await handle.createWritable();
+    if (isArrowFile(key)) {
+      await saveArrowToCache(url, writable);
+    } else {
+      await cacheParquetToOPFS(url, writable);
+    }
+    if (canSwap) {
+      await releaseFromDuckDB(safeName);
+      await handle.move(safeName);
+    }
+  } catch (err) {
+    if (canSwap) await dir.removeEntry(partialName).catch(() => {});
+    throw err;
+  } finally {
+    writingNow.delete(partialName);
+  }
+
+  const file = await handle.getFile();
   await pruneCache(key);
   return formatBytes(file.size);
 }
@@ -328,8 +400,10 @@ export async function statFromCache(key) {
     const fileHandle = await dir.getFileHandle(safeName);
     const file = await fileHandle.getFile();
     if (!(await isCompleteDataFile(file, key))) {
-      // Callers skip the download when this returns anything, so a half file is permanent.
-      console.warn("Discarding an incomplete cached file:", key, file.size, "bytes");
+      // Leads with what happens next: returning null is what makes the caller refetch.
+      console.warn(
+        `Refetching ${key}: the cached copy is incomplete (${file.size} bytes on disk)`
+      );
       await deleteFileFromCache(key);
       return null;
     }
