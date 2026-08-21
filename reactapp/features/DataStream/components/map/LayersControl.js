@@ -4,12 +4,11 @@ import { Switch } from  '../styles/Styles';
 import { IoLayers } from "react-icons/io5";
 import { IconLabel, Row, Title, InfoPanel } from '../styles/Styles';
 import { NexusSymbol, CatchmentSymbol, FlowPathSymbol, GaugeSymbol, symbologyColors, CursorSymbol } from '../../lib/layers';
+import { usePrefersDark } from '../../lib/mapTheme';
 import { InfoToggle } from '../InfoDisclosure';
 import { LayerInfoContent } from '../InfoContent';
-import { useTheme } from 'styled-components';
 
 export const LayerControl = () => {
-  const theme = useTheme()
   const [layerInfoOpen, setLayerInfoOpen] = useState(false);
   
   const nexusLayer = useLayersStore((state) => state.nexus);
@@ -35,10 +34,12 @@ export const LayerControl = () => {
     (state) => state.set_hovered_enabled
   );
 
-  const colors = useMemo(
-    () => {return symbologyColors(theme)},
-    [theme]
-  );
+  // The legend reads the same tokens the map layers do, so the two cannot disagree. It was
+  // branching on styled-components' useTheme, and nothing here installs a ThemeProvider, so
+  // that value was always undefined and the legend was always the light branch.
+  const prefersDark = usePrefersDark();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const colors = useMemo(() => symbologyColors(), [prefersDark]);
 
   const handleToggleNexusLayer = () => {
     set_nexus_visibility(!nexusLayer.visible);
@@ -149,7 +150,7 @@ export const LayerControl = () => {
 
       <Row>
         <IconLabel>
-          <CursorSymbol/>
+          <CursorSymbol fill={colors.nexusFill} stroke={colors.nexusStroke} />
           Enable Hovering 
         </IconLabel>
         <Switch

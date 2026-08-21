@@ -1,20 +1,4 @@
-// --- Read CSS variables for map styles/colors ---
-const rootStyles = getComputedStyle(document.documentElement);
-
-export const mapStyleUrl =
-  rootStyles.getPropertyValue('--map-style-url').trim() ||
-  'https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/styles/light-style.json';
-
-export const dividesOutlineColor =
-  rootStyles.getPropertyValue('--map-divides-outline-color').trim() ||
-  'rgba(91, 44, 111, 0.5)';
-export const dividesHighlightFillColor =
-  rootStyles.getPropertyValue('--map-divides-highlight-fill').trim() ||
-  'rgba(5, 49, 243, 0.32)';
-export const dividesHighlightOutlineColor =
-  rootStyles.getPropertyValue('--map-divides-highlight-outline').trim() ||
-  'rgba(253, 0, 253, 0.7)';
-
+import { readMapTheme } from './mapTheme';
 /**
  * The lowest zoom at which flowpath geometry exists.
  *
@@ -30,20 +14,6 @@ export const dividesHighlightOutlineColor =
  * filtered subset rather than every reach, which is the right amount of detail at that scale.
  */
 export const FLOWPATHS_MIN_ZOOM = 1;
-
-export const flowpathsLineColor =
-  rootStyles.getPropertyValue('--map-flowpaths-color').trim() || '#0b0e10';
-
-export const gaugesCircleColor =
-  rootStyles.getPropertyValue('--map-gauges-color').trim() || '#646464';
-
-export const nexusCircleColor =
-  rootStyles.getPropertyValue('--map-nexus-circle-color').trim() || '#1f78b4';
-export const nexusStrokeColor =
-  rootStyles.getPropertyValue('--map-nexus-stroke-color').trim() || '#f7fafe';
-export const nexusHighlightCircleColor =
-  rootStyles.getPropertyValue('--map-nexus-highlight-circle-color').trim() ||
-  nexusCircleColor;
 
 /**
  * Our flowpaths layer, and the one in the basemap style it stands in for.
@@ -130,29 +100,26 @@ export const getCentroid = (feature) => {
 };
 
 /**
- * Colours for the legend symbols.
+ * Colours for the legend symbols, read from the same tokens the map layers use.
  *
- * These mirror the --map-* tokens by value rather than reading them, so the legend and the map
- * can drift apart; worth reconciling, but reading them live is a bigger change than it looks,
- * because the constants at the top of this file are resolved once at module load and would
- * freeze the legend at whichever theme was active then. The pure white and pure black are gone:
- * they are the tinted neutrals the map tokens already use.
+ * These used to be a hand-maintained copy of the map palette, branched on a theme argument that
+ * came from styled-components' useTheme. Nothing in this app installs a ThemeProvider, so that
+ * argument was always undefined and the legend was always the light branch, whatever the theme.
+ * Reading the tokens means the legend cannot disagree with the map, because it is the map's
+ * source.
  */
-export const symbologyColors = (theme) => ({
-      nexusFill: theme === 'dark' ? '#4f5b67' : '#1f78b4',
-      nexusStroke: theme === 'dark' ? '#e9ecef' : '#f7fafe',
-      catchmentFill:
-        theme === 'dark'
-          ? 'rgba(238, 51, 119, 0.32)'
-          : 'rgba(91, 44, 111, 0.32)',
-      catchmentStroke:
-        theme === 'dark'
-          ? 'rgba(238, 51, 119, 0.9)'
-          : 'rgba(91, 44, 111, 0.9)',
-      flowStroke: theme === 'dark' ? '#0077bb' : '#0b0e10',
-      gaugeFill: theme === 'dark' ? '#c8c8c8' : '#646464',
-      gaugeStroke: theme === 'dark' ? '#111827' : '#f7fafe',
-})
+export const symbologyColors = () => {
+  const map = readMapTheme();
+  return {
+    nexusFill: map.nexusCircle,
+    nexusStroke: map.nexusStroke,
+    catchmentFill: map.dividesHighlightFill,
+    catchmentStroke: map.dividesOutline,
+    flowStroke: map.flowpaths,
+    gaugeFill: map.gauges,
+    gaugeStroke: map.nexusStroke,
+  };
+}
 
 export const getSymbology = (typeSymbol, colors) => {
   switch (typeSymbol) {

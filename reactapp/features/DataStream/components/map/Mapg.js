@@ -11,25 +11,17 @@ import useDataStreamStore from '../../store/Datastream';
 import { useVPUStore } from '../../store/Layers';
 import { useLayersStore, useFeatureStore } from '../../store/Layers';
 import CustomPopUp from './Popup';
-import { 
-  dividesOutlineColor, 
-  dividesHighlightFillColor, 
-  dividesHighlightOutlineColor, 
-  flowpathsLineColor, 
-  gaugesCircleColor, 
-  nexusCircleColor, 
-  nexusStrokeColor, 
-  nexusHighlightCircleColor,
-  reorderLayers, 
-  computeBounds, 
+import {
+  reorderLayers,
+  computeBounds,
 } from '../../lib/layers';
+import { useMapTheme } from '../../lib/mapTheme';
 import {
   FLOWPATHS_LAYER_ID,
   FLOWPATHS_MIN_ZOOM,
   addPaths,
   createPathStore,
   hideStyleFlowpaths,
-  mapStyleUrl,
 } from '../../lib/layers';
 import { flowPathLayerProps, shouldPromptZoom } from './flowPathLayer';
 import { selectMapFeature } from '../../actions/selectFeature';
@@ -155,6 +147,10 @@ const MainMap = () => {
   );
 
 
+  // Read live, so the basemap and every layer colour follow the theme instead of whatever the
+  // tokens happened to resolve to while the module graph was still evaluating.
+  const mapTheme = useMapTheme();
+
   const mapRef = useRef(null);
   const hoverMapRef = useRef(null);
   const pathsByIdRef = useRef(createPathStore());
@@ -272,27 +268,27 @@ const MainMap = () => {
   const catchmentLayer = useCatchmentLayers({
     isCatchmentsVisible,
     selectedFeatureId,
-    dividesOutlineColor,
-    dividesHighlightFillColor,
-    dividesHighlightOutlineColor,
+    dividesOutlineColor: mapTheme.dividesOutline,
+    dividesHighlightFillColor: mapTheme.dividesHighlightFill,
+    dividesHighlightOutlineColor: mapTheme.dividesHighlightOutline,
   });
 
   const flowPathsLayer = useFlowPathsLayer({
     isFlowPathsVisible,
-    flowpathsLineColor,
+    flowpathsLineColor: mapTheme.flowpaths,
   });
 
   const conusGaugesLayer = useConusGaugesLayer({
     isConusGaugesVisible,
-    gaugesCircleColor,
+    gaugesCircleColor: mapTheme.gauges,
   });
 
   const nexusLayers = useNexusLayers({
     isNexusVisible,
     selectedFeatureId,
-    nexusCircleColor,
-    nexusStrokeColor,
-    nexusHighlightCircleColor,
+    nexusCircleColor: mapTheme.nexusCircle,
+    nexusStrokeColor: mapTheme.nexusStroke,
+    nexusHighlightCircleColor: mapTheme.nexusHighlightCircle,
   });
 
   useEffect(() => {
@@ -426,7 +422,7 @@ const MainMap = () => {
       initialViewState={INITIAL_VIEW}
       style={{ width: '100%', height: '100%' }}
       mapLib={maplibregl}
-      mapStyle={mapStyleUrl}
+      mapStyle={mapTheme.styleUrl}
       onClick={handleMapClick}
       onLoad={handleMapLoad}
       onMouseMove={onHover}
