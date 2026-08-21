@@ -706,6 +706,7 @@ export const SearchNotice = styled.div`
   gap: 10px;
   flex: 0 1 auto;
   min-width: 0;
+  max-width: min(46rem, 100%);
   padding: 6px 12px;
   border: 1px solid var(--panel-border-color);
   border-radius: var(--radius-sm);
@@ -714,9 +715,12 @@ export const SearchNotice = styled.div`
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
 
+  /* Wraps rather than running on. Every message is short by construction now, but nowrap made
+     the header's width the only limit, so one long one took the retry button off the screen.
+     Wrapping and not clipping, because a reason cut in half is worse than a taller pill. */
   > span {
     min-width: 0;
-    white-space: nowrap;
+    white-space: normal;
   }
 
   > button {

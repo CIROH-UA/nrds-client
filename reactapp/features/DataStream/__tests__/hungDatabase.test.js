@@ -67,9 +67,9 @@ describe('getting a connection from a worker that has stopped answering', () => 
     // and the reader is told which one happened.
     // Exact, not a regex that the default branch's "Name: message" would also satisfy.
     expect(cacheFailureReason({ name: 'DatabaseTimeoutError' }))
-      .toBe('the database stopped responding');
+      .toBe('the database is not responding');
     expect(cacheFailureReason({ name: 'TimeoutError' }))
-      .toBe('the download stopped partway');
+      .toBe('the download stopped');
   });
 
   it('does not give up on a worker that is merely busy', async () => {

@@ -130,24 +130,38 @@ export const formatPropertyValue = (value) => {
  * reason only in a console error, which is easy to miss behind a level filter. Every cause here
  * is a browser storage condition rather than anything about the data, and each one has a
  * different remedy, so naming which one saves the reader guessing.
+ *
+ * A few words in every case, the unplaceable one included. This used to fall back to the
+ * exception's own text: two hundred characters naming a web api and a cache path, nothing anyone
+ * could act on, long enough to push the retry button off the screen. Even the first replacements
+ * read as sentences, so they are phrases now. The raw error goes to the console, where a
+ * developer can have all of it.
  */
 export function cacheFailureReason(err) {
+  // By message, not name: duckdb-wasm rethrows the browser's DOMException as a plain Error.
+  const text = err?.message ?? '';
+  if (/Access Handles cannot be created|createSyncAccessHandle/.test(text)) {
+    return 'another tab is using it';
+  }
+  if (/could not be found/.test(text)) return 'the cache changed, reload';
+
   switch (err?.name) {
     case 'SecurityError':
     case 'NotAllowedError':
-      return 'this browser is blocking storage for this site';
+      return 'storage is blocked';
     case 'QuotaExceededError':
-      return 'there is not enough browser storage left';
+      return 'storage is full';
     case 'NoModificationAllowedError':
-      return 'another tab of this app has the cache open';
+      return 'another tab is using it';
     case 'TimeoutError':
     case 'AbortError':
-      return 'the download stopped partway';
+      return 'the download stopped';
     case 'DatabaseTimeoutError':
-      return 'the database stopped responding';
+      return 'the database is not responding';
     case 'TypeError':
-      return 'the file could not be fetched';
+      return 'could not fetch it';
     default:
-      return err?.name ? `${err.name}: ${err.message}` : 'reason unknown';
+      return 'see the console';
   }
 }
+

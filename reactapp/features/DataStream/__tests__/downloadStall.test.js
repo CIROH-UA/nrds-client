@@ -139,8 +139,8 @@ describe('a download that stops delivering', () => {
   });
 
   it('says what happened rather than naming an error class', () => {
-    expect(cacheFailureReason({ name: 'TimeoutError' })).toMatch(/stopped partway/);
-    expect(cacheFailureReason({ name: 'AbortError' })).toMatch(/stopped partway/);
+    expect(cacheFailureReason({ name: 'TimeoutError' })).toBe('the download stopped');
+    expect(cacheFailureReason({ name: 'AbortError' })).toBe('the download stopped');
   });
 });
 

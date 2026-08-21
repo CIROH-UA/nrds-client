@@ -99,7 +99,7 @@ describe('the app shell', () => {
     // duckdb is the one thing mocked, and it is mocked as unavailable, so the real
     // loadIndexData runs through the real queryData and fails on it. Asserting that proves the
     // chain executed rather than merely parsed, which is the whole point of this file.
-    expect(await screen.findByRole('alert')).toHaveTextContent(/id index could not be loaded/i);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/search unavailable/i);
     consoleError.mockRestore();
   });
 });

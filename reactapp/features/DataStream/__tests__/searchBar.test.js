@@ -145,7 +145,7 @@ describe('the search box', () => {
     queryData.loadIndexData.mockRejectedValue(new Error('404'));
 
     render(<SearchBar />);
-    expect(await screen.findByRole('alert')).toHaveTextContent(/id index could not be loaded/i);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/search unavailable/i);
 
     // A control that can never work is worse than none: it invites typing and swallows it.
     expect(screen.queryByRole('textbox')).toBeNull();
@@ -154,8 +154,8 @@ describe('the search box', () => {
   });
 
   it.each([
-    ['SecurityError', /blocking storage/i],
-    ['QuotaExceededError', /not enough browser storage/i],
+    ['SecurityError', /storage is blocked/i],
+    ['QuotaExceededError', /storage is full/i],
     ['NoModificationAllowedError', /another tab/i],
   ])('names %s so the reader is not left guessing', async (name, shown) => {
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
