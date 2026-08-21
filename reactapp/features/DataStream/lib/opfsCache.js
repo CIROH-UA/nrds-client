@@ -382,6 +382,23 @@ async function doesTableExist(conn, tableName) {
  * and the registration is pure contention. Dropped in a finally: a file that failed to parse
  * would otherwise stay locked with no table to show for it.
  */
+/**
+ * A file another context is building a table from, which is a wait rather than a failure.
+ *
+ * The handle duckdb takes is exclusive for the origin and held only while the statement runs, so
+ * a collision resolves itself in the seconds the other tab needs. Two tabs opened at the same
+ * moment collide reliably on the id index, since building a table from 103 MB is not quick, and
+ * the loser used to report the index as unloadable and leave a retry for someone to press.
+ *
+ * Matched on the message because duckdb-wasm rethrows the browser's DOMException as a plain
+ * Error. Bounded, so a handle that is never released fails rather than waiting for ever.
+ */
+const HANDLE_HELD = /Access Handles cannot be created|createSyncAccessHandle/;
+const HANDLE_WAIT_MS = 2_000;
+const HANDLE_TRIES = 15;
+
+const pause = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
+
 async function createTableFromOPFSParquet({ conn, key }) {
   const cacheDir = await getCacheDir();
   const safeName = safeNameForKey(key);
@@ -390,12 +407,21 @@ async function createTableFromOPFSParquet({ conn, key }) {
   const duckPath = `${CACHE_DIR}/${safeName}`;
   const bindings = conn.bindings;
 
-  await bindings.registerFileHandle(
-    duckPath,
-    fileHandle,
-    DuckDBDataProtocol.BROWSER_FSACCESS,
-    true
-  );
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      await bindings.registerFileHandle(
+        duckPath,
+        fileHandle,
+        DuckDBDataProtocol.BROWSER_FSACCESS,
+        true
+      );
+      break;
+    } catch (err) {
+      // Only this one: anything else is not going to be fixed by asking again.
+      if (!HANDLE_HELD.test(err?.message ?? '') || attempt >= HANDLE_TRIES) throw err;
+      await pause(HANDLE_WAIT_MS);
+    }
+  }
 
   try {
     await conn.query(`
