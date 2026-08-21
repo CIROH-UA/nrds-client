@@ -140,6 +140,25 @@ describe('the search box', () => {
     expect(useDataStreamStore.getState().index_status).toBe('ready');
   });
 
+  it('loads the index from the store url, with the upstream file as the fallback', async () => {
+    // Proved missing by mutation: deleting fallbackUrl from the call left all 20 tests green,
+    // because this file mocks loadIndexData and never asserted its arguments.
+    useDataStreamStore.setState({
+      hydrofabric_index: '/static/nrds/data/slim.parquet',
+      hydrofabric_index_fallback: 'https://upstream.test/full.parquet',
+    });
+    queryData.loadIndexData.mockResolvedValue(undefined);
+
+    render(<SearchBar />);
+
+    await waitFor(() =>
+      expect(queryData.loadIndexData).toHaveBeenCalledWith({
+        remoteUrl: '/static/nrds/data/slim.parquet',
+        fallbackUrl: 'https://upstream.test/full.parquet',
+      })
+    );
+  });
+
   it('replaces the box with the reason when the index cannot be built', async () => {
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
     queryData.loadIndexData.mockRejectedValue(new Error('404'));

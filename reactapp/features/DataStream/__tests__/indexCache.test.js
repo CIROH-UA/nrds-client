@@ -11,8 +11,10 @@
  * bytes, register them in duckdb long enough for CREATE TABLE to copy the rows out, drop them.
  */
 jest.mock('features/DataStream/lib/fetchParquet', () => ({
+  // Only the fetch is faked. isMissing comes from the real module on purpose: a copy of it here
+  // would be a second definition of "try the fallback", free to drift from the one that ships.
+  ...jest.requireActual('features/DataStream/lib/fetchParquet'),
   fetchParquetBuffer: jest.fn(),
-  isMissing: (err) => err?.response?.status === 404,
 }));
 jest.mock('features/DataStream/lib/opfsCache', () => ({
   statFromCache: jest.fn(),
@@ -132,6 +134,46 @@ describe('loadIndexData', () => {
       response: { status: 404 },
     });
     expect(fetchParquetBuffer).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports the fallback\'s own failure when both are unreachable', async () => {
+    // Proved missing by mutation: patching the fallback to swallow its failure left 28 tests green.
+    getConnection.mockResolvedValue(connectionWhere(false));
+    fetchParquetBuffer
+      .mockRejectedValueOnce(notFound())
+      .mockRejectedValueOnce(new Error('upstream unreachable'));
+
+    await expect(
+      loadIndexData({ remoteUrl: STATIC_URL, fallbackUrl: UPSTREAM_URL })
+    ).rejects.toThrow('upstream unreachable');
+    expect(fetchParquetBuffer).toHaveBeenCalledTimes(2);
+  });
+
+  it('falls back when the artifact is served but is not a parquet', async () => {
+    // A proxy or login page answering 200 is as unusable as a 404, and gets the same treatment.
+    getConnection.mockResolvedValue(connectionWhere(false));
+    fetchParquetBuffer
+      .mockRejectedValueOnce(Object.assign(new Error('not a parquet'), { name: 'NotParquetError' }))
+      .mockResolvedValueOnce(BYTES);
+
+    await loadIndexData({ remoteUrl: STATIC_URL, fallbackUrl: UPSTREAM_URL });
+
+    expect(fetchParquetBuffer).toHaveBeenNthCalledWith(2, UPSTREAM_URL);
+  });
+
+  it('lets the create-table error through even when dropping the buffer also fails', async () => {
+    const conn = connectionWhere(false);
+    conn.query
+      .mockImplementationOnce(async () => ({ toArray: () => [{ cnt: 0 }] }))
+      .mockImplementationOnce(async () => {
+        throw new Error('Invalid Input Error: not a parquet file');
+      });
+    conn.bindings.dropFile.mockRejectedValue(new Error('drop failed'));
+    getConnection.mockResolvedValue(conn);
+    fetchParquetBuffer.mockResolvedValue(BYTES);
+
+    // The swallow in the finally must not replace the reason the load actually failed.
+    await expect(loadIndexData({ remoteUrl: STATIC_URL })).rejects.toThrow(/not a parquet file/);
   });
 
   it('does not fall back on a failure that is not a missing file', async () => {

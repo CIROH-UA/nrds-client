@@ -115,9 +115,32 @@ const INDEX_DUCK_PATH = "nrds-index/index_data_table.parquet";
  *
  * CREATE TABLE AS materialises the rows, so the registered buffer is dead weight the moment the
  * statement returns. Dropped in a finally for the same reason the OPFS handle was: a file that
- * failed to parse would otherwise stay registered with no table to show for it.
+ * failed to parse would otherwise stay registered with no table to show for it. Registering also
+ * transfers the buffer to the worker, which detaches it, so its length is read before that.
+ *
+ * The fallback covers two cases, both of which look like "the artifact this app serves is not
+ * usable": a portal whose static was collected before the artifact existed answers 404, and a
+ * proxy or error page can answer 200 with bytes that are not a parquet. The upstream file is
+ * slower and larger, but a working search beats a correct failure.
+ *
+ * Concurrent callers share one load. The table-exists probe is a check-then-act against a duckdb
+ * singleton, so two overlapping calls would both pass it, both fetch, and both try to create the
+ * same table. StrictMode is off in this app, which makes that a remount race rather than a
+ * certainty, but sharing the promise costs nothing and removes the question.
  */
-export async function loadIndexData({ remoteUrl, fallbackUrl }) {
+let indexLoad = null;
+
+export function loadIndexData({ remoteUrl, fallbackUrl }) {
+  // Cleared on settle so a retry after a failure starts a fresh attempt rather than replaying it.
+  if (!indexLoad) {
+    indexLoad = buildIndexTable({ remoteUrl, fallbackUrl }).finally(() => {
+      indexLoad = null;
+    });
+  }
+  return indexLoad;
+}
+
+async function buildIndexTable({ remoteUrl, fallbackUrl }) {
   debugLog("loadIndexData called with cacheKey:", INDEX_CACHE_KEY);
 
   const tableName = tableNameForKey(INDEX_CACHE_KEY);
@@ -141,8 +164,7 @@ export async function loadIndexData({ remoteUrl, fallbackUrl }) {
   try {
     buffer = await fetchParquetBuffer(remoteUrl);
   } catch (err) {
-    // A portal whose static was collected before this artifact existed has nothing at that path.
-    // The upstream file is slower and larger, but a working search beats a correct 404.
+    // See the docstring: a stale portal has nothing at that path, and neither has a bad proxy.
     if (!isMissing(err) || !fallbackUrl) throw err;
     console.warn(`No slim index at ${remoteUrl}; falling back to ${fallbackUrl}`);
     buffer = await fetchParquetBuffer(fallbackUrl);
@@ -150,8 +172,7 @@ export async function loadIndexData({ remoteUrl, fallbackUrl }) {
 
   const tableConn = await getConnection();
   const bindings = tableConn.bindings;
-  // Read before registering: registerFileBuffer transfers the ArrayBuffer to the duckdb worker,
-  // which detaches it here, so byteLength afterwards is 0 and any log of it reads as a failure.
+  // See the docstring: registering transfers the buffer, so its length has to be read first.
   const byteLength = buffer.byteLength;
   try {
     await bindings.registerFileBuffer(INDEX_DUCK_PATH, buffer);

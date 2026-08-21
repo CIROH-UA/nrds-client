@@ -15,16 +15,40 @@ import axios from "axios";
  * normally, so a reload revalidates and gets a 304 instead of re-transferring the body; and it
  * is mockable in jest, where whatwg-fetch exposes no res.body and a chunked reader cannot be
  * exercised.
+ *
+ * Two failures are renamed on the way out so callers do not have to know axios. A stall becomes
+ * TimeoutError, which is what saveArrowToCache already does and what cacheFailureReason already
+ * has a phrase for; a body that is not a parquet becomes a plain Error with a name the same
+ * function can place. Leaving axios's own CanceledError to escape is how the first version of
+ * this file reduced every stall to a bare "Search unavailable".
  */
 const FIRST_BYTE_MS = 30_000;
 const STALL_MS = 30_000;
 
+// Parquet brackets itself with PAR1 at both ends, which is what makes a wrong body detectable.
+const PARQUET_MAGIC = "PAR1";
+
 /** A response the server answered but had nothing at: a stale deploy, or a bad path. */
-export const isMissing = (err) => err?.response?.status === 404;
+export const isMissing = (err) => err?.response?.status === 404 || err?.name === "NotParquetError";
 
 /** Silence, not slowness: the guard aborted because nothing arrived for its window. */
 export const isStalled = (err) =>
   err?.code === "ERR_CANCELED" || err?.name === "CanceledError" || err?.name === "AbortError";
+
+const ascii4 = (bytes) => String.fromCharCode(...bytes);
+
+/**
+ * Whether these bytes are a parquet at all, checked at both ends.
+ *
+ * A 200 carrying an HTML error page, a login redirect or simply the wrong file is bytes as far
+ * as axios is concerned, and would otherwise travel all the way into duckdb to fail there with a
+ * parser message no reader can act on -- and, because the fallback only triggered on 404, it
+ * would never try the upstream file that would have worked.
+ */
+const looksLikeParquet = (bytes) =>
+  bytes.byteLength > PARQUET_MAGIC.length * 2 &&
+  ascii4(bytes.subarray(0, 4)) === PARQUET_MAGIC &&
+  ascii4(bytes.subarray(-4)) === PARQUET_MAGIC;
 
 export async function fetchParquetBuffer(url, options = {}) {
   const { firstByteMs = FIRST_BYTE_MS, stallMs = STALL_MS } = options;
@@ -35,6 +59,7 @@ export async function fetchParquetBuffer(url, options = {}) {
     timer = setTimeout(() => stalled.abort(), ms);
   };
 
+  let body;
   try {
     allow(firstByteMs);
     const res = await axios.get(url, {
@@ -42,14 +67,30 @@ export async function fetchParquetBuffer(url, options = {}) {
       signal: stalled.signal,
       onDownloadProgress: () => allow(stallMs),
     });
-    const body = res?.data;
-    if (body instanceof Uint8Array) return body;
-    if (ArrayBuffer.isView(body)) {
-      return new Uint8Array(body.buffer, body.byteOffset, body.byteLength);
+    body = res?.data;
+  } catch (err) {
+    // Renamed rather than rethrown: the caller places failures by name, not by http library.
+    if (stalled.signal.aborted) {
+      const stall = new Error(`${url} stopped sending after ${stallMs} ms`);
+      stall.name = "TimeoutError";
+      throw stall;
     }
-    if (body instanceof ArrayBuffer) return new Uint8Array(body);
-    throw new Error(`${url} returned ${typeof body} rather than bytes`);
+    throw err;
   } finally {
     if (timer) clearTimeout(timer);
   }
+
+  let bytes;
+  if (body instanceof Uint8Array) bytes = body;
+  else if (ArrayBuffer.isView(body)) {
+    bytes = new Uint8Array(body.buffer, body.byteOffset, body.byteLength);
+  } else if (body instanceof ArrayBuffer) bytes = new Uint8Array(body);
+  else throw new Error(`${url} returned ${typeof body} rather than bytes`);
+
+  if (!looksLikeParquet(bytes)) {
+    const wrong = new Error(`${url} answered ${bytes.byteLength} bytes that are not a parquet`);
+    wrong.name = "NotParquetError";
+    throw wrong;
+  }
+  return bytes;
 }
