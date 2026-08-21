@@ -16,3 +16,20 @@ ignore:
   - package:
       name: pyo3
     reason: "pyo3 0.25.1 is vendored in py-rattler 0.25.0 (conda's Rust solver) from the tethys-core base image. Not app runtime code and not controllable from this repo's dependencies. Revisit when the base image ships py-rattler built against pyo3 >=0.29."
+  # Scoped to these advisories rather than to the packages, so a future openssl or quinn-proto
+  # CVE still fails the build instead of disappearing into a standing waiver.
+  - vulnerability: CVE-2026-14456
+    package:
+      name: openssl
+      type: binary
+    reason: "openssl 3.6.3 comes from the tethys-core base image's conda environment, not from this repo. dev-py3.12-dj5.2 is a rolling tag, so it picks up 3.6.4 when tethys-core next rebuilds. Drop this waiver once a scan reports 3.6.4 or later."
+  - vulnerability: CVE-2026-54876
+    package:
+      name: openssl
+      type: binary
+    reason: "The same base-image openssl 3.6.3 as CVE-2026-14456. Drop both together."
+  - vulnerability: GHSA-4w2j-m93h-cj5j
+    package:
+      name: quinn-proto
+      type: rust-crate
+    reason: "quinn-proto 0.11.14 is vendored in the same py-rattler binary as the pyo3 waiver above: a Rust crate inside conda's solver, not app runtime code and not reachable from this repo's dependencies. Revisit with the pyo3 waiver."
