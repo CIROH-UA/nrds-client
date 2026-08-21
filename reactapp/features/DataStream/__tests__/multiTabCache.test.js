@@ -99,7 +99,7 @@ describe('when another context holds the destination file open', () => {
   // The one thing the app cannot do anything about: an OPFS file another context has open
   // cannot be written, replaced or deleted, and nothing the app does releases it.
   const opfsWithLockedDestination = () => {
-    const store = new Map([['index_data_table.parquet', asFile([])]]);
+    const store = new Map([['vpu_16_troute_output.parquet', asFile([])]]);
     const handleFor = (name) => ({
       kind: 'file',
       get name() { return name; },
@@ -120,7 +120,7 @@ describe('when another context holds the destination file open', () => {
         return handleFor(name);
       },
       removeEntry: async (name) => {
-        if (name === 'index_data_table.parquet') throw locked();
+        if (name === 'vpu_16_troute_output.parquet') throw locked();
         store.delete(name);
       },
     };
@@ -140,24 +140,24 @@ describe('when another context holds the destination file open', () => {
 
     // The old behaviour: the move threw and the whole load died, every time, forever.
     await expect(
-      saveDataToCache('index_data_table.parquet', 'https://example/index.parquet')
+      saveDataToCache('vpu_16_troute_output.parquet', 'https://example/vpu_16.parquet')
     ).resolves.toBeDefined();
 
-    const meta = await statFromCache('index_data_table.parquet');
-    expect(meta.safeName).toBe('index_data_table.parquet.partial');
-    expect(store.get('index_data_table.parquet.partial').size).toBe(PARQUET.length);
+    const meta = await statFromCache('vpu_16_troute_output.parquet');
+    expect(meta.safeName).toBe('vpu_16_troute_output.parquet.partial');
+    expect(store.get('vpu_16_troute_output.parquet.partial').size).toBe(PARQUET.length);
   });
 
   it('registers the file it actually has with duckdb', async () => {
     opfsWithLockedDestination();
     const { saveDataToCache, createTableFromOPFS } = load();
-    await saveDataToCache('index_data_table.parquet', 'https://example/index.parquet');
+    await saveDataToCache('vpu_16_troute_output.parquet', 'https://example/vpu_16.parquet');
 
     const conn = fakeConn();
-    await createTableFromOPFS({ conn, key: 'index_data_table.parquet' });
+    await createTableFromOPFS({ conn, key: 'vpu_16_troute_output.parquet' });
 
     expect(conn.bindings.registerFileHandle).toHaveBeenCalledWith(
-      'nrds-cache/index_data_table.parquet.partial',
+      'nrds-cache/vpu_16_troute_output.parquet.partial',
       expect.anything(), 3, true
     );
   });
@@ -165,56 +165,60 @@ describe('when another context holds the destination file open', () => {
   it('does not sweep away the file it is reading from', async () => {
     const store = opfsWithLockedDestination();
     const { saveDataToCache, pruneCache } = load();
-    await saveDataToCache('index_data_table.parquet', 'https://example/index.parquet');
+    await saveDataToCache('vpu_16_troute_output.parquet', 'https://example/vpu_16.parquet');
 
-    await pruneCache('something-else.parquet');
+    await pruneCache('vpu_16_troute_output.parquet');
 
-    expect(store.has('index_data_table.parquet.partial')).toBe(true);
+    // The sweep has to recognise a landed copy as standing in for the file it was told to keep,
+    // or it throws away the download it is about to read.
+    expect(store.has('vpu_16_troute_output.parquet.partial')).toBe(true);
   });
 
   it('adopts the landed copy on the next page load instead of downloading again', async () => {
     const store = opfsWithLockedDestination();
     // What a previous session left: the canonical name held at 0 bytes, the bytes beside it.
-    store.set('index_data_table.parquet.partial', asFile([PARQUET]));
+    store.set('vpu_16_troute_output.parquet.partial', asFile([PARQUET]));
     const { statFromCache } = load();
 
-    const meta = await statFromCache('index_data_table.parquet');
+    const meta = await statFromCache('vpu_16_troute_output.parquet');
 
-    expect(meta).toMatchObject({ safeName: 'index_data_table.parquet.partial' });
+    expect(meta).toMatchObject({ safeName: 'vpu_16_troute_output.parquet.partial' });
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
   it('does not adopt a partial that is itself half a download', async () => {
     const store = opfsWithLockedDestination();
-    store.set('index_data_table.parquet.partial', asFile([PARQUET.slice(0, 20)]));
+    store.set('vpu_16_troute_output.parquet.partial', asFile([PARQUET.slice(0, 20)]));
     const { statFromCache } = load();
 
-    expect(await statFromCache('index_data_table.parquet')).toBe(null);
+    expect(await statFromCache('vpu_16_troute_output.parquet')).toBe(null);
   });
 
-  it('keeps the index copy when a data file is what is being kept', async () => {
+  it('sweeps a landed copy that is not the file being kept', async () => {
     const store = opfsWithLockedDestination();
-    store.set('index_data_table.parquet.partial', asFile([PARQUET], 0));
+    store.set('vpu_16_troute_output.parquet.partial', asFile([PARQUET], 0));
     store.set('someone-elses.parquet.partial', asFile([PARQUET], 0));
     const { pruneCache } = load();
 
     await pruneCache('vpu.parquet');
 
-    // The index is exempt from eviction, and so is the copy standing in for it.
-    expect(store.has('index_data_table.parquet.partial')).toBe(true);
+    // Neither is the kept file, so neither is spared. The id index used to be exempt here and
+    // is not any more: it no longer goes through OPFS, so an entry under its name is an orphan
+    // from an older build rather than something the search still reads.
+    expect(store.has('vpu_16_troute_output.parquet.partial')).toBe(false);
     expect(store.has('someone-elses.parquet.partial')).toBe(false);
   });
 
-  it('survives the clear button, which spares the index by name', async () => {
+  it('clears a landed copy, which nothing is spared from any more', async () => {
     const store = opfsWithLockedDestination();
-    store.set('index_data_table.parquet.partial', asFile([PARQUET]));
+    store.set('vpu_16_troute_output.parquet.partial', asFile([PARQUET]));
     const { clearCache } = load();
 
     await clearCache();
 
-    // Comparing the raw entry name meant a landed copy was not recognised as the index, so
-    // clearing threw away 103 MB in exactly the case the fallback exists for.
-    expect(store.has('index_data_table.parquet.partial')).toBe(true);
+    // Clearing used to spare the id index by name, because the search read it from here. It
+    // reads the app's own static artifact now, so sparing anything would only strand it.
+    expect(store.has('vpu_16_troute_output.parquet.partial')).toBe(false);
   });
 
   it('still clears an ordinary data file that landed under .partial', async () => {

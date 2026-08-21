@@ -1,6 +1,12 @@
 /**
  * The cache keeps one data file. Loading a vpu drops whatever was there before, so browsing
- * cannot accumulate, and the id index survives because the search depends on it.
+ * cannot accumulate.
+ *
+ * The id index used to be exempt from all of this, because the search read it from OPFS and it
+ * was 103 MB. It no longer goes through OPFS at all, so the exemption would have stranded that
+ *103 MB on every browser that ran the older build: unread by the app and unreachable by eviction,
+ * by the cached-files listing and by the clear-cache button alike. These tests now assert the
+ * opposite of what they used to -- that the orphan is reclaimed.
  *
  * The cap used to be ten, ranked by a recency list in localStorage. These cover what replaced
  * that: naming the file to keep, rather than ranking the ones to drop. The ranking's failure
@@ -79,12 +85,13 @@ describe('keeping one data file', () => {
     expect(dropped).toEqual(['vpu_01']);
   });
 
-  test('never drops the id index, whatever is being kept', async () => {
+  test('reclaims an id index left behind by the older build', async () => {
     files = { [INDEX]: 1, 'vpu_01.parquet': 1 };
 
     await loadCache().pruneCache('vpu_01.parquet');
 
-    expect(Object.keys(files)).toContain(INDEX);
+    // Nothing reads this key any more, so keeping it would strand 103 MB no path could reach.
+    expect(Object.keys(files)).not.toContain(INDEX);
   });
 
   test('drops several at once, for a cache left over from the old cap', async () => {
@@ -98,8 +105,8 @@ describe('keeping one data file', () => {
 
     const evicted = await loadCache().pruneCache('vpu_16.parquet');
 
-    expect(evicted.sort()).toEqual(['vpu_01.parquet', 'vpu_02.parquet', 'vpu_03.parquet']);
-    expect(Object.keys(files).sort()).toEqual([INDEX, 'vpu_16.parquet']);
+    expect(evicted.sort()).toEqual([INDEX, 'vpu_01.parquet', 'vpu_02.parquet', 'vpu_03.parquet']);
+    expect(Object.keys(files).sort()).toEqual(['vpu_16.parquet']);
   });
 
   test('keeps the file it was told to keep even when it is listed first', async () => {
@@ -115,22 +122,22 @@ describe('keeping one data file', () => {
   });
 
   test('evicts nothing when the kept file is the only one there', async () => {
-    files = { [INDEX]: 1, 'vpu_16.parquet': 1 };
+    files = { 'vpu_16.parquet': 1 };
 
     expect(await loadCache().pruneCache('vpu_16.parquet')).toEqual([]);
   });
 });
 
 describe('clearing the cache', () => {
-  test('keeps the id index, so the search still works afterwards', async () => {
+  test('clears an id index left behind by the older build', async () => {
     files = { [INDEX]: 1, 'vpu_16.parquet': 1 };
 
     const removed = await loadCache().clearCache();
 
-    // The index is 103 MB and only built on mount, so removing it here killed the search
-    // until the page was reloaded while the interface talked about a 7 MB data file.
-    expect(removed).toBe(1);
-    expect(Object.keys(files)).toEqual([INDEX]);
+    // Removing it used to kill the search until a reload, because the search read it from here.
+    // It reads the app's own static artifact now, so this is 103 MB the user gets back.
+    expect(removed).toBe(2);
+    expect(Object.keys(files)).toEqual([]);
   });
 
   test('removes every data file it finds', async () => {
@@ -138,6 +145,6 @@ describe('clearing the cache', () => {
 
     await loadCache().clearCache();
 
-    expect(Object.keys(files)).toEqual([INDEX]);
+    expect(Object.keys(files)).toEqual([]);
   });
 });

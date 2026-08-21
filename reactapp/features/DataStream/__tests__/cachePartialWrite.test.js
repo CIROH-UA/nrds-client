@@ -136,7 +136,6 @@ describe('what an interrupted download leaves', () => {
       files: {
         'old.parquet.partial': old(),
         'old.parquet.crswap': old(),
-        'index_data_table.parquet': asFile([PARQUET]),
       },
     });
     respondWith(PARQUET);
@@ -146,7 +145,8 @@ describe('what an interrupted download leaves', () => {
 
     // Neither is a data file, so eviction and the clear button both used to walk past them.
     expect([...store.keys()].filter((n) => /partial|crswap/.test(n))).toEqual([]);
-    expect(store.has('index_data_table.parquet')).toBe(true);
+    // And the sweep does not take the file the download just landed.
+    expect(store.has('vpu.parquet')).toBe(true);
   });
 
   it('is left alone while another tab is still writing it', async () => {

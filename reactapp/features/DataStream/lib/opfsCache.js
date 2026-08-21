@@ -27,10 +27,16 @@ const writingNow = new Set();
 /**
  * Files the app manages for itself: never evicted, and not offered as something to clear.
  *
- * The id index is the only one. The search depends on it, it is 103 MB, and refetching it is
- * the slowest thing the app does, so it outlives the data file it sits alongside.
+ * Empty now, and deliberately. The id index used to be the only entry: the search depended on
+ * it, it was 103 MB, and refetching it was the slowest thing the app did, so it was exempted
+ * from eviction, from the cached-files listing and from clearing. The index no longer goes
+ * through OPFS at all -- it is fetched from this app's own static files and registered as a
+ * buffer -- so keeping the exemption would strand 103 MB on every browser that used the older
+ * build, unreadable by the app and unreachable by all three reclamation paths, including the
+ * clear-cache button. Leaving the set in place rather than removing it keeps the concept for
+ * whatever next needs it, and keeps the three call sites honest.
  */
-const INTERNAL_FILES = new Set(["index_data_table.parquet"]);
+const INTERNAL_FILES = new Set();
 
 async function dropCachedTable(key) {
   try {
@@ -718,7 +724,7 @@ export async function clearCache() {
 export function getCacheKey(model, date, forecast, cycle, ensemble, vpu, outputFile) {
   const newOutputFile = isNCFile(outputFile) ? outputFile.replace(".nc", ".arrow") : outputFile;
   if (!ensemble){
-    return `${model}_${date}_${forecast}_${cycle}_${vpu}`.replace(/\./g,'_').replace(/\//g,'_') + `_${newOutputFile}`; ;
+    return `${model}_${date}_${forecast}_${cycle}_${vpu}`.replace(/\./g,'_').replace(/\//g,'_') + `_${newOutputFile}`;
   }
   return `${model}_${date}_${forecast}_${cycle}_${ensemble}_${vpu}`.replace(/\./g,'_').replace(/\//g,'_') +  `_${newOutputFile}`;
 }
