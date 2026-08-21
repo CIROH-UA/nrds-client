@@ -32,6 +32,17 @@ beforeEach(() => {
 });
 
 describe('selectMapFeature', () => {
+  it('charts nothing when the clicked feature has no id to name it', () => {
+    useDataStreamStore.setState({ vpu: 'VPU_01' });
+    useTimeSeriesStore.setState({ feature_id: 'cat-999' });
+
+    // loadTimeseries falls back to whatever is in the store, so an unnameable click used to
+    // re-chart the previous selection as if it had been clicked again.
+    selectMapFeature(divide({ divide_id: undefined }), 'divides');
+
+    expect(loadTimeseries).not.toHaveBeenCalled();
+  });
+
   it('records the clicked feature with its centroid and layer', () => {
     useDataStreamStore.setState({ vpu: 'VPU_01' });
 

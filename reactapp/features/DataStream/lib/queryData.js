@@ -10,13 +10,20 @@ import {
 import { getConnection } from "./duckdbClient";
 
 const DEBUG = process.env.NODE_ENV !== "production";
+// Escaped the same way opfsCache does, so a name is quoted in one place rather than at each
+// query. tableNameForKey is the only rule for turning a cache key into a table name: splitting
+// on the first dot was a second, quieter one that parted company with it on any key holding more
+// than one, which is how checkForTable came to answer false for every key it was given.
+const sqlIdent = (s) => `"${String(s).replace(/"/g, '""')}"`;
+const sqlStr = (s) => `'${String(s).replace(/'/g, "''")}'`;
+
 const debugLog = (...args) => {
   if (DEBUG) console.log(...args);
 };
 
 export async function getTimeseries(id, cacheKey, variable) {
   const conn = await getConnection();
-  const tableName = cacheKey.split('.')[0]; 
+  const tableName = tableNameForKey(cacheKey); 
   try {
     const rows = [];
     const stream = await conn.send(`
@@ -59,12 +66,12 @@ export async function getFeatureIDs(cacheKey) {
   debugLog("getFeatureIDs called with cacheKey:", cacheKey);
 
   const conn = await getConnection();
-  const tableName = cacheKey.split('.')[0];
+  const tableName = tableNameForKey(cacheKey);
   try {
     const featureIds = [];
     const stream = await conn.send(`
       SELECT feature_id
-      FROM "${tableName}"
+      FROM ${sqlIdent(tableName)}
     `);
 
     for await (const batch of stream) {
@@ -140,7 +147,9 @@ export async function getFeatureProperties({ cacheKey, feature_id }) {
   if (!candidates.length) return [];
 
   const conn = await getConnection();
-  const tableName = cacheKey.split('.')[0];
+  // The same helper the table was created with: splitting on the first dot is a second, quieter
+  // rule for the same thing, and it parts company with it on any key holding more than one.
+  const tableName = tableNameForKey(cacheKey);
   const inList = candidates.map((id) => `'${id}'`).join(', ');
   // Ranked by the order asked for, so "cat first" is expressed once, at the call site.
   const ranking = candidates
@@ -149,7 +158,7 @@ export async function getFeatureProperties({ cacheKey, feature_id }) {
   try {
     const stream = await conn.send(`
       SELECT *
-      FROM "${tableName}"
+      FROM ${sqlIdent(tableName)}
       WHERE id IN (${inList})
       ORDER BY CASE id ${ranking} ELSE ${candidates.length} END
       LIMIT 1
@@ -220,7 +229,8 @@ export async function checkForTable(cacheKey) {
     const existsResult = await conn.query(`
       SELECT COUNT(*) AS cnt
       FROM information_schema.tables
-      WHERE table_name = '${tableName}'
+      WHERE table_schema = 'main'
+        AND table_name = ${sqlStr(tableName)}
     `);
 
     const exists = existsResult.toArray()[0].cnt > 0;
@@ -282,7 +292,7 @@ export async function dropAllVpuDataTables() {
 export async function getVariables({ cacheKey }) {
   debugLog("getVariables called with cacheKey:", cacheKey);
   const conn = await getConnection();
-  const tableName = cacheKey.split('.')[0];
+  const tableName = tableNameForKey(cacheKey);
 
   try {
     const cols = [];
@@ -311,18 +321,18 @@ export async function getVariables({ cacheKey }) {
 
 export async function getDistinctFeatureIds(cacheKey) {
   const conn  = await getConnection();
-  const tableName = cacheKey.split('.')[0];
+  const tableName = tableNameForKey(cacheKey);
   try {
     const featureIds = [];
     debugLog(`Getting distinct feature_ids from table "${tableName}"...`);
     debugLog(`
       SELECT DISTINCT feature_id
-      FROM "${tableName}"
+      FROM ${sqlIdent(tableName)}
       ORDER BY feature_id
     `);
     const stream = await conn.send(`
       SELECT DISTINCT feature_id
-      FROM "${tableName}"
+      FROM ${sqlIdent(tableName)}
       ORDER BY feature_id
     `);
     
@@ -342,18 +352,18 @@ export async function getDistinctFeatureIds(cacheKey) {
 
 export async function getDistinctTimes(cacheKey) {
   const conn = await getConnection();
-  const tableName = cacheKey.split('.')[0];
+  const tableName = tableNameForKey(cacheKey);
   try {
     const times = [];
     debugLog(`Getting distinct times from table "${cacheKey}"...`);
     debugLog(`
       SELECT DISTINCT time
-      FROM "${tableName}"
+      FROM ${sqlIdent(tableName)}
       ORDER BY time
     `);
     const stream = await conn.send(`
       SELECT DISTINCT time
-      FROM "${tableName}"
+      FROM ${sqlIdent(tableName)}
       ORDER BY time
     `);
 
@@ -374,17 +384,17 @@ export async function getDistinctTimes(cacheKey) {
 // Returns a flattened array ordered by (feature_id, time)
 export async function getVpuVariableFlat(cacheKey, variable) {
   const conn = await getConnection();
-  const tableName = cacheKey.split('.')[0];
+  const tableName = tableNameForKey(cacheKey);
   try {
     debugLog(`Getting variable "${variable}" data from table "${tableName}"...`);
     debugLog(`
       SELECT ${variable} AS v
-      FROM "${tableName}"
+      FROM ${sqlIdent(tableName)}
       ORDER BY feature_id, time
     `);
     const countResult = await conn.query(`
       SELECT COUNT(*) AS n
-      FROM "${tableName}"
+      FROM ${sqlIdent(tableName)}
     `);
     const countCol = countResult.getChild('n');
     const totalRows = Number(countCol?.get(0) ?? 0);
@@ -397,7 +407,7 @@ export async function getVpuVariableFlat(cacheKey, variable) {
 
     const stream = await conn.send(`
       SELECT ${variable} AS v
-      FROM "${tableName}"
+      FROM ${sqlIdent(tableName)}
       ORDER BY feature_id, time
     `);
 

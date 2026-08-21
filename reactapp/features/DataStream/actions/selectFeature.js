@@ -36,7 +36,9 @@ export function selectMapFeature(feature, layerId) {
 
   const vpuName = `VPU_${feature.properties?.vpuid}`;
   const { vpu, set_vpu } = useDataStreamStore.getState();
-  if (vpuName === vpu) {
+  // Only for a feature we could name: loadTimeseries falls back to the store's feature_id, so
+  // passing nothing re-charted the previous selection as though it had been clicked again.
+  if (featureId != null && vpuName === vpu) {
     loadTimeseries({ featureId });
   }
   set_vpu(vpuName);
