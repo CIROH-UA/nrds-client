@@ -11,7 +11,7 @@ import {
   SearchNotice,
 } from '../styles/Styles';
 import { loadIndexData, getFeatureProperties } from 'features/DataStream/lib/queryData';
-import { searchCandidates } from 'features/DataStream/lib/utils';
+import { cacheFailureReason, searchCandidates } from 'features/DataStream/lib/utils';
 import { loadTimeseries } from 'features/DataStream/actions/loadTimeseries';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
@@ -56,16 +56,19 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
   const [searching, setSearching] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [reason, setReason] = useState(null);
 
   useEffect(() => {
     let alive = true;
     setIndexStatus('loading');
+    setReason(null);
     // Building the id index is the one load that has to happen without being asked for.
     loadIndexData({ remoteUrl: hydrofabric_index_url })
       .then(() => { if (alive) setIndexStatus('ready'); })
       .catch((err) => {
         if (!alive) return;
         console.error('Could not build the search index', err);
+        setReason(cacheFailureReason(err));
         setIndexStatus('failed');
       });
     return () => { alive = false; };
@@ -120,7 +123,10 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
   if (indexStatus === 'failed') {
     return (
       <SearchNotice role="alert">
-        <span>Search unavailable: the id index could not be loaded</span>
+        <span>
+          Search unavailable: the id index could not be loaded
+          {reason ? ` (${reason})` : ''}
+        </span>
         <button type="button" onClick={() => setAttempt((n) => n + 1)}>
           Try again
         </button>

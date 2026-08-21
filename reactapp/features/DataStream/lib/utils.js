@@ -111,3 +111,27 @@ export const formatPropertyValue = (value) => {
   if (typeof value === 'number') return formatMeasurement(value) ?? String(value);
   return String(value);
 };
+
+/**
+ * What to tell the reader when the cache could not be written or read.
+ *
+ * The index failing showed "the id index could not be loaded" and nothing else, with the real
+ * reason only in a console error, which is easy to miss behind a level filter. Every cause here
+ * is a browser storage condition rather than anything about the data, and each one has a
+ * different remedy, so naming which one saves the reader guessing.
+ */
+export function cacheFailureReason(err) {
+  switch (err?.name) {
+    case 'SecurityError':
+    case 'NotAllowedError':
+      return 'this browser is blocking storage for this site';
+    case 'QuotaExceededError':
+      return 'there is not enough browser storage left';
+    case 'NoModificationAllowedError':
+      return 'another tab of this app has the cache open';
+    case 'TypeError':
+      return 'the file could not be fetched';
+    default:
+      return err?.name ? `${err.name}: ${err.message}` : 'reason unknown';
+  }
+}

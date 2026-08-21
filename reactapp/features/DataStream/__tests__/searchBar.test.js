@@ -153,6 +153,24 @@ describe('the search box', () => {
     consoleError.mockRestore();
   });
 
+  it.each([
+    ['SecurityError', /blocking storage/i],
+    ['QuotaExceededError', /not enough browser storage/i],
+    ['NoModificationAllowedError', /another tab/i],
+  ])('names %s so the reader is not left guessing', async (name, shown) => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+    // Each of these has a different remedy, and the only place they used to appear was a
+    // console error behind a level filter.
+    queryData.loadIndexData.mockRejectedValue(Object.assign(new Error('nope'), { name }));
+
+    render(<SearchBar />);
+
+    // The store change and the reason land in separate renders, so the notice appears first.
+    const notice = await screen.findByRole('alert');
+    await waitFor(() => expect(notice).toHaveTextContent(shown));
+    consoleError.mockRestore();
+  });
+
   it('does not keep claiming to be building the index after it has given up', async () => {
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
     queryData.loadIndexData.mockRejectedValue(new Error('404'));
