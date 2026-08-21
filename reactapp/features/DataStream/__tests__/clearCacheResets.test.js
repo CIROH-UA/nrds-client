@@ -9,7 +9,15 @@
  */
 jest.mock('features/DataStream/lib/queryData', () => ({
   dropAllVpuDataTables: jest.fn(),
+  checkForTable: jest.fn(),
+  loadVpuData: jest.fn(),
+  getFeatureIDs: jest.fn(),
+  getVariables: jest.fn(),
+  getDistinctFeatureIds: jest.fn(),
+  getDistinctTimes: jest.fn(),
+  getVpuVariableFlat: jest.fn(),
 }));
+jest.mock('features/DataStream/actions/loadTimeseries', () => ({ loadTimeseries: jest.fn() }));
 jest.mock('features/DataStream/lib/opfsCache', () => ({
   clearCache: jest.fn(),
   getFilesFromCache: jest.fn(),
@@ -118,5 +126,39 @@ describe('what the clear button reports', () => {
 
     expect(emptied).toBe(true);
     expect(useCacheTablesStore.getState().cacheTables).toHaveLength(0);
+  });
+});
+
+describe('clearing while a load is in flight', () => {
+  const { loadVpu } = require('features/DataStream/actions/loadVpu');
+  const { useVPUStore: vpuStore } = require('features/DataStream/store/Layers');
+  const useDataStreamStore = require('features/DataStream/store/Datastream').default;
+  const useS3Store = require('features/DataStream/store/s3Store').default;
+
+  it('stops the running load from putting back what was just cleared', async () => {
+    // The load reads a table the clear is about to drop, and it used to go on writing its
+    // results afterwards: the animation reappeared on its own seconds after being cleared.
+    // Gated on the table check so the load is provably mid-flight when the clear lands.
+    let releaseCheck;
+    queryData.checkForTable.mockImplementation(() => new Promise((r) => { releaseCheck = r; }));
+    queryData.loadVpuData.mockResolvedValue('6.2 MB');
+    queryData.getFeatureIDs.mockResolvedValue(['cat-1']);
+    queryData.getVariables.mockResolvedValue(['flow']);
+    queryData.getDistinctFeatureIds.mockResolvedValue(['cat-1']);
+    queryData.getDistinctTimes.mockResolvedValue(['t0']);
+    queryData.getVpuVariableFlat.mockResolvedValue(Float32Array.from([1]));
+    useDataStreamStore.setState({ cache_key: 'a.parquet', vpu: 'VPU_16' });
+    useS3Store.setState({ prefix: 'outputs/' });
+
+    const inFlight = loadVpu();
+    await Promise.resolve();
+    await useCacheTablesStore.getState().clear();
+    releaseCheck(false);
+    await inFlight;
+
+    // It resumes, finds the dataset underneath replaced, and writes nothing.
+    expect(queryData.loadVpuData).not.toHaveBeenCalled();
+    expect(vpuStore.getState().featureIds).toEqual([]);
+    expect(Object.keys(vpuStore.getState().valuesByVar)).toEqual([]);
   });
 });

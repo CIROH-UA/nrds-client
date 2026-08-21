@@ -129,6 +129,9 @@ export function cacheFailureReason(err) {
       return 'there is not enough browser storage left';
     case 'NoModificationAllowedError':
       return 'another tab of this app has the cache open';
+    case 'TimeoutError':
+    case 'AbortError':
+      return 'the download stopped partway';
     case 'TypeError':
       return 'the file could not be fetched';
     default:

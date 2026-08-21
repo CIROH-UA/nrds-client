@@ -3,6 +3,7 @@ import { clearCache, getFilesFromCache } from '../lib/opfsCache';
 import useTimeSeriesStore from './Timeseries';
 import { useVPUStore, useFeatureStore } from './Layers';
 import { dropAllVpuDataTables } from '../lib/queryData';
+import { cancelVpuLoads } from '../actions/loadState';
 
 const EMPTY_TABLE = [];
 
@@ -47,6 +48,9 @@ export const useCacheTablesStore = create((set, get) => ({
   },
 
   clear: async () => {
+    // First, so a load already in flight cannot finish and put back what is about to be
+    // dropped. Every step of loadVpu checks the generation before writing.
+    cancelVpuLoads();
     // Tables then files, and the database stays. Terminating it was how the files were freed
     // when createTableFromOPFS held a sync access handle on each one for the session; those are
     // released as soon as the table is built now, and clearCache drops any registration itself.

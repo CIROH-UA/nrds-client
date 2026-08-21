@@ -192,28 +192,55 @@ async function saveArrowToCache(url, writable) {
 // The datastream bucket, for callers that pass a key within it rather than a full url.
 const DATASTREAM_BUCKET = 'https://ciroh-community-ngen-datastream.s3.us-east-1.amazonaws.com';
 
+/**
+ * How long a download may go without delivering anything before it is abandoned.
+ *
+ * A deadline on the whole transfer would be wrong: the id index is 103 MB and a slow connection
+ * is not a failure. This is reset by every chunk, so it fires only on a connection that has
+ * stopped sending. Nothing used to fire at all -- there was no signal and no timeout -- so a
+ * stalled fetch left the app saying it was loading for as long as the tab stayed open.
+ */
+const STALL_MS = 30_000;
+
 async function cacheParquetToOPFS(url, writable) {
+  // An absolute url is used as given: the hydrofabric index lives on a different bucket.
+  const source = /^https?:\/\//i.test(url) ? url : `${DATASTREAM_BUCKET}/${url}`;
+  const stalled = new AbortController();
+  let timer = null;
+  const expectMore = () => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => {
+      stalled.abort(
+        new DOMException(`${url} stopped sending after ${STALL_MS} ms`, "TimeoutError")
+      );
+    }, STALL_MS);
+  };
+
   try {
-    // An absolute url is used as given: the hydrofabric index lives on a different bucket.
-    const source = /^https?:\/\//i.test(url) ? url : `${DATASTREAM_BUCKET}/${url}`;
-    const res = await fetch(source, { cache: "no-store" });
+    expectMore();
+    const res = await fetch(source, { cache: "no-store", signal: stalled.signal });
     if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
 
-    // Stream to disk; avoids loading the entire file in memory
     if (!res.body) {
       const buf = await res.arrayBuffer();
       await writable.write(new Uint8Array(buf));
       await writable.close();
-    } else {
-      // WritableStream from OPFS supports pipeTo in modern browsers
-
+    } else if (typeof window.TransformStream !== "function") {
       await res.body.pipeTo(writable);
-      // pipeTo closes the destination by default
+    } else {
+      const watched = new window.TransformStream({
+        transform(chunk, controller) {
+          expectMore();
+          controller.enqueue(chunk);
+        },
+      });
+      await res.body.pipeThrough(watched).pipeTo(writable);
     }
   } catch (err) {
-    // If pipeTo fails mid-stream, attempt to close to release the lock.
-    try { await writable.close(); } catch (_) {}
+    try { await writable.close(); } catch (_) { /* already errored by the failed pipe */ }
     throw err;
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 

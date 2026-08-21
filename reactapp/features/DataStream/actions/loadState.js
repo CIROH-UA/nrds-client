@@ -46,6 +46,20 @@ export const vpuLoadInFlight = () => vpuLoads > 0;
 
 export const currentVpuGeneration = () => vpuGeneration;
 
+/**
+ * Invalidate whatever vpu load is in flight without starting one.
+ *
+ * Clearing the cache used to leave a running load alone, and that load went on to write its
+ * animation arrays and its table into the stores after the clear: the data came back on its own
+ * a few seconds after the reader had thrown it away. Bumping the generation is all it takes,
+ * since every step of loadVpu already checks it before writing. The count is untouched: the
+ * load still runs to its finally, which is what balances the spinner.
+ */
+export const cancelVpuLoads = () => {
+  vpuGeneration += 1;
+  return vpuGeneration;
+};
+
 export const beginLoading = () => {
   loads += 1;
   useTimeSeriesStore.setState({ loading: true });
