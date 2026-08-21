@@ -3,7 +3,6 @@ import { clearCache, getFilesFromCache } from '../lib/opfsCache';
 import useTimeSeriesStore from './Timeseries';
 import { useVPUStore, useFeatureStore } from './Layers';
 import { dropAllVpuDataTables } from '../lib/queryData';
-import { terminateDatabase } from '../lib/duckdbClient';
 
 const EMPTY_TABLE = [];
 
@@ -48,17 +47,18 @@ export const useCacheTablesStore = create((set) => ({
   },
 
   clear: async () => {
-    // Best effort in order: tables, then files, then the worker holding them open.
+    // Tables then files, and the database stays. Terminating it was how the files were freed
+    // when createTableFromOPFS held a sync access handle on each one for the session; those are
+    // released as soon as the table is built now, and clearCache drops any registration itself.
+    // It also took index_data_table with it, which both the table drop and the file exemption
+    // go out of their way to keep: searching then raised "Table with name index_data_table does
+    // not exist" until the page was reloaded, since the index is only built on mount.
     await dropAllVpuDataTables().catch((e) => {
       console.warn('[cacheTables] dropAllVpuDataTables failed:', e);
     });
 
     await clearCache().catch((e) => {
       console.warn('[cacheTables] clearCache failed:', e);
-    });
-
-    await terminateDatabase().catch((e) => {
-      console.warn('[cacheTables] terminateDatabase failed:', e);
     });
 
     set({ cacheTables: EMPTY_TABLE });

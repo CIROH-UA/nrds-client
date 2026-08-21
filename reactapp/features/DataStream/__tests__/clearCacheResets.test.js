@@ -79,3 +79,22 @@ describe('clearing the cache', () => {
     expect(useVPUStore.getState().times).toEqual([]);
   });
 });
+
+describe('what clearing the cache leaves standing', () => {
+  it('keeps the database, since the id index lives in it', async () => {
+    await useCacheTablesStore.getState().clear();
+
+    // The file is exempt from the clear and the table drop spares it by name, so terminating
+    // the instance here made all three disagree: searching then raised "Table with name
+    // index_data_table does not exist" until the page was reloaded, because the index is only
+    // built on mount.
+    expect(duckdbClient.terminateDatabase).not.toHaveBeenCalled();
+  });
+
+  it('still drops the data tables and the files', async () => {
+    await useCacheTablesStore.getState().clear();
+
+    expect(queryData.dropAllVpuDataTables).toHaveBeenCalled();
+    expect(opfsCache.clearCache).toHaveBeenCalled();
+  });
+});
