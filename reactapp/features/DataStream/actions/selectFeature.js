@@ -20,13 +20,19 @@ export function selectMapFeature(feature, layerId) {
   const featureId = feature.properties?.[featureIdProperty];
   const { lon, lat } = getCentroid(feature);
 
-  useFeatureStore.getState().set_selected_feature({
-    latitude: lat,
-    longitude: lon,
-    layerId,
-    _id: featureId,
-    ...feature.properties,
-  });
+  // A feature we cannot name is not a selection. This used to be recorded anyway and dropped by
+  // the store, whose dedupe guard read an unidentifiable key as "unchanged" and so happened to
+  // act as a validity check. That guard is gone, because it was also silently dropping hovers
+  // it could not key, so the decision belongs here where it can be stated.
+  if (featureId != null) {
+    useFeatureStore.getState().set_selected_feature({
+      latitude: lat,
+      longitude: lon,
+      layerId,
+      _id: featureId,
+      ...feature.properties,
+    });
+  }
 
   const vpuName = `VPU_${feature.properties?.vpuid}`;
   const { vpu, set_vpu } = useDataStreamStore.getState();

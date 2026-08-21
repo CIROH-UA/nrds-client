@@ -135,3 +135,54 @@ describe('choosing what is under the pointer', () => {
     expect(pickHoverFeature(undefined)).toBeNull();
   });
 });
+
+describe('the hovered feature carries an identity', () => {
+  /**
+   * The feature store skips an update when its key matches the one it holds, and that key came
+   * from _id, then id, then properties.id. A flowpath from upstream_index has none of those in
+   * its properties, so the key was null, the held key was also null, and every hover update was
+   * dropped: hovering a flowpath never produced a popup while hovering a catchment always did.
+   */
+  const { useFeatureStore } = require('features/DataStream/store/Layers');
+  const initial = useFeatureStore.getState();
+  beforeEach(() => { useFeatureStore.setState(initial, true); });
+
+  test('reaches the store for a feature with no id in its properties', () => {
+    const hovered = hoveredFeatureOf(flowpathNew, lngLat);
+    useFeatureStore.getState().set_hovered_feature(hovered);
+
+    expect(useFeatureStore.getState().hovered_feature).not.toBeNull();
+    expect(useFeatureStore.getState().hovered_feature.hoverId).toBe(2863415);
+  });
+
+  test('a different reach replaces it', () => {
+    const store = useFeatureStore.getState();
+    store.set_hovered_feature(hoveredFeatureOf(flowpathNew, lngLat));
+    store.set_hovered_feature(hoveredFeatureOf({ ...flowpathNew, id: 999 }, lngLat));
+
+    expect(useFeatureStore.getState().hovered_feature.hoverId).toBe(999);
+  });
+
+  test('the same reach twice does not churn the store', () => {
+    const store = useFeatureStore.getState();
+    store.set_hovered_feature(hoveredFeatureOf(flowpathNew, lngLat));
+    const held = useFeatureStore.getState().hovered_feature;
+    store.set_hovered_feature(hoveredFeatureOf(flowpathNew, lngLat));
+
+    expect(useFeatureStore.getState().hovered_feature).toBe(held);
+  });
+
+  test('clearing works, so a hidden layer cannot leave its popup behind', () => {
+    const store = useFeatureStore.getState();
+    store.set_hovered_feature(hoveredFeatureOf(flowpathNew, lngLat));
+    store.set_hovered_feature(null);
+
+    expect(useFeatureStore.getState().hovered_feature).toBeNull();
+  });
+
+  test('the identity is not shown back to the reader as a property', () => {
+    const keys = hoverRows(hoveredFeatureOf(flowpathNew, lngLat)).map(([k]) => k);
+    expect(keys).not.toContain('_id');
+    expect(keys).not.toContain('layerId');
+  });
+});

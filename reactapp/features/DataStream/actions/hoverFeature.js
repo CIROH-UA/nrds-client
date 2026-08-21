@@ -1,7 +1,7 @@
 import { mapFeatureId } from 'features/DataStream/lib/layers';
 
 // Ours, not the feature's: added below so the popup can place itself and dedupe.
-const BOOKKEEPING = new Set(['hoverId', 'longitude', 'latitude']);
+const BOOKKEEPING = new Set(['_id', 'layerId', 'hoverId', 'longitude', 'latitude']);
 
 /**
  * How hard a layer is to aim at, smallest target first.
@@ -52,6 +52,12 @@ export function hoveredFeatureOf(feature, lngLat) {
   if (!hoverId) return null;
 
   return {
+    // _id is where the feature store looks first for an identity. Without it the store fell back
+    // through id and properties.id, found neither on a flowpath from this archive, keyed the
+    // hover as null, read null as unchanged, and dropped every update: hovering a flowpath could
+    // never produce a popup while hovering a catchment always could.
+    _id: hoverId,
+    layerId,
     ...feature.properties,
     hoverId,
     longitude: lngLat?.lng,

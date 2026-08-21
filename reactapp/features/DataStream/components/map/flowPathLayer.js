@@ -1,4 +1,4 @@
-import { FLOWPATHS_MIN_ZOOM, getValueAtTimeFlat, writeColorInto } from '../../lib/layers';
+import { FLOWPATHS_MIN_ZOOM, getValueAtTimeFlat, normalizeValue, writeColorInto } from '../../lib/layers';
 
 // Stands in for the frame index while the layer is hidden. deck.gl gates drawing on `visible`
 // but not attribute updates, so with a live index it would keep recomputing colour and width
@@ -51,8 +51,8 @@ export function flowPathLayerProps({
     getWidth: (d) => {
       const v = getValueAtTimeFlat(valuesByVar, numTimes, d.featureIndex, currentTimeIndex);
       if (v === null || v <= -9998) return WIDTH_NO_DATA;
-      const t = Math.max(0, Math.min(1, (v - bounds.min) / (bounds.max - bounds.min)));
-      return WIDTH_MIN + t * WIDTH_RANGE;
+      // The same curve the colour uses, so a reach cannot read wide and cool at once.
+      return WIDTH_MIN + normalizeValue(v, bounds) * WIDTH_RANGE;
     },
     widthUnits: 'pixels',
     widthMinPixels: WIDTH_NO_DATA,

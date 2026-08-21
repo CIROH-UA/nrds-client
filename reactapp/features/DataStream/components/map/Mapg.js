@@ -36,6 +36,10 @@ import {
 import { MapHint } from '../styles/Styles';
 
 const INITIAL_VIEW = { longitude: -96, latitude: 40, zoom: 4 };
+
+// Half-width of the hover hit box. A flowpath renders two pixels wide, so an exact-pixel query
+// is a target most people cannot hit, and one react-map-gl's own query missed outright.
+const HOVER_TOLERANCE_PX = 4;
 const EMPTY_PATHS = [];
 
 
@@ -242,10 +246,57 @@ const MainMap = () => {
     };
   }, [removeHoverListeners]);
 
+  /**
+   * The layers hovering may report, which is only the ones currently on the map.
+   *
+   * This was a fixed list of all four. Turning a layer off removes it from the style, and
+   * maplibre's queryRenderedFeatures refuses the whole call when any named layer is missing: it
+   * fires an error and returns an empty array. So switching catchments off stopped hovering
+   * from reporting anything at all, flowpaths included, because `divides` was still on the list.
+   */
+  const hoverableLayerIds = useMemo(() => {
+    const ids = [];
+    if (isCatchmentsVisible) ids.push('divides');
+    if (isNexusVisible) ids.push('nexus-points');
+    if (isFlowPathsVisible) ids.push(FLOWPATHS_LAYER_ID);
+    if (isConusGaugesVisible) ids.push('conus-gauges');
+    return ids;
+  }, [isCatchmentsVisible, isNexusVisible, isFlowPathsVisible, isConusGaugesVisible]);
+
+  /**
+   * What is under the pointer, asked of the live map with a few pixels of tolerance.
+   *
+   * Not event.features. react-map-gl builds that by querying a clone of the transform at the
+   * exact pointer pixel, and a flowpath renders two pixels wide: measured at a pixel where the
+   * live map reported a flowpath, react-map-gl's own query returned only the catchment beneath
+   * it, and with catchments hidden it returned nothing at all. A small box also makes a thin
+   * line a target a person can hit rather than one they have to land on exactly.
+   */
+  const featuresUnder = useCallback((point) => {
+    // The same lookup the rest of this component uses, rather than event.target, whose shape is
+    // react-map-gl's business and which does not have to be the maplibre map.
+    const map = mapRef.current?.getMap?.() ?? mapRef.current;
+    if (!map?.getLayer || !point) return [];
+    const ids = hoverableLayerIds.filter((id) => map.getLayer(id));
+    // An empty list would query the whole style, and one missing layer makes maplibre refuse
+    // the call outright and return nothing.
+    if (!ids.length) return [];
+    const box = [
+      [point.x - HOVER_TOLERANCE_PX, point.y - HOVER_TOLERANCE_PX],
+      [point.x + HOVER_TOLERANCE_PX, point.y + HOVER_TOLERANCE_PX],
+    ];
+    try {
+      return map.queryRenderedFeatures(box, { layers: ids });
+    } catch {
+      return [];
+    }
+  }, [hoverableLayerIds]);
+
   const onHover = useCallback((event) => {
     if (!enabledHovering) return;
 
-    const { features, lngLat } = event;
+    const { lngLat } = event;
+    const features = featuresUnder(event.point);
 
     const prev = useFeatureStore.getState().hovered_feature;
 
@@ -262,7 +313,7 @@ const MainMap = () => {
 
     if (prev?.hoverId === next.hoverId) return;
     set_hovered_feature(next);
-  }, [enabledHovering, set_hovered_feature]);
+  }, [enabledHovering, featuresUnder, set_hovered_feature]);
 
 
   const catchmentLayer = useCatchmentLayers({
@@ -351,7 +402,8 @@ const MainMap = () => {
         // dropped everything, which is why playback over a wide view drew nothing at all.
         // Accumulating means the geometry survives the view that produced it, and deck.gl has
         // no zoom limit of its own, so it keeps drawing at any scale.
-        const added = addPaths(pathsByIdRef.current, feats, featureIdToIndex);
+        // Tagged with the zoom it was read at, so a closer look replaces a coarser capture.
+        const added = addPaths(pathsByIdRef.current, feats, featureIdToIndex, map.getZoom());
         if (!added) return;
 
         pathDataRef.current = [...pathsByIdRef.current.values()];
@@ -401,6 +453,13 @@ const MainMap = () => {
     return layers;
   }, [isNexusVisible, isCatchmentsVisible]);
 
+
+  // A popup describing a layer that is no longer shown has to go. Toggling catchments off left
+  // the last catchment's popup on screen, still attached to a layer the reader had just hidden.
+  useEffect(() => {
+    if (useFeatureStore.getState().hovered_feature !== null) set_hovered_feature(null);
+  }, [hoverableLayerIds, set_hovered_feature]);
+
   const handleMapClick = async (event) => {
     // Deliberately unguarded by loading: a newer load supersedes an older one.
     const map = event.target;
@@ -427,7 +486,7 @@ const MainMap = () => {
       onLoad={handleMapLoad}
       onMouseMove={onHover}
       onZoomEnd={(e) => setZoom(e.viewState.zoom)}
-      interactiveLayerIds={['divides', 'nexus-points', FLOWPATHS_LAYER_ID, 'conus-gauges']}
+      interactiveLayerIds={hoverableLayerIds}
     >
       <Source
         key="flowpath-geometry"

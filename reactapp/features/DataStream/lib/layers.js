@@ -509,11 +509,7 @@ export function writeColorInto(value, bounds, target) {
     target[3] = MISSING_COLOR[3];
     return target;
   }
-  // Clamped: out-of-range values used to index past the scale and throw in the accessor.
-  const ratio = !bounds || bounds.max === bounds.min
-    ? 0
-    : (value - bounds.min) / (bounds.max - bounds.min);
-  const t = ratio > 0 ? Math.sqrt(ratio > 1 ? 1 : ratio) : 0;
+  const t = normalizeValue(value, bounds);
   const idx = t * (COLOR_SCALE.length - 1);
   const lower = Math.floor(idx);
   const upper = Math.ceil(idx);
@@ -527,16 +523,81 @@ export function writeColorInto(value, bounds, target) {
   return target;
 }
 
+// Sampling keeps the sort cheap: a vpu's flat array runs to millions of values, and every
+// hundredth one is plenty to find a percentile.
+const BOUNDS_SAMPLE_CAP = 100000;
+const LOW_PERCENTILE = 0.02;
+const HIGH_PERCENTILE = 0.98;
+
+/**
+ * The range the ramp spans, trimmed at both ends.
+ *
+ * The true minimum and maximum were the bounds before, which one main stem was enough to ruin:
+ * a single reach three orders of magnitude above its neighbours pushed every other reach into
+ * the bottom of the ramp, so a whole vpu drew in one blue with a handful of coloured lines
+ * through it. Clipping to the 2nd and 98th percentiles means the ramp describes the reaches
+ * there are rather than the widest pair, and anything beyond the ends simply saturates.
+ */
 export function computeBounds(varData) {
-  let min = Infinity, max = -Infinity;
-  for (let i = 0; i < varData.length; i++) {
+  const length = varData?.length ?? 0;
+  const stride = Math.max(1, Math.ceil(length / BOUNDS_SAMPLE_CAP));
+  const sample = [];
+  for (let i = 0; i < length; i += stride) {
     const v = varData[i];
-    if (v <= -9998) continue;
-    if (v < min) min = v;
-    if (v > max) max = v;
+    if (v > -9998 && Number.isFinite(v)) sample.push(v);
   }
-  if (!isFinite(min) || !isFinite(max)) return { min: 0, max: 1 };
-  return { min, max };
+  if (!sample.length) return { min: 0, max: 1 };
+
+  sample.sort((a, b) => a - b);
+  const last = sample.length - 1;
+  const min = sample[Math.floor(last * LOW_PERCENTILE)];
+  const high = sample[Math.ceil(last * HIGH_PERCENTILE)];
+  // Everything inside the trimmed range being identical is a real answer, not a failure.
+  const max = high > min ? high : min + 1;
+  const median = sample[Math.round(last * 0.5)];
+  return { min, max, curve: fitCurve(median - min, max - min) };
+}
+
+/**
+ * How hard to bend the ramp, so the median reach lands in the middle of it.
+ *
+ * log1p alone is nearly linear close to zero, which is where most reaches are: it left a third
+ * of them in the bottom fifth of the ramp. Scaling the input first moves the bend down to where
+ * the data actually is. Bisected rather than solved because there is no closed form, and it runs
+ * once per variable rather than once per frame.
+ */
+function fitCurve(medianOffset, span) {
+  if (!(medianOffset > 0) || !(span > medianOffset)) return 1;
+  let low = 1e-6;
+  let high = 1e9;
+  for (let i = 0; i < 60; i++) {
+    const k = Math.sqrt(low * high);
+    if (Math.log1p(k * medianOffset) / Math.log1p(k * span) < 0.5) low = k;
+    else high = k;
+  }
+  return Math.sqrt(low * high);
+}
+
+/**
+ * Where a value sits on the ramp, 0 to 1.
+ *
+ * Logarithmic, because streamflow is. A linear ramp, and even the square root this replaced,
+ * put almost every reach at the bottom: the values are spread over orders of magnitude, so the
+ * median reach sat at a fraction of a percent of the maximum and the map read as one flat
+ * colour with a few bright lines. log1p is used rather than log so that a value sitting exactly
+ * at the lower bound maps to 0 without an epsilon.
+ *
+ * Colour and width both come through here, so the two cannot describe the same value
+ * differently.
+ */
+export function normalizeValue(value, bounds) {
+  if (!Number.isFinite(value) || !bounds) return 0;
+  const span = bounds.max - bounds.min;
+  if (!(span > 0)) return 0;
+  const offset = Math.min(Math.max(value - bounds.min, 0), span);
+  // curve defaults to 1 so bounds built by hand, as tests do, still normalise sensibly.
+  const curve = bounds.curve > 0 ? bounds.curve : 1;
+  return Math.log1p(curve * offset) / Math.log1p(curve * span);
 }
 
 
@@ -563,21 +624,25 @@ export const mapFeatureId = (feature) =>
   feature?.id ?? feature?.properties?.id ?? feature?.properties?.divide_id ?? null;
 
 /**
- * Add any paths not already collected, and report how many were new.
+ * Collect paths, keeping the most detailed version of each, and report how many changed.
  *
- * Keyed on the path id so a reach seen from three different viewports is stored once. The
- * count is what tells the caller whether to hand deck.gl a new array, which replaced comparing
- * a signature of the viewport's whole feature set: accumulating only ever grows, so "did
- * anything arrive" is both cheaper to answer and the actual question.
+ * Keyed on the path id so a reach seen from three viewports is stored once, and tagged with the
+ * zoom it was read at so a closer look can replace a coarser one. First-seen-wins was the
+ * defect: the tileset serves a filtered, simplified subset at low zoom, so a reach first seen
+ * over the whole state kept that coarse geometry even after the reader zoomed in on it. Drawn
+ * together, captures from different zooms left visible steps in density along tile edges.
+ *
+ * The count is what tells the caller whether to hand deck.gl a new array.
  */
-export function addPaths(store, features, featureIdToIndex) {
-  let added = 0;
+export function addPaths(store, features, featureIdToIndex, zoom = 0) {
+  let changed = 0;
   for (const path of convertFeaturesToPaths(features, featureIdToIndex)) {
-    if (store.has(path.id)) continue;
-    store.set(path.id, path);
-    added += 1;
+    const held = store.get(path.id);
+    if (held && held.zoom >= zoom) continue;
+    store.set(path.id, { ...path, zoom });
+    changed += 1;
   }
-  return added;
+  return changed;
 }
 
 export function convertFeaturesToPaths(features, featureIdToIndex) {

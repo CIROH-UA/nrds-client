@@ -37,6 +37,14 @@ const buildFeatureIdToIndex = (featureIds) => {
 const featureKey = (f) =>
   f?._id ?? f?.id ?? f?.properties?.id ?? f?.properties?.feature_id ?? null;
 
+// A null key means we could not identify the feature, which is not the same as knowing it is the
+// one already held. Reading the two as equal is what silently dropped every update for a layer
+// whose tiles carry no id, so an unidentifiable feature is always treated as a change.
+const sameFeature = (a, b) => {
+  const keyA = featureKey(a);
+  return keyA !== null && keyA === featureKey(b);
+};
+
 const MAX_CACHED_VARS = 3;
 
 export const useLayersStore = create(
@@ -107,14 +115,14 @@ export const useFeatureStore = create((set) => ({
     set((s) => {
       // same reference OR same id => no update
       if (s.selected_feature === feature) return s;
-      if (featureKey(s.selected_feature) === featureKey(feature)) return s;
+      if (sameFeature(s.selected_feature, feature)) return s;
       return { selected_feature: feature };
     }),
 
   set_hovered_feature: (feature) =>
     set((s) => {
       if (s.hovered_feature === feature) return s;
-      if (featureKey(s.hovered_feature) === featureKey(feature)) return s;
+      if (sameFeature(s.hovered_feature, feature)) return s;
       return { hovered_feature: feature };
     }),
 }));

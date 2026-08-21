@@ -151,3 +151,42 @@ describe('the zoom prompt once geometry is collected', () => {
     expect(shouldPromptZoom(loaded)).toBe(true);
   });
 });
+
+describe('keeping the most detailed capture', () => {
+  const reach = (coords) => ({
+    id: 'wb-1',
+    properties: {},
+    geometry: { type: 'LineString', coordinates: coords },
+  });
+  const coarse = [[0, 0], [1, 1]];
+  const detailed = [[0, 0], [0.4, 0.5], [0.7, 0.8], [1, 1]];
+
+  test('a closer look replaces a coarser one', () => {
+    const store = new Map();
+    addPaths(store, [reach(coarse)], { 'wb-1': 0 }, 4);
+
+    // The tileset simplifies at low zoom, so the same reach read closer has more vertices.
+    expect(addPaths(store, [reach(detailed)], { 'wb-1': 0 }, 9)).toBe(1);
+    expect(store.get('wb-1').path).toHaveLength(4);
+  });
+
+  test('a wider look does not undo it', () => {
+    const store = new Map();
+    addPaths(store, [reach(detailed)], { 'wb-1': 0 }, 9);
+
+    expect(addPaths(store, [reach(coarse)], { 'wb-1': 0 }, 4)).toBe(0);
+    expect(store.get('wb-1').path).toHaveLength(4);
+  });
+
+  test('the same zoom twice is not a change', () => {
+    const store = new Map();
+    addPaths(store, [reach(coarse)], { 'wb-1': 0 }, 7);
+    expect(addPaths(store, [reach(coarse)], { 'wb-1': 0 }, 7)).toBe(0);
+  });
+
+  test('records the zoom it read each path at', () => {
+    const store = new Map();
+    addPaths(store, [reach(coarse)], { 'wb-1': 0 }, 7.4);
+    expect(store.get('wb-1').zoom).toBe(7.4);
+  });
+});

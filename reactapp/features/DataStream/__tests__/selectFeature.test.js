@@ -81,7 +81,7 @@ describe('selectMapFeature', () => {
 
     const id = selectMapFeature(divide({ divide_id: undefined }), 'divides');
 
-    // The store keys selections by id and reads a null key as unchanged, so this is dropped.
+    // Refused where the decision is made, rather than falling through to the store's dedupe.
     expect(id).toBeUndefined();
     expect(useFeatureStore.getState().selected_feature).toBe(null);
     expect(useDataStreamStore.getState().vpu).toBe('VPU_01');
