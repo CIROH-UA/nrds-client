@@ -89,6 +89,10 @@ RUN cd ${APP_SRC_ROOT} \
     # A missing artifact is a permanently dead search box, and the build would otherwise stay
     # green, so fail here instead of in production.
     && ${PDM} run python -c "import pathlib, sys, tethysapp.nrds as a; p = pathlib.Path(a.__file__).parent / 'public/data/hydrofabric_index_slim.parquet'; sys.exit(0) if p.is_file() and p.stat().st_size > 30_000_000 else sys.exit(f'slim index missing or too small in the installed package: {p}')" \
+    # The wheel is built and asserted, so the source-tree copy and setuptools' build dir are two
+    # more 45 MiB copies of a file only site-packages is read from. Measured: 142 MiB across the
+    # three before this, 47 MiB after.
+    && rm -rf build tethysapp/nrds/public/data \
     # node is only needed to build the frontend; remove it so node CVEs
     # don't flag the runtime image in security scans
     && rm -rf ${NVM_DIR}
