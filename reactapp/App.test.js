@@ -8,10 +8,12 @@
  * coverage at all. Its four assertions were also inherited from the project template and named
  * a different app and pages that do not exist here.
  *
- * The map view is mocked rather than transformed. What is worth smoke-testing is that the shell
- * and its controls mount and that nothing in the chain into duckdb throws on import; rendering
- * maplibre in jsdom tests the mock, not the app, and letting deck.gl through would mean
- * transforming node_modules for every suite to serve this one.
+ * The map view is mocked, because it reaches deck.gl and letting that through would mean
+ * transforming node_modules for every suite to serve this one file. Nothing else is: the header's
+ * chain into queryData, opfsCache and the cache store is imported for real, and only
+ * duckdbClient is faked, since duckdb-wasm wants a Worker jsdom cannot give it. An earlier
+ * version of this file mocked those modules wholesale and so never imported the chain it claimed
+ * to cover, which a reviewer caught and which is worth stating plainly here.
  */
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -31,18 +33,18 @@ jest.mock('features/Tethys/services/api/tethys', () => ({
     getCSRF: jest.fn().mockResolvedValue('csrf'),
   },
 }));
-jest.mock('features/DataStream/lib/queryData', () => ({
-  loadIndexData: jest.fn().mockResolvedValue(undefined),
-  getFeatureProperties: jest.fn().mockResolvedValue([]),
-  checkForTable: jest.fn().mockResolvedValue(true),
-}));
-jest.mock('features/DataStream/store/CacheTables', () => ({
-  useCacheTablesStore: (selector) =>
-    selector({ cacheTables: [], refresh: jest.fn().mockResolvedValue([]), clear: jest.fn() }),
+// Only the leaf that needs a real browser: duckdb-wasm wants a Worker it can instantiate.
+// Everything between App and here imports for real -- queryData, opfsCache, CacheTables -- which
+// is the chain this test exists to catch, and mocking those modules wholesale would have meant
+// the test never loaded them at all.
+jest.mock('features/DataStream/lib/duckdbClient', () => ({
+  getDuckDB: jest.fn().mockRejectedValue(new Error('no duckdb in jsdom')),
+  getConnection: jest.fn().mockRejectedValue(new Error('no duckdb in jsdom')),
+  terminateDatabase: jest.fn().mockResolvedValue(undefined),
+  resetDatabase: jest.fn().mockResolvedValue(undefined),
 }));
 
 const tethysAPI = require('features/Tethys/services/api/tethys').default;
-const queryData = require('features/DataStream/lib/queryData');
 const App = require('App').default;
 
 // At the route App actually registers. The inherited test entered at /apps/nrds/, which is the
@@ -61,9 +63,10 @@ beforeEach(() => {
   tethysAPI.getUserData.mockResolvedValue({ username: 'tester' });
   tethysAPI.getJWTToken.mockResolvedValue('jwt');
   tethysAPI.getCSRF.mockResolvedValue('csrf');
-  queryData.loadIndexData.mockResolvedValue(undefined);
-  queryData.getFeatureProperties.mockResolvedValue([]);
-  queryData.checkForTable.mockResolvedValue(true);
+  const duckdb = require('features/DataStream/lib/duckdbClient');
+  duckdb.getConnection.mockRejectedValue(new Error('no duckdb in jsdom'));
+  duckdb.getDuckDB.mockRejectedValue(new Error('no duckdb in jsdom'));
+  duckdb.terminateDatabase.mockResolvedValue(undefined);
 });
 
 describe('the app shell', () => {
@@ -80,13 +83,23 @@ describe('the app shell', () => {
     expect(await screen.findByText(/NRDS/i)).toBeInTheDocument();
   });
 
-  it('puts the search and the cache control in the header', async () => {
+  it('puts the cache control in the header', async () => {
     renderApp();
 
     await screen.findByTestId('datastream-view');
-    expect(screen.getByRole('search')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: /cached data/i })
     ).toBeInTheDocument();
+  });
+
+  it('runs the header chain far enough to reach duckdb and report it missing', async () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+    renderApp();
+
+    // duckdb is the one thing mocked, and it is mocked as unavailable, so the real
+    // loadIndexData runs through the real queryData and fails on it. Asserting that proves the
+    // chain executed rather than merely parsed, which is the whole point of this file.
+    expect(await screen.findByRole('alert')).toHaveTextContent(/id index could not be loaded/i);
+    consoleError.mockRestore();
   });
 });

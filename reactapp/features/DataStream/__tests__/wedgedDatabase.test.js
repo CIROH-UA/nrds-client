@@ -75,18 +75,22 @@ describe('a click while the database is unavailable', () => {
 describe('the callers that do not await it', () => {
   const { selectMapFeature } = require('features/DataStream/actions/selectFeature');
 
-  it('absorb a rejection rather than leaving it unhandled', async () => {
+  it('report a rejection rather than leaving it unhandled', async () => {
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
     const loadTs = require('features/DataStream/actions/loadTimeseries');
     const boom = jest.spyOn(loadTs, 'loadTimeseries').mockRejectedValue(new Error('escaped'));
     useDataStreamStore.setState({ vpu: 'VPU_01' });
 
-    expect(() => selectMapFeature({
+    selectMapFeature({
       geometry: { type: 'Point', coordinates: [-96, 40] },
       properties: { divide_id: 'cat-42', vpuid: '01' },
-    }, 'divides')).not.toThrow();
-
+    }, 'divides');
     await Promise.resolve();
+
+    // Asserting the catch ran, not that nothing threw: an un-awaited rejected promise never
+    // throws synchronously, so the not.toThrow this used to assert passed either way and could
+    // not tell a working backstop from a deleted one.
+    expect(consoleError).toHaveBeenCalledWith('Could not chart', 'cat-42', expect.any(Error));
     boom.mockRestore();
     consoleError.mockRestore();
   });
