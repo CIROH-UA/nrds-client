@@ -392,6 +392,11 @@ async function doesTableExist(conn, tableName) {
  *
  * Matched on the message because duckdb-wasm rethrows the browser's DOMException as a plain
  * Error. Bounded, so a handle that is never released fails rather than waiting for ever.
+ *
+ * The same loop covers the other way two tabs collide. Both stage a download under one name, and
+ * whichever finishes first moves it to the name the file is meant to have -- which takes it out
+ * from under the other, whose landed copy is suddenly not there. The file it wants is the one
+ * that just arrived, so forgetting where it thought the bytes were and asking again finds them.
  */
 const HANDLE_HELD = /Access Handles cannot be created|createSyncAccessHandle/;
 const HANDLE_WAIT_MS = 2_000;
@@ -401,35 +406,43 @@ const pause = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
 async function createTableFromOPFSParquet({ conn, key }) {
   const cacheDir = await getCacheDir();
-  const safeName = safeNameForKey(key);
-  const fileHandle = await cacheDir.getFileHandle(safeName);
-
-  const duckPath = `${CACHE_DIR}/${safeName}`;
   const bindings = conn.bindings;
 
+  // Resolved per attempt, because both of the things that go wrong here change the answer: a
+  // held handle is released by whoever holds it, and a landed copy that has gone missing has
+  // gone missing precisely because someone moved it to the name this asks for next.
   for (let attempt = 1; ; attempt += 1) {
+    const safeName = safeNameForKey(key);
+    const duckPath = `${CACHE_DIR}/${safeName}`;
     try {
+      const fileHandle = await cacheDir.getFileHandle(safeName);
       await bindings.registerFileHandle(
         duckPath,
         fileHandle,
         DuckDBDataProtocol.BROWSER_FSACCESS,
         true
       );
-      break;
     } catch (err) {
-      // Only this one: anything else is not going to be fixed by asking again.
-      if (!HANDLE_HELD.test(err?.message ?? '') || attempt >= HANDLE_TRIES) throw err;
+      const message = err?.message ?? "";
+      const gone = err?.name === "NotFoundError" || /could not be found/.test(message);
+      if (gone && landedAs.has(key)) {
+        landedAs.delete(key);
+        continue;
+      }
+      if (!HANDLE_HELD.test(message) || attempt >= HANDLE_TRIES) throw err;
       await pause(HANDLE_WAIT_MS);
+      continue;
     }
-  }
 
-  try {
-    await conn.query(`
-      CREATE TABLE ${sqlIdent(tableNameForKey(key))} AS
-      SELECT * FROM read_parquet(${sqlStr(duckPath)});
-    `);
-  } finally {
-    await bindings.dropFile(duckPath);
+    try {
+      await conn.query(`
+        CREATE TABLE ${sqlIdent(tableNameForKey(key))} AS
+        SELECT * FROM read_parquet(${sqlStr(duckPath)});
+      `);
+      return;
+    } finally {
+      await bindings.dropFile(duckPath);
+    }
   }
 }
 async function createTableFromOPFSArrow({ conn, key }) {

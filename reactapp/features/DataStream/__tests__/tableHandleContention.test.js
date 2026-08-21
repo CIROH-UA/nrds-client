@@ -20,6 +20,8 @@ jest.mock('features/DataStream/lib/duckdbClient', () => ({
 
 const { getDuckDB } = require('features/DataStream/lib/duckdbClient');
 
+const PARQUET = new Uint8Array([...'PAR1' + 'x'.repeat(40) + 'PAR1'].map((c) => c.charCodeAt(0)));
+
 const busy = () => new Error(
   "Failed to execute 'createSyncAccessHandle' on 'FileSystemFileHandle': Access Handles cannot "
   + 'be created if there is another open Access Handle or Writable stream associated with the '
@@ -87,9 +89,14 @@ describe('building a table while another tab holds the file', () => {
     const { createTableFromOPFS } = load();
 
     const attempt = createTableFromOPFS({ conn, key: 'index_data_table.parquet' });
-    const settled = expect(attempt).rejects.toThrow(/Access Handles/);
-    for (let i = 0; i < 40; i += 1) { await flush(); jest.advanceTimersByTime(2_000); }
-    await settled;
+    // The clock is driven alongside rather than before, so the assertion is awaited directly
+    // instead of being held in a variable, which is a rule this project's lint enforces.
+    const clock = (async () => {
+      for (let i = 0; i < 40; i += 1) { await flush(); jest.advanceTimersByTime(2_000); }
+    })();
+
+    await expect(attempt).rejects.toThrow(/Access Handles/);
+    await clock;
   });
 
   it('does not retry a failure that waiting cannot fix', async () => {
@@ -100,5 +107,46 @@ describe('building a table while another tab holds the file', () => {
       createTableFromOPFS({ conn, key: 'index_data_table.parquet' })
     ).rejects.toThrow(/not a parquet/);
     expect(conn.bindings.registerFileHandle).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('when the landed copy is moved into place by the other tab', () => {
+  it('takes the file that arrived rather than reporting the one that left', async () => {
+    // Both tabs stage under one name; the winner moves it to the canonical name, which takes it
+    // out from under the loser. The loser wants exactly the file that just arrived.
+    const present = new Set(['index_data_table.parquet.partial']);
+    navigator.storage = {
+      getDirectory: async () => ({
+        getDirectoryHandle: async () => ({
+          getFileHandle: async (name) => {
+            if (!present.has(name)) {
+              throw Object.assign(new Error('could not be found'), { name: 'NotFoundError' });
+            }
+            // A complete parquet: the completeness check reads PAR1 at both ends, and an empty
+            // file would be refused before this test reached what it is about.
+            return { name, getFile: async () => new File([PARQUET], name) };
+          },
+          values: async function* () {},
+          removeEntry: async () => {},
+        }),
+      }),
+    };
+    const registered = [];
+    const conn = connWhere(jest.fn(async (path) => { registered.push(path); }));
+    const { statFromCache, createTableFromOPFS } = load();
+
+    // The loser resolves the bytes to its own staging copy...
+    const meta = await statFromCache('index_data_table.parquet');
+    expect(meta.safeName).toBe('index_data_table.parquet.partial');
+
+    // ...and the winner moves it into place before the table is built.
+    present.delete('index_data_table.parquet.partial');
+    present.add('index_data_table.parquet');
+
+    await createTableFromOPFS({ conn, key: 'index_data_table.parquet' });
+
+    // The copy it thought it had is gone, so it never reaches duckdb with that name: it forgets
+    // where it thought the bytes were and registers the one that arrived.
+    expect(registered).toEqual(['nrds-cache/index_data_table.parquet']);
   });
 });
