@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { clearCache, getFilesFromCache } from '../lib/opfsCache';
 import useTimeSeriesStore from './Timeseries';
-import { useVPUStore } from './Layers';
+import { useVPUStore, useFeatureStore } from './Layers';
 import { dropAllVpuDataTables } from '../lib/queryData';
 import { terminateDatabase } from '../lib/duckdbClient';
 
@@ -14,10 +14,17 @@ const EMPTY_TABLE = [];
  * the clear just dropped. Leaving them meant the map kept animating values with no table
  * behind them, and last_loaded_key made a re-click of the same feature look like a duplicate
  * request and return early.
+ *
+ * The selection goes too. Resetting only the vpu took the flowpaths off the map but left the
+ * panel sitting over a plot of numbers no longer on disk, since the panel is open whenever
+ * feature_id is set, and left the catchment outlined, since that highlight comes from
+ * selected_feature. Clearing the cache is a start-over, so it lands on the same state the
+ * panel's own clear control does.
  */
 const invalidateDerivedState = () => {
   useVPUStore.getState().resetVPU();
-  useTimeSeriesStore.setState({ last_loaded_key: null });
+  useTimeSeriesStore.getState().reset();
+  useFeatureStore.getState().set_selected_feature(null);
 };
 
 /**
