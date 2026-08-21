@@ -292,15 +292,28 @@ async function doesTableExist(conn, tableName) {
 //     SELECT * FROM read_parquet(${sqlStr(fileUrl)});
 //   `);
 // }
+/**
+ * Build the table for a cached parquet, holding the file only while the statement runs.
+ *
+ * BROWSER_FSACCESS with directIO opens a FileSystemSyncAccessHandle, and that handle is
+ * exclusive for the whole origin, not for the tab. Keeping it for the session meant a second
+ * tab of the app could not open the same cached file at all -- "Access Handles cannot be created
+ * if there is another open Access Handle or Writable" -- so it had no search index and no vpu
+ * data, and could neither delete nor replace the file, which is where NoModificationAllowedError
+ * on removeEntry and on move came from. A private window worked only because its storage is a
+ * separate partition.
+ *
+ * CREATE TABLE AS materialises the rows, so nothing reads the file after the statement returns
+ * and the registration is pure contention. Dropped in a finally: a file that failed to parse
+ * would otherwise stay locked with no table to show for it.
+ */
 async function createTableFromOPFSParquet({ conn, key }) {
-  // 1) Get the OPFS file handle from your cache directory
   const cacheDir = await getCacheDir();
-  const safeName = encodeURIComponent(key);
+  const safeName = safeNameForKey(key);
   const fileHandle = await cacheDir.getFileHandle(safeName);
 
-  // 2) Register it in DuckDB under some virtual path/name
-  const duckPath = `${CACHE_DIR}/${safeName}`; // can be any string you like
-  const bindings = conn.bindings; // This is the AsyncDuckDB instance
+  const duckPath = `${CACHE_DIR}/${safeName}`;
+  const bindings = conn.bindings;
 
   await bindings.registerFileHandle(
     duckPath,
@@ -309,12 +322,14 @@ async function createTableFromOPFSParquet({ conn, key }) {
     true
   );
 
-  // 3) Create table from that registered file name
-  const tableName = tableNameForKey(key);
-  await conn.query(`
-    CREATE TABLE ${sqlIdent(tableName)} AS
-    SELECT * FROM read_parquet(${sqlStr(duckPath)});
-  `);
+  try {
+    await conn.query(`
+      CREATE TABLE ${sqlIdent(tableNameForKey(key))} AS
+      SELECT * FROM read_parquet(${sqlStr(duckPath)});
+    `);
+  } finally {
+    await bindings.dropFile(duckPath);
+  }
 }
 async function createTableFromOPFSArrow({ conn, key }) {
   const buffer = await loadFromCache(key);
