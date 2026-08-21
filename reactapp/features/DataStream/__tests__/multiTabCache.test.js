@@ -204,4 +204,26 @@ describe('when another context holds the destination file open', () => {
     expect(store.has('index_data_table.parquet.partial')).toBe(true);
     expect(store.has('someone-elses.parquet.partial')).toBe(false);
   });
+
+  it('survives the clear button, which spares the index by name', async () => {
+    const store = opfsWithLockedDestination();
+    store.set('index_data_table.parquet.partial', asFile([PARQUET]));
+    const { clearCache } = load();
+
+    await clearCache();
+
+    // Comparing the raw entry name meant a landed copy was not recognised as the index, so
+    // clearing threw away 103 MB in exactly the case the fallback exists for.
+    expect(store.has('index_data_table.parquet.partial')).toBe(true);
+  });
+
+  it('still clears an ordinary data file that landed under .partial', async () => {
+    const store = opfsWithLockedDestination();
+    store.set('vpu_16.parquet.partial', asFile([PARQUET]));
+    const { clearCache } = load();
+
+    await clearCache();
+
+    expect(store.has('vpu_16.parquet.partial')).toBe(false);
+  });
 });

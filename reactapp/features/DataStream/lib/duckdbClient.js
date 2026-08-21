@@ -1,6 +1,15 @@
 import * as duckdb from "@duckdb/duckdb-wasm";
 
 let dbPromise = null;
+
+/**
+ * The one duckdb instance, built on first use.
+ *
+ * The promise is cleared if it rejects. Caching a rejected one meant a single failed
+ * initialisation -- a blocked worker url, a wasm fetch that lost the network -- was replayed to
+ * every later caller, so nothing in the app could touch duckdb again until the page reloaded.
+ * getCacheDir in opfsCache.js already does this; this is the same rule.
+ */
 export function getDuckDB() {
   if (!dbPromise) {
     dbPromise = (async () => {
@@ -28,7 +37,10 @@ export function getDuckDB() {
       URL.revokeObjectURL(workerUrl);
 
       return db;
-    })();
+    })().catch((err) => {
+      dbPromise = null;
+      throw err;
+    });
   }
   return dbPromise;
 }

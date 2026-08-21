@@ -3,6 +3,7 @@ import { tableFromIPC  } from "apache-arrow";
 import { getNCFiles } from "./s3Utils";
 import { DuckDBDataProtocol } from "@duckdb/duckdb-wasm";
 import { getDuckDB, getConnection } from "./duckdbClient";
+import { sqlIdent, sqlStr } from "./sql";
 
 
 const CACHE_DIR = "nrds-cache";
@@ -85,9 +86,16 @@ export async function pruneCache(keep) {
  * landed copy of either is the only thing standing in for a data file, so sweeping it would
  * throw away the download and force it again.
  */
+const idOf = (name) => {
+  const decoded = decodeURIComponent(name);
+  return decoded.endsWith(PARTIAL_SUFFIX)
+    ? decoded.slice(0, -PARTIAL_SUFFIX.length)
+    : decoded;
+};
+
 const isLandedCopy = (name, keep) => {
   if (!name.endsWith(PARTIAL_SUFFIX)) return false;
-  const id = decodeURIComponent(name.slice(0, -PARTIAL_SUFFIX.length));
+  const id = idOf(name);
   return id === keep || INTERNAL_FILES.has(id);
 };
 
@@ -209,8 +217,6 @@ async function cacheParquetToOPFS(url, writable) {
   }
 }
 
-const sqlIdent = (s) => `"${String(s).replace(/"/g, '""')}"`;
-const sqlStr = (s) => `'${String(s).replace(/'/g, "''")}'`;
 
 /**
  * Where a key's bytes actually are, which is not always the name derived from the key.
@@ -258,7 +264,8 @@ export async function saveDataToCache(key, url) {
     handle = await dir.getFileHandle(canonical, { create: true });
   }
 
-  writingNow.add(partialName);
+  const writtenName = canSwap ? partialName : canonical;
+  writingNow.add(writtenName);
   try {
     const writable = await handle.createWritable();
     if (isArrowFile(key)) {
@@ -277,10 +284,12 @@ export async function saveDataToCache(key, url) {
       }
     }
   } catch (err) {
-    if (canSwap) await dir.removeEntry(partialName).catch(() => {});
+    // Whichever name took the bytes: without move() that is the canonical one, and leaving a
+    // truncated file there made the next read discover it rather than the download.
+    await dir.removeEntry(writtenName).catch(() => {});
     throw err;
   } finally {
-    writingNow.delete(partialName);
+    writingNow.delete(writtenName);
   }
 
   const file = await handle.getFile();
@@ -318,16 +327,6 @@ async function doesTableExist(conn, tableName) {
   return res.toArray().length > 0;
 }
 
-// async function createTableFromOPFSParquet({ db, conn, key }) {
-//   const safeName = encodeURIComponent(key);
-//   const fileUrl = `opfs://${CACHE_DIR}/${safeName}`;
-//   const tableName = key.replace(/\.parquet$/i, "");
-
-//   await conn.query(`
-//     CREATE TABLE ${sqlIdent(tableName)} AS
-//     SELECT * FROM read_parquet(${sqlStr(fileUrl)});
-//   `);
-// }
 /**
  * Build the table for a cached parquet, holding the file only while the statement runs.
  *
@@ -545,7 +544,10 @@ export async function clearCache() {
 
   const names = [];
   for await (const handle of dir.values()) {
-    if (INTERNAL_FILES.has(decodeURIComponent(handle.name))) continue;
+    // Through the same suffix strip eviction uses. Comparing the raw name meant a landed copy
+    // of the index was not recognised as the index, so clearing threw away the 103 MB file in
+    // exactly the case the fallback exists for.
+    if (INTERNAL_FILES.has(idOf(handle.name))) continue;
     names.push(handle.name);
   }
 

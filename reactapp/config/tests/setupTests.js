@@ -66,3 +66,19 @@ if (typeof global.ResizeObserver === 'undefined') {
     disconnect() {}
   };
 }
+
+/**
+ * jsdom has no Worker, and duckdb-wasm reaches for one while its module is still being
+ * evaluated. That made every suite whose import graph touches the cache layer fail to load
+ * rather than fail an assertion, which is why App.test.js has been contributing zero tests: it
+ * imports App, which reaches SearchBar, which reaches queryData. A stub is enough, since no
+ * test drives a real duckdb worker.
+ */
+if (typeof global.Worker === 'undefined') {
+  global.Worker = class Worker {
+    postMessage() {}
+    terminate() {}
+    addEventListener() {}
+    removeEventListener() {}
+  };
+}

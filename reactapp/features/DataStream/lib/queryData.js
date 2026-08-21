@@ -7,35 +7,33 @@ import {
   tableNameForKey,
 } from "./opfsCache";
 
+import { sqlIdent, sqlStr } from "./sql";
 import { getConnection } from "./duckdbClient";
 
 const DEBUG = process.env.NODE_ENV !== "production";
-// Escaped the same way opfsCache does, so a name is quoted in one place rather than at each
-// query. tableNameForKey is the only rule for turning a cache key into a table name: splitting
-// on the first dot was a second, quieter one that parted company with it on any key holding more
-// than one, which is how checkForTable came to answer false for every key it was given.
-const sqlIdent = (s) => `"${String(s).replace(/"/g, '""')}"`;
-const sqlStr = (s) => `'${String(s).replace(/'/g, "''")}'`;
-
 const debugLog = (...args) => {
   if (DEBUG) console.log(...args);
 };
 
 export async function getTimeseries(id, cacheKey, variable) {
   const conn = await getConnection();
-  const tableName = tableNameForKey(cacheKey); 
+  const tableName = tableNameForKey(cacheKey);
+  // feature_id is compared as a number, so it has to be one: it arrives as the numeric part of
+  // an id and anything else belongs nowhere near a query.
+  const featureId = Number(id);
+  if (!Number.isFinite(featureId)) throw new Error(`Not a feature id: ${id}`);
   try {
     const rows = [];
     const stream = await conn.send(`
-      SELECT time, ${variable}
-      FROM ${tableName}
-      WHERE feature_id = ${id}
+      SELECT time, ${sqlIdent(variable)}
+      FROM ${sqlIdent(tableName)}
+      WHERE feature_id = ${featureId}
       ORDER BY time
     `);
     debugLog("Query executed:", `
-      SELECT time, ${variable}
-      FROM ${tableName}
-      WHERE feature_id = ${id}
+      SELECT time, ${sqlIdent(variable)}
+      FROM ${sqlIdent(tableName)}
+      WHERE feature_id = ${featureId}
       ORDER BY time
     `);
 
@@ -98,7 +96,7 @@ const INDEX_CACHE_KEY = "index_data_table.parquet";
 export async function loadIndexData({ remoteUrl }) {
   debugLog("loadIndexData called with cacheKey:", INDEX_CACHE_KEY);
 
-  const tableName = INDEX_CACHE_KEY.split('.')[0];
+  const tableName = tableNameForKey(INDEX_CACHE_KEY);
   const conn = await getConnection();
   try {
     const existsResult = await conn.query(`

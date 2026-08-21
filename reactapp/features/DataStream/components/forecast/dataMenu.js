@@ -157,7 +157,6 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
       set_loading_text('Data is already loading, please wait');
       return;
     }
-    // reset();
     const cacheKey = getCacheKey(model, date, forecast, cycle, ensemble, vpu, outputFile);
     set_cache_key(cacheKey);
 

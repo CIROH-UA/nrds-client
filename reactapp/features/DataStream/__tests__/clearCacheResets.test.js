@@ -98,3 +98,25 @@ describe('what clearing the cache leaves standing', () => {
     expect(opfsCache.clearCache).toHaveBeenCalled();
   });
 });
+
+describe('what the clear button reports', () => {
+  it('reads the cache back instead of declaring it empty', async () => {
+    // A removal is refused whenever another context holds the file, and asserting EMPTY_TABLE
+    // meant the button then said "No cached data to clear" over a file still on disk.
+    opfsCache.getFilesFromCache.mockResolvedValue([{ id: 'stuck.parquet', size: '6.2 MB' }]);
+
+    const emptied = await useCacheTablesStore.getState().clear();
+
+    expect(emptied).toBe(false);
+    expect(useCacheTablesStore.getState().cacheTables).toHaveLength(1);
+  });
+
+  it('says it is empty when it actually is', async () => {
+    opfsCache.getFilesFromCache.mockResolvedValue([]);
+
+    const emptied = await useCacheTablesStore.getState().clear();
+
+    expect(emptied).toBe(true);
+    expect(useCacheTablesStore.getState().cacheTables).toHaveLength(0);
+  });
+});

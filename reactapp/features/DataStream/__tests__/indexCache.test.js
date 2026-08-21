@@ -8,6 +8,8 @@ jest.mock('features/DataStream/lib/opfsCache', () => ({
   saveDataToCache: jest.fn(),
   createTableFromOPFS: jest.fn(),
   formatBytes: jest.fn((n) => `${n} B`),
+  // Mirrors the real helper: the index table is named by the same rule as every other table.
+  tableNameForKey: (key) => String(key).replace(/\.(arrow|parquet)$/i, ''),
 }));
 jest.mock('features/DataStream/lib/duckdbClient', () => ({ getConnection: jest.fn() }));
 

@@ -34,7 +34,7 @@ const invalidateDerivedState = () => {
  * the same file appeared once per load, each row with its own delete button. There is at most
  * one data file now, so the listing is cheap and it cannot drift from what OPFS actually holds.
  */
-export const useCacheTablesStore = create((set) => ({
+export const useCacheTablesStore = create((set, get) => ({
   cacheTables: EMPTY_TABLE,
 
   refresh: async () => {
@@ -61,8 +61,11 @@ export const useCacheTablesStore = create((set) => ({
       console.warn('[cacheTables] clearCache failed:', e);
     });
 
-    set({ cacheTables: EMPTY_TABLE });
+    // Read back rather than asserted. Declaring the cache empty was wrong whenever a removal
+    // was refused, which is the ordinary case for a file another context holds open: the button
+    // then reported "No cached data to clear" over a file still on disk.
+    const left = await get().refresh();
     invalidateDerivedState();
-    return true;
+    return left.length === 0;
   },
 }));

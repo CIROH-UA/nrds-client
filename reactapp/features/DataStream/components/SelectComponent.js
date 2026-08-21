@@ -1,6 +1,7 @@
 import React, { Component, useMemo } from 'react';
 import Select, { createFilter } from 'react-select';
 import { FixedSizeList as List } from 'react-window';
+import PropTypes from 'prop-types';
 
 const ROW_HEIGHT = 28;
 const LIST_STYLE = { overflowX: "hidden" };
@@ -168,6 +169,15 @@ const SelectComponent = ({
       menuPosition="fixed"
     />
   );
+};
+
+SelectComponent.propTypes = {
+  optionsList: PropTypes.array,
+  onChangeHandler: PropTypes.func,
+  value: PropTypes.any,
+  width: PropTypes.number,
+  // The one this file was missing: the selects are addressed by it from outside.
+  inputId: PropTypes.string,
 };
 
 export default React.memo(SelectComponent);

@@ -19,11 +19,12 @@ import { StatusStrip } from '../styles/Styles';
  */
 export const LoadStatus = React.memo(function LoadStatus() {
   const indexLoading = useDataStreamStore((s) => s.index_status === 'loading');
-  const { loading, loadingText, failed } = useTimeSeriesStore(
+  const { loading, loadingText, failed, errorKind } = useTimeSeriesStore(
     useShallow((s) => ({
       loading: s.loading,
       loadingText: s.loadingText,
       failed: s.last_error !== null,
+      errorKind: s.last_error?.kind ?? null,
     }))
   );
 
@@ -42,7 +43,7 @@ export const LoadStatus = React.memo(function LoadStatus() {
   if (!loading && !loadingText) return null;
 
   return (
-    <StatusStrip role="status" aria-live="polite" $failed={failed}>
+    <StatusStrip role="status" aria-live="polite" $failed={failed} data-error-kind={errorKind || undefined}>
       {loading && <Spinner size={14} />}
       {loadingText && <span>{loadingText}</span>}
     </StatusStrip>
