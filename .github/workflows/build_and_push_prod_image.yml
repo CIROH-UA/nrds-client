@@ -171,3 +171,11 @@ jobs:
         run: |
           docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ github.ref_name }}
           docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:latest
+
+  # Deploy the released version to the production server (nrds.ciroh.org)
+  deploy-prod:
+    needs: merge
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: prod
+      image_tag: ${{ github.ref_name }}

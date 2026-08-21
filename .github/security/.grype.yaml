@@ -13,3 +13,6 @@ ignore:
       name: python
       type: binary
     reason: "Pinned to an older CPython until conda-build grows support for the latest version."
+  - package:
+      name: pyo3
+    reason: "pyo3 0.25.1 is vendored in py-rattler 0.25.0 (conda's Rust solver) from the tethys-core base image. Not app runtime code and not controllable from this repo's dependencies. Revisit when the base image ships py-rattler built against pyo3 >=0.29."

@@ -1,0 +1,85 @@
+name: deploy
+
+on:
+  # Called by the dev/prod image workflows after an image is published
+  workflow_call:
+    inputs:
+      environment:
+        description: "Target environment (staging or prod)"
+        required: true
+        type: string
+      image_tag:
+        description: "Image tag to deploy (e.g. dev_abc1234 or v1.2.0)"
+        required: true
+        type: string
+
+  # Manual deploy / rollback: pick any previously published tag
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - staging
+          - prod
+      image_tag:
+        description: "Image tag to deploy (e.g. dev_abc1234 or v1.2.0)"
+        required: true
+        type: string
+
+env:
+  REGISTRY_IMAGE: awiciroh/tethys-nrds
+  CONTAINER_NAME: tethys-nrds
+
+jobs:
+  deploy:
+    # Runner label must match the environment name (staging / prod)
+    runs-on:
+      - self-hosted
+      - ${{ inputs.environment }}
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Pull image
+        run: docker pull "$REGISTRY_IMAGE:${{ inputs.image_tag }}"
+
+      - name: Replace container
+        run: |
+          # Google Analytics: only injected when the environment defines GA_TRACKING_ID
+          GA_ARGS=()
+          if [ -n "${{ vars.GA_TRACKING_ID }}" ]; then
+            GA_ARGS=(-e "GOOGLE_ANALYTICS_GTAG_PROPERTY_ID=${{ vars.GA_TRACKING_ID }}")
+          fi
+
+          docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
+          docker run -d \
+            --name "$CONTAINER_NAME" \
+            --restart unless-stopped \
+            -p 127.0.0.1:8080:80 \
+            -e NGINX_PORT=80 \
+            -e SKIP_DB_SETUP=false \
+            -e ALLOWED_HOSTS='${{ vars.ALLOWED_HOSTS }}' \
+            -e CSRF_TRUSTED_ORIGINS='${{ vars.CSRF_TRUSTED_ORIGINS }}' \
+            "${GA_ARGS[@]}" \
+            "$REGISTRY_IMAGE:${{ inputs.image_tag }}"
+
+      - name: Health check
+        run: |
+          echo "Waiting for app to come up (first boot runs salt setup)..."
+          for i in $(seq 1 30); do
+            if curl -fsSL -o /dev/null http://127.0.0.1:8080/; then
+              echo "App is up after ~$((i * 5))s"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "App did not respond within 150s; container logs:"
+          docker logs --tail 100 "$CONTAINER_NAME"
+          exit 1
+
+      - name: Remove unused images
+        run: docker image prune -f
+
+      - name: Summary
+        run: echo "Deployed \`$REGISTRY_IMAGE:${{ inputs.image_tag }}\` to **${{ inputs.environment }}**" >> "$GITHUB_STEP_SUMMARY"

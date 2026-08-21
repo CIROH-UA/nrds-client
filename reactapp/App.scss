@@ -285,6 +285,59 @@ body {
   padding-top: var(--ts-header-height);
 }
 
+.experimental-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  position: sticky;
+  top: var(--ts-header-height);
+  z-index: 1100;
+  padding: 0.85rem 1.25rem;
+  margin: 0;
+  background: linear-gradient(90deg, rgba(255, 193, 7, 0.22), rgba(255, 138, 61, 0.18));
+  border-bottom: 1px solid rgba(214, 165, 0, 0.35);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+  color: #5b3d00;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.experimental-banner__content {
+  min-width: 0;
+}
+
+.experimental-banner__close {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  flex: 0 0 auto;
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0 0.25rem;
+}
+
+.experimental-banner__close:hover {
+  opacity: 0.75;
+}
+
+.experimental-banner__close:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .experimental-banner {
+    background: linear-gradient(90deg, rgba(245, 158, 11, 0.22), rgba(251, 146, 60, 0.18));
+    border-bottom-color: rgba(251, 191, 36, 0.35);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.24);
+    color: #fff2cc;
+  }
+}
+
 .form-switch .form-check-input {
   width: 3em;
   height: 1.5em;

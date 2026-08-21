@@ -147,6 +147,9 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - scan   # <- only push/tag if scan job as a whole succeeded
+    outputs:
+      # e.g. displays the new image tag dev_abc1234
+      image_version: ${{ steps.meta.outputs.version }}
 
     steps:
       - name: Download digests
@@ -184,3 +187,12 @@ jobs:
       - name: Inspect image
         run: |
           docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
+
+  # Auto-deploy merges to main onto the staging server (nrds-staging.ciroh.org)
+  deploy-staging:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: merge
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: staging
+      image_tag: ${{ needs.merge.outputs.image_version }}

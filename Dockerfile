@@ -34,7 +34,7 @@ ENV PORTAL_SUPERUSER_PASSWORD=pass
 ENV PROJ_LIB=/opt/conda/envs/tethys/share/proj
 
 ENV NVM_DIR=/usr/local/nvm
-ENV NODE_VERSION=24.4.1
+ENV NODE_VERSION=24.18.0
 ENV NODE_VERSION_DIR=${NVM_DIR}/versions/node/v${NODE_VERSION}
 ENV NODE_PATH=${NODE_VERSION_DIR}/lib/node_modules
 ENV PATH=${NODE_VERSION_DIR}/bin:$PATH
@@ -77,7 +77,10 @@ RUN cd ${APP_SRC_ROOT} \
     && ${NPM} install \
     && ${NPM} run build \
     && rm -rf node_modules \
-    && ${PDM} install --no-editable --production
+    && ${PDM} install --no-editable --production \
+    # node is only needed to build the frontend; remove it so node CVEs
+    # don't flag the runtime image in security scans
+    && rm -rf ${NVM_DIR}
 
 ADD salt/ /srv/salt/
 

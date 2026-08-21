@@ -15,6 +15,7 @@ const isExternal = (to, externalFlag) =>
 export default function Layout({ navLinks = [], routes = [], children }) {
   const { tethysApp } = useContext(AppContext);
   const [navVisible, setNavVisible] = useState(false);
+  const [bannerVisible, setBannerVisible] = useState(true);
 
   /** Close the off-canvas smoothly */
   const closeNav = () => startTransition(() => setNavVisible(false));
@@ -22,6 +23,22 @@ export default function Layout({ navLinks = [], routes = [], children }) {
   return (
     <div className="h-100">
       <Header onNavChange={setNavVisible} />
+
+      {bannerVisible && (
+        <div className="experimental-banner" role="status" aria-live="polite">
+          <div className="experimental-banner__content">
+            <strong>Experimental Streamflow Predictions:</strong> These results are preliminary and may not represent accurate forecasts.
+          </div>
+          <button
+            type="button"
+            className="experimental-banner__close"
+            aria-label="Dismiss experimental streamflow warning"
+            onClick={() => setBannerVisible(false)}
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       <NavMenu navTitle="Main Menu" navVisible={navVisible} onNavChange={setNavVisible}>
         <Nav variant="pills"
