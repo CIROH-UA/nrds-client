@@ -8,6 +8,7 @@ import {
   getVpuVariableFlat,
 } from 'features/DataStream/lib/queryData';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
+import { cacheFailureReason } from 'features/DataStream/lib/utils';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import { loadTimeseries } from 'features/DataStream/actions/loadTimeseries';
 import {
@@ -71,8 +72,12 @@ export async function loadVpu() {
       } catch (err) {
         if (superseded()) return;
         console.error('No data for VPU', vpu, err);
+        // Named when it can be. Every failure here read as absent data, so a stalled download, a
+        // full cache and a database that stopped answering were all reported as this vpu having
+        // nothing -- and the reasons this app works out were shown only by the search box.
+        const reason = cacheFailureReason(err);
         useTimeSeriesStore.setState({
-          loadingText: 'No data available for selected VPU',
+          loadingText: reason ? `Could not load: ${reason}` : 'No data available for selected VPU',
           last_error: { kind: 'vpu-missing', cacheKey },
         });
         return;

@@ -132,7 +132,8 @@ export const formatPropertyValue = (value) => {
  * is a browser storage condition rather than anything about the data, and each one has a
  * different remedy, so naming which one saves the reader guessing.
  *
- * A few words in every case, the unplaceable one included. This used to fall back to the
+ * A few words when it can place the failure, and null when it cannot, so the caller can keep its
+ * own wording rather than print a phrase that says nothing. This used to fall back to the
  * exception's own text: two hundred characters naming a web api and a cache path, nothing anyone
  * could act on, long enough to push the retry button off the screen. Even the first replacements
  * read as sentences, so they are phrases now. The raw error goes to the console, where a
@@ -159,7 +160,9 @@ export function cacheFailureReason(err) {
     case 'TypeError':
       return 'could not fetch it';
     default:
-      return 'see the console';
+      // null rather than a phrase: a caller that cannot place the failure has a better sentence
+      // of its own, and the reader was being shown "see the console" as if it were a reason.
+      return null;
   }
 }
 

@@ -11,6 +11,14 @@ jest.mock('features/DataStream/lib/queryData', () => ({
   checkForTable: jest.fn(),
   getTimeseries: jest.fn(),
   getVariables: jest.fn(),
+  loadVpuData: jest.fn(),
+  getFeatureIDs: jest.fn(),
+  getDistinctFeatureIds: jest.fn(),
+  getDistinctTimes: jest.fn(),
+  getVpuVariableFlat: jest.fn(),
+}));
+jest.mock('features/DataStream/store/CacheTables', () => ({
+  useCacheTablesStore: { getState: () => ({ refresh: jest.fn().mockResolvedValue([]) }) },
 }));
 jest.mock('features/DataStream/lib/duckdbClient', () => ({ getConnection: jest.fn() }));
 jest.mock('features/DataStream/actions/loadVpu', () => ({ loadVpu: jest.fn() }));
@@ -160,6 +168,44 @@ describe('a click while the worker has stopped answering', () => {
     // The whole point of the deadline: the caller settles, so its catch and finally run.
     expect(useTimeSeriesStore.getState().last_error).toMatchObject({ kind: 'timeseries' });
     expect(useTimeSeriesStore.getState().loading).toBe(false);
+    consoleError.mockRestore();
+  });
+});
+
+describe('what a failed vpu load tells the reader', () => {
+  const { loadVpu } = jest.requireActual('features/DataStream/actions/loadVpu');
+  const useDsStore = require('features/DataStream/store/Datastream').default;
+  const useS3Store = require('features/DataStream/store/s3Store').default;
+
+  beforeEach(() => {
+    useDsStore.setState({ cache_key: 'a.parquet', vpu: 'VPU_16' });
+    useS3Store.setState({ prefix: 'outputs/' });
+    queryData.checkForTable.mockResolvedValue(false);
+  });
+
+  it('names the cause when it has one', async () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+    // Every failure here used to read as this vpu having no data, so a stalled download, a full
+    // cache and a database that stopped answering were indistinguishable.
+    queryData.loadVpuData.mockRejectedValue(
+      Object.assign(new Error('stopped sending'), { name: 'TimeoutError' })
+    );
+
+    await loadVpu();
+
+    expect(useTimeSeriesStore.getState().loadingText).toBe('Could not load: the download stopped');
+    consoleError.mockRestore();
+  });
+
+  it('keeps its own words when the failure cannot be placed', async () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+    // A 404 from s3 really is this selection having nothing, and that sentence is better than
+    // anything the classifier could offer.
+    queryData.loadVpuData.mockRejectedValue(new Error('Failed to fetch a.parquet: 404'));
+
+    await loadVpu();
+
+    expect(useTimeSeriesStore.getState().loadingText).toBe('No data available for selected VPU');
     consoleError.mockRestore();
   });
 });

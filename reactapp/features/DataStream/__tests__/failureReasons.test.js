@@ -57,15 +57,15 @@ describe('what the reader is told', () => {
     expect(said.length).toBeLessThanOrEqual(LONGEST_SENSIBLE);
   });
 
-  it('is short for anything it cannot place', () => {
-    const said = cacheFailureReason(Object.assign(new Error('something new'), { name: 'WeirdError' }));
-
-    expect(said.length).toBeLessThanOrEqual(LONGEST_SENSIBLE);
-    expect(said).not.toContain('something new');
+  it('says nothing at all for anything it cannot place', () => {
+    // Rather than a phrase: the caller has a better sentence, and "see the console" was being
+    // shown to readers as though it were a reason.
+    expect(cacheFailureReason(Object.assign(new Error('something new'), { name: 'WeirdError' })))
+      .toBe(null);
   });
 
   it('copes with being handed nothing', () => {
-    expect(typeof cacheFailureReason(undefined)).toBe('string');
-    expect(typeof cacheFailureReason(null)).toBe('string');
+    expect(cacheFailureReason(undefined)).toBe(null);
+    expect(cacheFailureReason(null)).toBe(null);
   });
 });
