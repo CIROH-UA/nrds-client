@@ -94,6 +94,7 @@ async function sweepLeftovers(dir) {
     const name = handle.name;
     if (!name.endsWith(PARTIAL_SUFFIX) && !name.endsWith(".crswap")) continue;
     if (writingNow.has(name) || writingNow.has(name.replace(/\.crswap$/, ""))) continue;
+    if (landedAs.has(decodeURIComponent(name.replace(PARTIAL_SUFFIX, "")))) continue;
     const file = await handle.getFile().catch(() => null);
     if (file && Date.now() - file.lastModified < 60_000) continue;
     stale.push(name);
@@ -195,7 +196,19 @@ async function cacheParquetToOPFS(url, writable) {
 const sqlIdent = (s) => `"${String(s).replace(/"/g, '""')}"`;
 const sqlStr = (s) => `'${String(s).replace(/'/g, "''")}'`;
 
-const safeNameForKey = (key) => encodeURIComponent(key);
+/**
+ * Where a key's bytes actually are, which is not always the name derived from the key.
+ *
+ * Another context on the same origin can hold an OPFS file open, and then that name cannot be
+ * written, replaced or deleted for as long as it holds it. Nothing the app does releases it, so
+ * insisting on the canonical name meant one locked file left the whole app unusable: no search
+ * index and no data, with the download itself succeeding every time. A cache is an optimisation,
+ * so when the destination is unavailable the download stays where it landed and is read from
+ * there instead. The stale file is left alone; it is garbage, not data.
+ */
+const landedAs = new Map();
+
+const safeNameForKey = (key) => landedAs.get(key) ?? encodeURIComponent(key);
 export const tableNameForKey = (key) => String(key).replace(/\.(arrow|parquet)$/i, "");
 
 function isNCFile(key) { return key.endsWith('.nc'); }
@@ -218,14 +231,15 @@ function isParquetFile(key) { return key.endsWith('.parquet'); }
 export async function saveDataToCache(key, url) {
   const dir = await getCacheDir();
   if (!dir) return; // noop if OPFS unavailable
-  const safeName = safeNameForKey(key);
-  const partialName = `${safeName}${PARTIAL_SUFFIX}`;
+  const canonical = encodeURIComponent(key);
+  const partialName = `${canonical}${PARTIAL_SUFFIX}`;
+  landedAs.delete(key);
 
   let handle = await dir.getFileHandle(partialName, { create: true });
   const canSwap = typeof handle.move === "function";
   if (!canSwap) {
     await dir.removeEntry(partialName).catch(() => {});
-    handle = await dir.getFileHandle(safeName, { create: true });
+    handle = await dir.getFileHandle(canonical, { create: true });
   }
 
   writingNow.add(partialName);
@@ -237,8 +251,14 @@ export async function saveDataToCache(key, url) {
       await cacheParquetToOPFS(url, writable);
     }
     if (canSwap) {
-      await releaseFromDuckDB(safeName);
-      await handle.move(safeName);
+      await releaseFromDuckDB(canonical);
+      try {
+        await handle.move(canonical);
+      } catch (err) {
+        // See landedAs: the bytes are here and correct, only the destination is unavailable.
+        if (err?.name !== "NoModificationAllowedError") throw err;
+        landedAs.set(key, partialName);
+      }
     }
   } catch (err) {
     if (canSwap) await dir.removeEntry(partialName).catch(() => {});
@@ -449,12 +469,19 @@ export async function deleteFileFromCache(key) {
   const dir = await getCacheDir();
   if (!dir) return false;
   const safeName = safeNameForKey(key);
+  landedAs.delete(key);
 
   await releaseFromDuckDB(safeName);
   try {
     await dir.removeEntry(safeName);
     return true;
   } catch (e) {
+    // A warning, not an error: a file another context holds cannot be removed by anyone, and
+    // callers carry on without it. See landedAs for what happens instead.
+    if (e?.name === "NoModificationAllowedError") {
+      console.warn(`Leaving ${key} in the cache: another context has it open`);
+      return false;
+    }
     console.error("Error deleting file from cache:", e);
     return false;
   }

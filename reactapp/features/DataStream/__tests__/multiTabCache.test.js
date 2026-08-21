@@ -90,3 +90,85 @@ describe('registering a cached parquet with duckdb', () => {
     expect(conn.bindings.dropFile).not.toHaveBeenCalled();
   });
 });
+
+describe('when another context holds the destination file open', () => {
+  const PARQUET = new Uint8Array([...'PAR1' + 'x'.repeat(40) + 'PAR1'].map((c) => c.charCodeAt(0)));
+  const locked = () => Object.assign(new Error('locked'), { name: 'NoModificationAllowedError' });
+  const asFile = (parts, lastModified = Date.now()) => new File(parts, 'f', { lastModified });
+
+  // The one thing the app cannot do anything about: an OPFS file another context has open
+  // cannot be written, replaced or deleted, and nothing the app does releases it.
+  const opfsWithLockedDestination = () => {
+    const store = new Map([['index_data_table.parquet', asFile([])]]);
+    const handleFor = (name) => ({
+      kind: 'file',
+      get name() { return name; },
+      getFile: async () => store.get(name),
+      createWritable: async () => {
+        const chunks = [];
+        return { write: async (c) => { chunks.push(c); }, close: async () => { store.set(name, asFile(chunks)); } };
+      },
+      move: async (to) => { if (store.has(to)) throw locked(); store.set(to, store.get(name)); store.delete(name); },
+    });
+    const dir = {
+      values: async function* () { for (const n of [...store.keys()]) yield handleFor(n); },
+      getFileHandle: async (name, opts) => {
+        if (!store.has(name)) {
+          if (!opts?.create) throw Object.assign(new Error('nf'), { name: 'NotFoundError' });
+          store.set(name, asFile([]));
+        }
+        return handleFor(name);
+      },
+      removeEntry: async (name) => {
+        if (name === 'index_data_table.parquet') throw locked();
+        store.delete(name);
+      },
+    };
+    navigator.storage = { getDirectory: async () => ({ getDirectoryHandle: async () => dir }) };
+    return store;
+  };
+
+  beforeEach(() => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true, status: 200, body: null, arrayBuffer: async () => PARQUET.buffer,
+    });
+  });
+
+  it('reads the download where it landed instead of failing', async () => {
+    const store = opfsWithLockedDestination();
+    const { saveDataToCache, statFromCache } = load();
+
+    // The old behaviour: the move threw and the whole load died, every time, forever.
+    await expect(
+      saveDataToCache('index_data_table.parquet', 'https://example/index.parquet')
+    ).resolves.toBeDefined();
+
+    const meta = await statFromCache('index_data_table.parquet');
+    expect(meta.safeName).toBe('index_data_table.parquet.partial');
+    expect(store.get('index_data_table.parquet.partial').size).toBe(PARQUET.length);
+  });
+
+  it('registers the file it actually has with duckdb', async () => {
+    opfsWithLockedDestination();
+    const { saveDataToCache, createTableFromOPFS } = load();
+    await saveDataToCache('index_data_table.parquet', 'https://example/index.parquet');
+
+    const conn = fakeConn();
+    await createTableFromOPFS({ conn, key: 'index_data_table.parquet' });
+
+    expect(conn.bindings.registerFileHandle).toHaveBeenCalledWith(
+      'nrds-cache/index_data_table.parquet.partial',
+      expect.anything(), 3, true
+    );
+  });
+
+  it('does not sweep away the file it is reading from', async () => {
+    const store = opfsWithLockedDestination();
+    const { saveDataToCache, pruneCache } = load();
+    await saveDataToCache('index_data_table.parquet', 'https://example/index.parquet');
+
+    await pruneCache('something-else.parquet');
+
+    expect(store.has('index_data_table.parquet.partial')).toBe(true);
+  });
+});
