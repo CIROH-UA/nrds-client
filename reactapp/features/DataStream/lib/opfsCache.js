@@ -193,12 +193,19 @@ async function saveArrowToCache(url, writable) {
 const DATASTREAM_BUCKET = 'https://ciroh-community-ngen-datastream.s3.us-east-1.amazonaws.com';
 
 /**
- * How long a download may go without delivering anything before it is abandoned.
+ * How long a download may go without making progress before it is abandoned.
  *
  * A deadline on the whole transfer would be wrong: the id index is 103 MB and a slow connection
- * is not a failure. This is reset by every chunk, so it fires only on a connection that has
- * stopped sending. Nothing used to fire at all -- there was no signal and no timeout -- so a
+ * is not a failure. This is reset by each chunk written, so it fires only on a transfer that has
+ * stopped progressing. Nothing used to fire at all -- there was no signal and no timeout -- so a
  * stalled fetch left the app saying it was loading for as long as the tab stayed open.
+ *
+ * Reset once when the response headers arrive, so the wait for the first byte gets its own
+ * window rather than sharing one with the gaps between chunks: a server slow to start is not a
+ * server that has stopped. Reset again after each chunk is written rather than when it is read,
+ * on the reasoning that a completed write is the progress worth measuring -- though with reads
+ * and writes alternating one chunk at a time, the two are close enough that no test here can
+ * tell them apart, so treat that half as unproven.
  */
 const STALL_MS = 30_000;
 
@@ -221,21 +228,27 @@ async function cacheParquetToOPFS(url, writable) {
     const res = await fetch(source, { cache: "no-store", signal: stalled.signal });
     if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
 
+    expectMore();
     if (!res.body) {
       const buf = await res.arrayBuffer();
       await writable.write(new Uint8Array(buf));
       await writable.close();
-    } else if (typeof window.TransformStream !== "function") {
-      await res.body.pipeTo(writable);
-    } else {
-      const watched = new window.TransformStream({
-        transform(chunk, controller) {
-          expectMore();
-          controller.enqueue(chunk);
-        },
-      });
-      await res.body.pipeThrough(watched).pipeTo(writable);
+      return;
     }
+
+    // Read and write by hand rather than pipeTo, for one path on every browser: watching
+    // progress through a TransformStream meant skipping the watch wherever TransformStream was
+    // missing, and skipping it turned this into the whole-transfer deadline the note above
+    // calls wrong.
+    const reader = res.body.getReader();
+    const writer = writable.getWriter();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      await writer.write(value);
+      expectMore();
+    }
+    await writer.close();
   } catch (err) {
     try { await writable.close(); } catch (_) { /* already errored by the failed pipe */ }
     throw err;

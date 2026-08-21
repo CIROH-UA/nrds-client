@@ -20,15 +20,37 @@ const { cacheFailureReason } = require('features/DataStream/lib/utils');
 
 const asFile = (parts, lastModified = 0) => new File(parts, 'f', { lastModified });
 
+// Set by the backpressure test to make each write take time, the way a slow disk does.
+let writeDelay = null;
+
+// A response body without ReadableStream, which jsdom does not have: the download only needs a
+// reader, so this is the whole contract it depends on.
+const bodyOf = (chunks) => {
+  let i = 0;
+  return { getReader: () => ({ read: async () => (
+    i < chunks.length ? { done: false, value: chunks[i++] } : { done: true }
+  ) }) };
+};
+
 const fakeOpfs = () => {
   const store = new Map();
   const handleFor = (name) => ({
     kind: 'file',
     get name() { return name; },
     getFile: async () => store.get(name) ?? asFile([]),
-    createWritable: async () => ({
-      write: async () => {}, close: async () => { store.set(name, asFile([])); },
-    }),
+    createWritable: async () => {
+      const chunks = [];
+      const stream = {
+        write: async (c) => { chunks.push(c); },
+        close: async () => { store.set(name, asFile(chunks)); },
+      };
+      // A real FileSystemWritableFileStream is a WritableStream, so it hands out a writer.
+      stream.getWriter = () => ({
+        write: async (c) => { if (writeDelay) await writeDelay(); chunks.push(c); },
+        close: async () => { store.set(name, asFile(chunks)); },
+      });
+      return stream;
+    },
     move: async (to) => { store.set(to, store.get(name)); store.delete(name); },
   });
   const dir = {
@@ -56,6 +78,7 @@ const load = () => {
 };
 
 beforeEach(() => {
+  writeDelay = null;
   window.localStorage.clear();
   getDuckDB.mockResolvedValue({ dropFile: jest.fn(), dropFiles: jest.fn() });
   getConnection.mockResolvedValue({ query: jest.fn(), close: jest.fn() });
@@ -118,5 +141,43 @@ describe('a download that stops delivering', () => {
   it('says what happened rather than naming an error class', () => {
     expect(cacheFailureReason({ name: 'TimeoutError' })).toMatch(/stopped partway/);
     expect(cacheFailureReason({ name: 'AbortError' })).toMatch(/stopped partway/);
+  });
+});
+
+describe('a download that is making progress', () => {
+  it('lands every chunk it was sent', async () => {
+    const store = fakeOpfs();
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true, status: 200, body: bodyOf([new Uint8Array(64), new Uint8Array(32)]),
+    });
+    const { saveDataToCache } = load();
+
+    await saveDataToCache('vpu.parquet', 'outputs/vpu.parquet');
+
+    expect(store.get('vpu.parquet').size).toBe(96);
+  });
+
+  it('survives writes slow enough to matter, as long as they keep landing', async () => {
+    jest.useFakeTimers();
+    const store = fakeOpfs();
+    // Twenty seconds per write, inside the thirty-second window. This does not discriminate
+    // resetting after the write from resetting after the read -- checked by mutation, both pass
+    // -- so it pins the property that matters: progress is not an abort.
+    writeDelay = () => new Promise((r) => setTimeout(r, 20_000));
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true, status: 200, body: bodyOf([new Uint8Array(8), new Uint8Array(8), new Uint8Array(8)]),
+    });
+    const { saveDataToCache } = load();
+
+    const attempt = saveDataToCache('vpu.parquet', 'outputs/vpu.parquet');
+    for (let i = 0; i < 4; i += 1) {
+      await flush();
+      jest.advanceTimersByTime(20_000);
+    }
+    await flush();
+    jest.useRealTimers();
+
+    await expect(attempt).resolves.toBeDefined();
+    expect(store.get('vpu.parquet').size).toBe(24);
   });
 });
