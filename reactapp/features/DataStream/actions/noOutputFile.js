@@ -3,6 +3,7 @@ import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import useS3DataStreamBucketStore from 'features/DataStream/store/s3Store';
 import { useFeatureStore, useVPUStore } from 'features/DataStream/store/Layers';
 import { makeFeatureTitle } from 'features/DataStream/lib/utils';
+import { cancelVpuLoads } from 'features/DataStream/actions/loadState';
 
 /**
  * Give up on a selection whose output-file listing is empty.
@@ -23,6 +24,10 @@ import { makeFeatureTitle } from 'features/DataStream/lib/utils';
  * mid-interaction would take the reader somewhere they did not ask to go.
  */
 export function abandonSelectionWithNoOutput() {
+  // First, for the reason leaving a vpu does it: a load already running is not stopped by the
+  // selection changing under it, so it reaches its next checkpoint, finds the generation
+  // unchanged, and writes its arrays in behind this refusal.
+  cancelVpuLoads();
   const { set_cache_key, set_outputFile } = useDataStreamStore.getState();
   const timeseries = useTimeSeriesStore.getState();
 

@@ -4,6 +4,7 @@ import { getNCFiles } from "./s3Utils";
 import { DuckDBDataProtocol } from "@duckdb/duckdb-wasm";
 import { getDuckDB, getConnection } from "./duckdbClient";
 import { sqlIdent, sqlStr } from "./sql";
+import { isFileGone, isHandleHeld } from "./browserErrors";
 
 
 const CACHE_DIR = "nrds-cache";
@@ -255,6 +256,14 @@ async function cacheParquetToOPFS(url, writable) {
     }, STALL_MS);
   };
 
+  // Held out here so the failure path can reach it. Taking a writer locks the stream, and
+  // closing a locked stream throws TypeError rather than closing it: swallowing that left the
+  // file held open for the life of the tab, which is the same lock that stops another tab
+  // replacing or deleting it. Measured: close while locked throws, the entry then refuses
+  // removeEntry with NoModificationAllowedError, and aborting through the writer releases it.
+  let writer = null;
+  let reader = null;
+
   try {
     expectMore();
     const res = await fetch(source, { cache: "no-store", signal: stalled.signal });
@@ -272,8 +281,8 @@ async function cacheParquetToOPFS(url, writable) {
     // progress through a TransformStream meant skipping the watch wherever TransformStream was
     // missing, and skipping it turned this into the whole-transfer deadline the note above
     // calls wrong.
-    const reader = res.body.getReader();
-    const writer = writable.getWriter();
+    reader = res.body.getReader();
+    writer = writable.getWriter();
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -282,7 +291,11 @@ async function cacheParquetToOPFS(url, writable) {
     }
     await writer.close();
   } catch (err) {
-    try { await writable.close(); } catch (_) { /* already errored by the failed pipe */ }
+    try {
+      if (reader) await reader.cancel(err);
+      if (writer) await writer.abort(err);
+      else if (!reader) await writable.close();
+    } catch (_) { /* either side may already have errored itself */ }
     throw err;
   } finally {
     if (timer) clearTimeout(timer);
@@ -430,7 +443,6 @@ async function doesTableExist(conn, tableName) {
  * from under the other, whose landed copy is suddenly not there. The file it wants is the one
  * that just arrived, so forgetting where it thought the bytes were and asking again finds them.
  */
-const HANDLE_HELD = /Access Handles cannot be created|createSyncAccessHandle/;
 const HANDLE_WAIT_MS = 2_000;
 const HANDLE_TRIES = 15;
 
@@ -455,13 +467,11 @@ async function createTableFromOPFSParquet({ conn, key }) {
         true
       );
     } catch (err) {
-      const message = err?.message ?? "";
-      const gone = err?.name === "NotFoundError" || /could not be found/.test(message);
-      if (gone && landedAs.has(key)) {
+      if (isFileGone(err) && landedAs.has(key)) {
         landedAs.delete(key);
         continue;
       }
-      if (!HANDLE_HELD.test(message) || attempt >= HANDLE_TRIES) throw err;
+      if (!isHandleHeld(err) || attempt >= HANDLE_TRIES) throw err;
       await pause(HANDLE_WAIT_MS);
       continue;
     }

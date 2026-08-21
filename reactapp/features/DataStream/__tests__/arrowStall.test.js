@@ -107,8 +107,13 @@ describe('converting a NetCDF that never comes back', () => {
     jest.useFakeTimers();
     fakeOpfs();
     let finish;
-    appAPI.getArrowPerVpu.mockImplementation(() => new Promise((resolve) => {
+    // Honours the signal, like the neighbouring cases. Ignoring it made this test pass however
+    // short the allowance was, because nothing could ever abort it.
+    appAPI.getArrowPerVpu.mockImplementation((_d, { signal }) => new Promise((resolve, reject) => {
       finish = () => resolve(new Uint8Array(8).buffer);
+      signal.addEventListener('abort', () => reject(Object.assign(new Error('canceled'), {
+        name: 'CanceledError',
+      })));
     }));
     const { saveDataToCache } = load();
 

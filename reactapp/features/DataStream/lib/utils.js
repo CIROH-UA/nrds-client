@@ -1,3 +1,4 @@
+import { isHandleHeld, isFileGone } from 'features/DataStream/lib/browserErrors';
 import { FEATURE_PROPERTIES } from "./data";
 
 function separateWords(word){
@@ -138,12 +139,9 @@ export const formatPropertyValue = (value) => {
  * developer can have all of it.
  */
 export function cacheFailureReason(err) {
-  // By message, not name: duckdb-wasm rethrows the browser's DOMException as a plain Error.
-  const text = err?.message ?? '';
-  if (/Access Handles cannot be created|createSyncAccessHandle/.test(text)) {
-    return 'another tab is using it';
-  }
-  if (/could not be found/.test(text)) return 'the cache changed, reload';
+  // Asked through the same predicates the cache decides with, so the two cannot drift apart.
+  if (isHandleHeld(err)) return 'another tab is using it';
+  if (isFileGone(err)) return 'the cache changed, reload';
 
   switch (err?.name) {
     case 'SecurityError':

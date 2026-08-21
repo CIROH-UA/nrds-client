@@ -91,7 +91,21 @@ export function getDuckDB() {
  */
 export async function getConnection() {
   const db = await withDeadline(getDuckDB(), INIT_MS, "the database");
-  return withDeadline(db.connect(), CONNECT_MS, "the database");
+  let abandoned = false;
+  const pending = db.connect();
+  // Closed if it turns up late. Losing the race does not cancel the connect -- nothing here can
+  // -- so without this a worker that was merely slow hands back a connection nobody holds, once
+  // per timeout, for the life of the session.
+  pending.then(
+    (conn) => { if (abandoned) Promise.resolve(conn.close()).catch(() => {}); },
+    () => {}
+  );
+  try {
+    return await withDeadline(pending, CONNECT_MS, "the database");
+  } catch (err) {
+    abandoned = true;
+    throw err;
+  }
 }
 
 

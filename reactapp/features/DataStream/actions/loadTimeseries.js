@@ -40,7 +40,12 @@ export async function loadTimeseries({ featureId, variable, vpuGeneration } = {}
   const state = store.getState();
   const targetId = featureId ?? store.getState().feature_id;
   if (!targetId) return;
-  if (targetId !== state.feature_id) store.setState({ feature_id: targetId });
+  // The answer on record goes with it. An answer belongs to the feature it answered, and the
+  // chart reads it to decide whether to say this one has nothing: leaving it set meant a feature
+  // whose predecessor came back empty was declared empty too, before it had been asked about.
+  if (targetId !== state.feature_id) {
+    store.setState({ feature_id: targetId, last_answered_key: null });
+  }
 
   // A vpu load is rebuilding this table; its closing call charts whatever is selected then.
   if (vpuGeneration === undefined && vpuLoadInFlight()) return;

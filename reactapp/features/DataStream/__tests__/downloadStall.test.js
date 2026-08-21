@@ -181,3 +181,82 @@ describe('a download that is making progress', () => {
     expect(store.get('vpu.parquet').size).toBe(24);
   });
 });
+
+describe('a download that fails after it has started writing', () => {
+  // A writer locks the stream. Closing a locked stream throws, so swallowing that left the file
+  // held for the life of the tab: measured in a browser, the entry then refuses removeEntry with
+  // NoModificationAllowedError, which is the same lock that stops another tab replacing it.
+  const lockAwareOpfs = () => {
+    const store = new Map();
+    const state = { locked: false, aborted: false };
+    const handleFor = (name) => ({
+      kind: 'file',
+      get name() { return name; },
+      getFile: async () => store.get(name) ?? asFile([]),
+      createWritable: async () => {
+        const chunks = [];
+        const stream = {
+          write: async (c) => { chunks.push(c); },
+          close: async () => {
+            if (state.locked) throw new TypeError('Cannot close a locked stream');
+            store.set(name, asFile(chunks));
+          },
+          getWriter: () => {
+            state.locked = true;
+            return {
+              write: async (c) => { chunks.push(c); },
+              close: async () => { state.locked = false; store.set(name, asFile(chunks)); },
+              abort: async () => { state.locked = false; state.aborted = true; },
+            };
+          },
+        };
+        return stream;
+      },
+      move: async (to) => { store.set(to, store.get(name)); store.delete(name); },
+    });
+    const dir = {
+      values: async function* () { for (const n of [...store.keys()]) yield handleFor(n); },
+      getFileHandle: async (name, opts) => {
+        if (!store.has(name)) {
+          if (!opts?.create) throw Object.assign(new Error('nf'), { name: 'NotFoundError' });
+          store.set(name, asFile([]));
+        }
+        return handleFor(name);
+      },
+      // What the browser does to a file whose stream is still locked.
+      removeEntry: async (name) => {
+        if (state.locked) throw Object.assign(new Error('held'), { name: 'NoModificationAllowedError' });
+        store.delete(name);
+      },
+    };
+    navigator.storage = { getDirectory: async () => ({ getDirectoryHandle: async () => dir }) };
+    return { store, state };
+  };
+
+  it('releases the file instead of leaving it locked for the session', async () => {
+    const { store, state } = lockAwareOpfs();
+    // One chunk lands, so the writer exists, and then the connection dies.
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true, status: 200,
+      body: { getReader: () => {
+        let sent = false;
+        return {
+          read: async () => {
+            if (sent) throw new Error('connection reset');
+            sent = true;
+            return { done: false, value: new Uint8Array(16) };
+          },
+          cancel: async () => {},
+        };
+      } },
+    });
+    const { saveDataToCache } = load();
+
+    await expect(saveDataToCache('vpu.parquet', 'outputs/vpu.parquet')).rejects.toThrow(/reset/);
+
+    expect(state.aborted).toBe(true);
+    expect(state.locked).toBe(false);
+    // And nothing is left behind, which needs the lock gone to be possible at all.
+    expect([...store.keys()]).toEqual([]);
+  });
+});

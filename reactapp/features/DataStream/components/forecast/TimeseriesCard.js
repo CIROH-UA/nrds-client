@@ -31,10 +31,13 @@ const TimeSeriesCard = () => {
    * cache was cleared refetches the whole vpu, several seconds in which this flatly reported
    * that the catchment has nothing to show, and then charted it. The loading flag alone does not
    * cover it: the selection is recorded before the load begins, and the gap is long enough to
-   * read when duckdb has to start again. A load that found nothing sets last_loaded_key and one
-   * that broke sets last_error, so an absence of both with nothing charted means not yet.
-   * last_answered_key rather than last_loaded_key: a load that found nothing has answered, and
-   * reading the charted-key here made an empty answer read as still loading for ever.
+   * read when duckdb has to start again.
+   *
+   * So the question is whether an answer has arrived, which is last_answered_key: a completed
+   * load sets it whether or not it found anything. last_loaded_key means something narrower --
+   * this series is charted -- and reading that here made a load which completed and found
+   * nothing read as still loading for ever. A load that broke sets last_error, so neither key
+   * nor error, with nothing charted, means not yet.
    */
   const waiting = featureId && (loading || (!series.length && !answered && !failed));
   const emptyMessage = waiting

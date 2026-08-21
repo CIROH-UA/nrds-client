@@ -103,3 +103,33 @@ describe('getting a connection from a worker that has stopped answering', () => 
     await expect(attempt).resolves.toBeDefined();
   });
 });
+
+describe('a connection that turns up after the deadline', () => {
+  it('is closed rather than left open in the worker', async () => {
+    jest.useFakeTimers();
+    let handOver;
+    const late = { query: jest.fn(), close: jest.fn().mockResolvedValue(undefined) };
+    global.__connect = () => new Promise((resolve) => { handOver = () => resolve(late); });
+    const { getConnection } = load();
+
+    const attempt = getConnection();
+    await flush();
+    jest.advanceTimersByTime(20_000);
+    await expect(attempt).rejects.toMatchObject({ name: 'DatabaseTimeoutError' });
+
+    // The worker was merely slow: nothing can cancel the connect, so the arrival is cleaned up.
+    handOver();
+    await flush();
+    expect(late.close).toHaveBeenCalled();
+  });
+
+  it('does not close a connection that arrived in time', async () => {
+    const inTime = { query: jest.fn(), close: jest.fn().mockResolvedValue(undefined) };
+    global.__connect = () => Promise.resolve(inTime);
+    const { getConnection } = load();
+
+    await expect(getConnection()).resolves.toBe(inTime);
+    await flush();
+    expect(inTime.close).not.toHaveBeenCalled();
+  });
+});
