@@ -159,12 +159,34 @@ async function getCacheDir() {
 }
 
 // async function saveArrowToCache(url, vpu_gpkg, writable) {
+/**
+ * How long the conversion gets before the first byte, and how long a silence after it.
+ *
+ * This request is not a download of a file that exists: the app fetches a NetCDF of around five
+ * megabytes from s3, turns it into a dataframe and serialises it to Arrow, all before it can send
+ * anything. So there is nothing to measure progress against until the reply starts, and the wait
+ * for it has to cover work rather than transfer. Measured against the real endpoint: 8.1 seconds
+ * for a 5 MB NetCDF returning 10.25 MB of Arrow, so this leaves about eleven times that for a
+ * loaded server or a larger file. Once bytes are arriving, silence means what it means for a
+ * parquet, so the reply is held to the same window.
+ */
+const ARROW_FIRST_BYTE_MS = 90_000;
+
 async function saveArrowToCache(url, writable) {
+  const stalled = new AbortController();
+  let timer = null;
+  const allow = (ms) => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => stalled.abort(), ms);
+  };
+
   try{
     const ncFile = getNCFiles(url);
-    const buffer = await appAPI.getArrowPerVpu({
-      ncFile,
-    });
+    allow(ARROW_FIRST_BYTE_MS);
+    const buffer = await appAPI.getArrowPerVpu(
+      { ncFile },
+      { signal: stalled.signal, onDownloadProgress: () => allow(STALL_MS) }
+    );
     
     let dataToWrite;
 
@@ -185,7 +207,17 @@ async function saveArrowToCache(url, writable) {
   }
   catch(error){
     console.error("Error fetching Arrow data:", error);
+    // Reported as the download stopping, which is what it is from the reader's side. axios
+    // surfaces its own cancellation type, and the caller should not have to know that.
+    if (stalled.signal.aborted) {
+      const err = new Error(`the conversion of ${url} stopped answering`);
+      err.name = "TimeoutError";
+      throw err;
+    }
     throw error;
+  }
+  finally {
+    if (timer) clearTimeout(timer);
   }
 }
 
