@@ -41,9 +41,17 @@ import { useFeatureStore } from 'features/DataStream/store/Layers';
  * try again, since the usual cause is a transient fetch of a 103 MB file.
  */
 const SearchBar = ({ placeholder = 'Search for an id' }) => {
-  const { hydrofabric_index_url, vpu, set_vpu, indexStatus, setIndexStatus } = useDataStreamStore(
+  const {
+    hydrofabric_index_url,
+    hydrofabric_index_fallback,
+    vpu,
+    set_vpu,
+    indexStatus,
+    setIndexStatus,
+  } = useDataStreamStore(
     useShallow((s) => ({
       hydrofabric_index_url: s.hydrofabric_index,
+      hydrofabric_index_fallback: s.hydrofabric_index_fallback,
       vpu: s.vpu,
       set_vpu: s.set_vpu,
       indexStatus: s.index_status,
@@ -63,7 +71,10 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
     setIndexStatus('loading');
     setReason(null);
     // Building the id index is the one load that has to happen without being asked for.
-    loadIndexData({ remoteUrl: hydrofabric_index_url })
+    loadIndexData({
+      remoteUrl: hydrofabric_index_url,
+      fallbackUrl: hydrofabric_index_fallback,
+    })
       .then(() => { if (alive) setIndexStatus('ready'); })
       .catch((err) => {
         if (!alive) return;
@@ -72,7 +83,7 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
         setIndexStatus('failed');
       });
     return () => { alive = false; };
-  }, [hydrofabric_index_url, attempt, setIndexStatus]);
+  }, [hydrofabric_index_url, hydrofabric_index_fallback, attempt, setIndexStatus]);
 
   const runSearch = useCallback(async (event) => {
     event?.preventDefault();

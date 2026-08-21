@@ -31,7 +31,15 @@ const DEFAULTS = {
   // Flowpaths come from their own archive because merged.pmtiles only carries them from zoom 7.
   flowpaths_pmtiles:
     "https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/only_geometry/upstream_index/flowpaths.pmtiles",
-  hydrofabric_index: "https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/hydrofabric_index.parquet",
+  // Served from this app's own static files, generated at image build time from the upstream
+  // 103 MB index. Ten columns instead of 37, which is every column the app reads: four to
+  // resolve and position a search, six the Feature Information panel labels.
+  hydrofabric_index: "/static/nrds/data/hydrofabric_index_slim.parquet",
+  // The upstream file, kept as a fallback rather than a default. A portal whose static was
+  // collected before this artifact existed answers 404 for the path above, and a slow search is
+  // a great deal better than none while that is sorted out.
+  hydrofabric_index_fallback:
+    "https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/hydrofabric_index.parquet",
   cache_key: null,
   vpu: null,
   model: "cfe_nom",

@@ -7,6 +7,8 @@ import {
   tableNameForKey,
 } from "./opfsCache";
 
+import { fetchParquetBuffer, isMissing } from "./fetchParquet";
+
 import { sqlIdent, sqlStr } from "./sql";
 import { getConnection } from "./duckdbClient";
 
@@ -96,7 +98,26 @@ export async function getFeatureIDs(cacheKey) {
 // still called index_data_table.
 const INDEX_CACHE_KEY = "index_data_table.parquet";
 
-export async function loadIndexData({ remoteUrl }) {
+/**
+ * Where the index lives inside duckdb while its table is built. Not an OPFS path: the bytes are
+ * registered from memory and dropped as soon as CREATE TABLE has copied the rows out.
+ */
+const INDEX_DUCK_PATH = "nrds-index/index_data_table.parquet";
+
+/**
+ * Build the id index table from the slim artifact this app serves.
+ *
+ * No OPFS. The artifact is about 45 MiB and comes from our own static files, so ordinary HTTP
+ * caching does what the cache layer used to: a reload revalidates and gets a 304 rather than
+ * re-transferring the body. That removes the whole family of per-origin handle failures the
+ * cached index used to cause, because a FileSystemSyncAccessHandle is exclusive for the origin
+ * rather than for the tab and no second tab could open the file the first one held.
+ *
+ * CREATE TABLE AS materialises the rows, so the registered buffer is dead weight the moment the
+ * statement returns. Dropped in a finally for the same reason the OPFS handle was: a file that
+ * failed to parse would otherwise stay registered with no table to show for it.
+ */
+export async function loadIndexData({ remoteUrl, fallbackUrl }) {
   debugLog("loadIndexData called with cacheKey:", INDEX_CACHE_KEY);
 
   const tableName = tableNameForKey(INDEX_CACHE_KEY);
@@ -116,19 +137,28 @@ export async function loadIndexData({ remoteUrl }) {
     void Promise.resolve(conn.close()).catch(() => {});
   }
 
-  // Cached in OPFS like the vpu tables: 103 MB and 2.07M ids, paid once per browser.
-  let meta = await statFromCache(INDEX_CACHE_KEY);
-  if (!meta) {
-    await saveDataToCache(INDEX_CACHE_KEY, remoteUrl);
-    meta = await statFromCache(INDEX_CACHE_KEY);
-    if (!meta) throw new Error(`Saved the id index to cache but cannot stat it`);
+  let buffer;
+  try {
+    buffer = await fetchParquetBuffer(remoteUrl);
+  } catch (err) {
+    // A portal whose static was collected before this artifact existed has nothing at that path.
+    // The upstream file is slower and larger, but a working search beats a correct 404.
+    if (!isMissing(err) || !fallbackUrl) throw err;
+    console.warn(`No slim index at ${remoteUrl}; falling back to ${fallbackUrl}`);
+    buffer = await fetchParquetBuffer(fallbackUrl);
   }
 
   const tableConn = await getConnection();
+  const bindings = tableConn.bindings;
   try {
-    await createTableFromOPFS({ conn: tableConn, key: INDEX_CACHE_KEY, safeName: meta.safeName });
-    debugLog(`Created table "${tableName}" from the cached index`);
+    await bindings.registerFileBuffer(INDEX_DUCK_PATH, buffer);
+    await tableConn.query(`
+      CREATE TABLE ${sqlIdent(tableName)} AS
+      SELECT * FROM read_parquet(${sqlStr(INDEX_DUCK_PATH)});
+    `);
+    debugLog(`Created table "${tableName}" from ${buffer.byteLength} bytes`);
   } finally {
+    await Promise.resolve(bindings.dropFile(INDEX_DUCK_PATH)).catch(() => {});
     await tableConn.close();
   }
 }

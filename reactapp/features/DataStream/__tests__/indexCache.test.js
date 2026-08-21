@@ -1,8 +1,19 @@
 /**
- * The id index was read over http on every page load: a 103 MB parquet holding 2.07 million
- * ids, measured at about 6.3 seconds each visit. It is cached in OPFS now, like the vpu tables,
- * which measured 5.8 seconds on a first visit and 1.9 on every one after it.
+ * The id index no longer goes through OPFS.
+ *
+ * It used to: 103 MB and 2.07 million ids, cached so the cost was once per browser rather than
+ * once per visit. That cache is what made a FileSystemSyncAccessHandle -- exclusive for the
+ * origin, not for the tab -- the app's biggest source of failure, because a second tab could not
+ * open the file the first one held and got no search index and no data at all.
+ *
+ * The artifact this app serves is ten columns instead of 37, about 45 MiB, and comes from our own
+ * static files, so ordinary HTTP caching replaces the layer entirely. What is left is: fetch the
+ * bytes, register them in duckdb long enough for CREATE TABLE to copy the rows out, drop them.
  */
+jest.mock('features/DataStream/lib/fetchParquet', () => ({
+  fetchParquetBuffer: jest.fn(),
+  isMissing: (err) => err?.response?.status === 404,
+}));
 jest.mock('features/DataStream/lib/opfsCache', () => ({
   statFromCache: jest.fn(),
   saveDataToCache: jest.fn(),
@@ -14,75 +25,124 @@ jest.mock('features/DataStream/lib/opfsCache', () => ({
 jest.mock('features/DataStream/lib/duckdbClient', () => ({ getConnection: jest.fn() }));
 
 const opfs = require('features/DataStream/lib/opfsCache');
+const { fetchParquetBuffer } = require('features/DataStream/lib/fetchParquet');
 const { getConnection } = require('features/DataStream/lib/duckdbClient');
 const { loadIndexData } = require('features/DataStream/lib/queryData');
 
-const URL_ = 'https://example.test/hydrofabric_index.parquet';
+const STATIC_URL = '/static/nrds/data/hydrofabric_index_slim.parquet';
+const UPSTREAM_URL = 'https://example.test/map/hydrofabric_index.parquet';
+const BYTES = new Uint8Array([1, 2, 3, 4]);
 
-// The table-exists probe reads information_schema; everything else here is mocked away.
+const notFound = () => Object.assign(new Error('Request failed with status code 404'), {
+  response: { status: 404 },
+});
+
 const connectionWhere = (tableExists) => ({
   query: jest.fn(async () => ({ toArray: () => [{ cnt: tableExists ? 1 : 0 }] })),
   close: jest.fn(async () => {}),
+  bindings: { registerFileBuffer: jest.fn(async () => {}), dropFile: jest.fn(async () => {}) },
 });
 
 beforeEach(() => {
   opfs.statFromCache.mockReset();
   opfs.saveDataToCache.mockReset();
   opfs.createTableFromOPFS.mockReset();
+  fetchParquetBuffer.mockReset();
   getConnection.mockReset();
 });
 
 describe('loadIndexData', () => {
-  it('downloads once and builds the table from the cached copy', async () => {
-    getConnection.mockResolvedValue(connectionWhere(false));
-    opfs.statFromCache
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ safeName: 'index_data_table.parquet', sizeBytes: 103389785 });
+  it('fetches the artifact and builds the table from the buffer', async () => {
+    const conn = connectionWhere(false);
+    getConnection.mockResolvedValue(conn);
+    fetchParquetBuffer.mockResolvedValue(BYTES);
 
-    await loadIndexData({ remoteUrl: URL_ });
+    await loadIndexData({ remoteUrl: STATIC_URL, fallbackUrl: UPSTREAM_URL });
 
-    expect(opfs.saveDataToCache).toHaveBeenCalledWith('index_data_table.parquet', URL_);
-    expect(opfs.createTableFromOPFS).toHaveBeenCalledWith(expect.objectContaining({
-      key: 'index_data_table.parquet',
-      safeName: 'index_data_table.parquet',
-    }));
+    expect(fetchParquetBuffer).toHaveBeenCalledWith(STATIC_URL);
+    expect(conn.bindings.registerFileBuffer).toHaveBeenCalledWith(expect.any(String), BYTES);
+    const created = conn.query.mock.calls.map(([sql]) => sql).join('\n');
+    expect(created).toMatch(/CREATE TABLE "index_data_table" AS/);
+    expect(created).toMatch(/read_parquet/);
   });
 
-  it('does not download again when the file is already cached', async () => {
-    getConnection.mockResolvedValue(connectionWhere(false));
-    opfs.statFromCache.mockResolvedValue({ safeName: 'index_data_table.parquet', sizeBytes: 1 });
+  it('drops the registered buffer once the table is built', async () => {
+    const conn = connectionWhere(false);
+    getConnection.mockResolvedValue(conn);
+    fetchParquetBuffer.mockResolvedValue(BYTES);
 
-    await loadIndexData({ remoteUrl: URL_ });
+    await loadIndexData({ remoteUrl: STATIC_URL });
 
-    // This is the whole point: a second visit pays for the table build and nothing else.
-    expect(opfs.saveDataToCache).not.toHaveBeenCalled();
-    expect(opfs.createTableFromOPFS).toHaveBeenCalled();
+    const [registered] = conn.bindings.registerFileBuffer.mock.calls[0];
+    expect(conn.bindings.dropFile).toHaveBeenCalledWith(registered);
   });
 
-  it('does nothing at all once the table is in this session', async () => {
+  it('drops the registered buffer even when CREATE TABLE throws', async () => {
+    const conn = connectionWhere(false);
+    // The exists probe answers, then the CREATE TABLE fails: a file duckdb cannot parse must not
+    // stay registered with no table to show for it.
+    conn.query
+      .mockImplementationOnce(async () => ({ toArray: () => [{ cnt: 0 }] }))
+      .mockImplementationOnce(async () => {
+        throw new Error('Invalid Input Error: not a parquet file');
+      });
+    getConnection.mockResolvedValue(conn);
+    fetchParquetBuffer.mockResolvedValue(BYTES);
+
+    await expect(loadIndexData({ remoteUrl: STATIC_URL })).rejects.toThrow(/parquet/);
+    expect(conn.bindings.dropFile).toHaveBeenCalled();
+  });
+
+  it('does not fetch again when the table is already there', async () => {
     getConnection.mockResolvedValue(connectionWhere(true));
 
-    await loadIndexData({ remoteUrl: URL_ });
+    await loadIndexData({ remoteUrl: STATIC_URL });
+
+    expect(fetchParquetBuffer).not.toHaveBeenCalled();
+  });
+
+  it('touches no OPFS api at all', async () => {
+    getConnection.mockResolvedValue(connectionWhere(false));
+    fetchParquetBuffer.mockResolvedValue(BYTES);
+
+    await loadIndexData({ remoteUrl: STATIC_URL });
 
     expect(opfs.statFromCache).not.toHaveBeenCalled();
+    expect(opfs.saveDataToCache).not.toHaveBeenCalled();
     expect(opfs.createTableFromOPFS).not.toHaveBeenCalled();
   });
 
-  it('fails loudly when the download reports success but leaves nothing behind', async () => {
+  it('falls back to the upstream index when the static artifact is absent', async () => {
     getConnection.mockResolvedValue(connectionWhere(false));
-    opfs.statFromCache.mockResolvedValue(null);
+    fetchParquetBuffer
+      .mockRejectedValueOnce(notFound())
+      .mockResolvedValueOnce(BYTES);
 
-    await expect(loadIndexData({ remoteUrl: URL_ })).rejects.toThrow(/cannot stat/i);
+    await loadIndexData({ remoteUrl: STATIC_URL, fallbackUrl: UPSTREAM_URL });
+
+    expect(fetchParquetBuffer).toHaveBeenNthCalledWith(1, STATIC_URL);
+    expect(fetchParquetBuffer).toHaveBeenNthCalledWith(2, UPSTREAM_URL);
   });
 
-  it('keys the cache so the table keeps the name the search queries', async () => {
+  it('reports the failure when there is no fallback to try', async () => {
     getConnection.mockResolvedValue(connectionWhere(false));
-    opfs.statFromCache.mockResolvedValue({ safeName: 'x', sizeBytes: 1 });
+    fetchParquetBuffer.mockRejectedValue(notFound());
 
-    await loadIndexData({ remoteUrl: URL_ });
+    await expect(loadIndexData({ remoteUrl: STATIC_URL })).rejects.toMatchObject({
+      response: { status: 404 },
+    });
+    expect(fetchParquetBuffer).toHaveBeenCalledTimes(1);
+  });
 
-    // createTableFromOPFS strips the extension, so index_data_table.parquet -> index_data_table.
-    const { key } = opfs.createTableFromOPFS.mock.calls[0][0];
-    expect(key.replace(/\.parquet$/, '')).toBe('index_data_table');
+  it('does not fall back on a failure that is not a missing file', async () => {
+    getConnection.mockResolvedValue(connectionWhere(false));
+    fetchParquetBuffer.mockRejectedValue(
+      Object.assign(new Error('boom'), { response: { status: 500 } })
+    );
+
+    await expect(
+      loadIndexData({ remoteUrl: STATIC_URL, fallbackUrl: UPSTREAM_URL })
+    ).rejects.toThrow('boom');
+    expect(fetchParquetBuffer).toHaveBeenCalledTimes(1);
   });
 });
