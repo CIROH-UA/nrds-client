@@ -125,7 +125,7 @@ def test_unexpected_extra_columns_are_ignored(tmp_path):
 
 def test_verification_passes_on_a_faithful_artifact(tmp_path):
     src, out, _ = build(tmp_path)
-    failures, _, _ = gen.verify(str(src), str(out))
+    failures, _ = gen.verify(str(src), str(out))
     assert failures == []
 
 
@@ -155,7 +155,7 @@ def test_verification_catches_corruption(tmp_path, mutate, expected):
     src, out, table = build(tmp_path)
     bad = tmp_path / "bad.parquet"
     write_like_generator(mutate(table), bad)
-    failures, _, _ = gen.verify(str(src), str(bad))
+    failures, _ = gen.verify(str(src), str(bad))
     assert failures, f"verification missed: {expected}"
     assert any(expected in f for f in failures), failures
 
@@ -182,6 +182,48 @@ def test_verification_catches_default_encodings(tmp_path):
     plain = tmp_path / "plain.parquet"
     pq.write_table(table, plain, compression="zstd")
 
-    failures, _, _ = gen.verify(str(src), str(plain))
+    failures, _ = gen.verify(str(src), str(plain))
 
     assert any("DELTA_BYTE_ARRAY" in f for f in failures), failures
+
+
+def test_verification_reports_a_missing_artifact(tmp_path):
+    src = write_source(tmp_path / "source.parquet")
+    failures, _ = gen.verify(str(src), str(tmp_path / "never-written.parquet"))
+    assert any("no artifact to verify" in f for f in failures)
+
+
+def test_verification_accepts_the_table_build_just_wrote(tmp_path):
+    """Passing the built table in is what stops a full build reading 103 MB twice."""
+    src, out, table = build(tmp_path)
+    failures, rows = gen.verify(str(src), str(out), expected=table)
+    assert failures == []
+    assert rows == table.num_rows
+
+
+def test_verify_only_with_no_verify_is_refused(tmp_path):
+    """Together they mean "do nothing and report success", which this script must never do."""
+    with pytest.raises(SystemExit) as exit_info:
+        gen.main(["--verify-only", "--no-verify", "--out", str(tmp_path / "x.parquet")])
+    assert exit_info.value.code == 2
+
+
+def test_main_builds_and_verifies(tmp_path):
+    src = write_source(tmp_path / "source.parquet")
+    out = tmp_path / "slim.parquet"
+    # The fixture is four rows, so the real floor would reject it.
+    assert gen.main(["--source", str(src), "--out", str(out), "--min-bytes", "0"]) == 0
+    assert out.is_file()
+
+
+def test_main_refuses_an_undersized_artifact(tmp_path):
+    src = write_source(tmp_path / "source.parquet")
+    out = tmp_path / "slim.parquet"
+    code = gen.main(["--source", str(src), "--out", str(out), "--min-bytes", "10000000"])
+    assert code == 3
+
+
+def test_main_reports_a_shape_change_without_a_traceback(tmp_path):
+    src = write_source(tmp_path / "source.parquet", drop=("lengthkm",))
+    code = gen.main(["--source", str(src), "--out", str(tmp_path / "slim.parquet")])
+    assert code == 2

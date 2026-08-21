@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the search index the app actually needs, which is 36 MiB rather than 103 MB.
+"""Build the search index the app actually needs, which is 45 MiB rather than 103 MB.
 
 The browser downloads hydrofabric_index.parquet -- 103,389,785 bytes, 37 columns,
 2,073,171 rows -- to power the search box. Ten of those columns are read. Four resolve and
@@ -28,18 +28,13 @@ toFixed(6): the sixth decimal is about 0.1 m, which float32 does not support, so
 should be reduced to five decimals rather than advertising precision the data lacks.
 
 The artifact is derived data. It must be regenerated when the hydrofabric changes, so the
-header records the source's size, MD5 and row count: a stale artifact should be detectable
-rather than silently wrong.
+header records the source's size, row count and -- for a local source -- its MD5, which S3 also
+reports as the ETag for a single-part upload. A stale artifact should be detectable rather than
+silently wrong.
 
 Why pyarrow and not duckdb: pyarrow, fsspec and s3fs are already dependencies in
 pyproject.toml. duckdb is not, and adding a runtime dependency to ship one build step is a
 poor trade.
-
-Usage:
-    python3 scripts/build_slim_index.py                       # from the published URL
-    python3 scripts/build_slim_index.py --source scripts/indexes/hydrofabric_index.parquet
-    python3 scripts/build_slim_index.py --out /tmp/slim.parquet --no-verify
-    python3 scripts/build_slim_index.py --verify-only --out <existing artifact>
 """
 
 import argparse
@@ -47,11 +42,27 @@ import hashlib
 import json
 import sys
 import time
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Iterator, Optional, Sequence
 
 import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
+
+USAGE = """examples:
+  # the frontend 404s without this artifact, so a dev server needs it built once
+  python3 scripts/build_slim_index.py
+
+  # from a local copy, which is much faster than pulling 103 MB again
+  python3 scripts/build_slim_index.py --source scripts/indexes/hydrofabric_index.parquet
+
+  # check an artifact somebody else built, without rebuilding it
+  python3 scripts/build_slim_index.py --verify-only --out <path>
+
+  # iterate on the projection without paying for the exhaustive check each time
+  python3 scripts/build_slim_index.py --out /tmp/slim.parquet --no-verify
+"""
 
 REPO = Path(__file__).resolve().parent.parent
 DEFAULT_SOURCE = (
@@ -65,8 +76,8 @@ KEY_COLUMNS = ("id", "vpuid", "lon", "lat")
 PANEL_COLUMNS = ("toid", "divide_id", "has_flowline", "areasqkm", "tot_drainage_areasqkm", "lengthkm")
 COLUMNS = KEY_COLUMNS + PANEL_COLUMNS
 
-# float32 costs at most 0.42 m of precision, against a screen pixel of about 30 m at the zoom
-# the map flies to. float64 would roughly double the artifact for accuracy nothing can see.
+# float32 costs at most 0.42 m, against a screen pixel of about 30 m at the zoom the map flies
+# to. float64 would roughly double the artifact for accuracy nothing can see.
 FLOAT32_COLUMNS = ("lon", "lat")
 
 ROW_GROUP_SIZE = 100_000
@@ -74,9 +85,8 @@ COMPRESSION = "zstd"
 COMPRESSION_LEVEL = 9
 
 # Chosen per column, and worth more than the codec here: default encodings give 78.3 MiB against
-# 44.7 MiB for these. Both are lossless. duckdb has read both since 0.10, so duckdb-wasm 1.30 in
-# the browser can too -- confirmed against duckdb 1.4.4 locally, and re-checked in the browser
-# because that is the reader that actually matters.
+# 44.7 MiB for these. Both are lossless. Verified readable by duckdb 1.4.4 and by duckdb-wasm
+# 1.30 -- the same wasm binary the browser loads -- through registerFileBuffer + read_parquet.
 STRING_ENCODED = ("id", "toid", "divide_id")
 FLOAT_ENCODED = ("lon", "lat", "areasqkm", "tot_drainage_areasqkm", "lengthkm")
 DICTIONARY_ENCODED = ("vpuid", "has_flowline")
@@ -85,21 +95,33 @@ COLUMN_ENCODING = {
     **{c: "BYTE_STREAM_SPLIT" for c in FLOAT_ENCODED},
 }
 
+REMOTE_SCHEMES = ("http://", "https://", "s3://")
+
 
 class SourceShapeError(RuntimeError):
     """The upstream index is not the shape this script knows how to read."""
 
 
-def open_source(source):
-    """A ParquetFile for a local path or a URL, without downloading more than asked for."""
-    if str(source).startswith(("http://", "https://", "s3://")):
-        import fsspec
-
-        return pq.ParquetFile(fsspec.open(str(source), "rb").open())
-    return pq.ParquetFile(str(source))
+def is_remote(source: str) -> bool:
+    return str(source).startswith(REMOTE_SCHEMES)
 
 
-def require_columns(schema, source):
+@contextmanager
+def open_source(source: str) -> Iterator[pq.ParquetFile]:
+    """A ParquetFile for a local path or a URL, closed on the way out.
+
+    fsspec.open returns a wrapper that owns the connection; discarding it after taking the inner
+    file leaves the connection open for the life of the process. Short-lived as this script is,
+    it also runs twice per image build and once per CI matrix leg.
+    """
+    if is_remote(source):
+        with __import__("fsspec").open(str(source), "rb") as handle:
+            yield pq.ParquetFile(handle)
+    else:
+        yield pq.ParquetFile(str(source))
+
+
+def require_columns(schema: pa.Schema, source: str) -> None:
     """Fail loudly, naming the column, when the upstream index changes shape.
 
     A rename or a removal upstream should be a red build rather than an artifact that is
@@ -115,30 +137,26 @@ def require_columns(schema, source):
         )
 
 
-def project(source):
+def project(source: str) -> pa.Table:
     """Read the ten columns, cast the coordinates, and sort by id."""
-    pf = open_source(source)
-    require_columns(pf.schema_arrow, source)
-    table = pf.read(columns=list(COLUMNS))
+    with open_source(source) as pf:
+        require_columns(pf.schema_arrow, source)
+        table = pf.read(columns=list(COLUMNS))
     for name in FLOAT32_COLUMNS:
         i = table.schema.get_field_index(name)
         table = table.set_column(i, name, pc.cast(table.column(name), pa.float32()))
     return table.sort_by([("id", "ascending")])
 
 
-def source_stats(source):
-    """Size, MD5 and row count of the input, so an artifact can be traced to it.
+def source_stats(source: str) -> tuple[int, Optional[str]]:
+    """Size and, for a local file, MD5 of the input, so an artifact can be traced to it.
 
-    MD5 only for a local file: S3 reports the same value as the ETag for a single-part upload,
-    but hashing 103 MB over the network to record provenance is not worth the transfer.
+    MD5 is local-only on purpose: S3 reports the same value as the ETag for a single-part
+    upload, so hashing 103 MB back over the network to record provenance buys nothing.
     """
-    if str(source).startswith(("http://", "https://", "s3://")):
-        import fsspec
-
-        info = fsspec.filesystem(
-            "https" if str(source).startswith("http") else "s3"
-        ).info(str(source))
-        return int(info.get("size") or 0), None
+    if is_remote(source):
+        fs = __import__("fsspec").filesystem("https" if source.startswith("http") else "s3")
+        return int(fs.info(str(source)).get("size") or 0), None
     path = Path(source)
     digest = hashlib.md5()
     with open(path, "rb") as fh:
@@ -147,7 +165,7 @@ def source_stats(source):
     return path.stat().st_size, digest.hexdigest()
 
 
-def build(source, out):
+def build(source: str, out: str) -> pa.Table:
     """Write the slim index, carrying its provenance in the parquet key-value metadata."""
     table = project(source)
     size, md5 = source_stats(source)
@@ -174,76 +192,116 @@ def build(source, out):
     return table
 
 
-def verify(source, out):
-    """Check the artifact against every row of the source, and return what failed.
+def encoding_faults(out: str) -> list[str]:
+    """Every row group must carry the encodings that were asked for.
+
+    Values alone cannot catch this. A default-encoded file decodes perfectly, matches the source
+    row for row, and clears the size floor by a wide margin -- it is only 33 MiB bigger. Checked
+    across all row groups rather than the first, since nothing guarantees they agree.
+    """
+    metadata = pq.ParquetFile(out).metadata
+    faults = []
+    for group in range(metadata.num_row_groups):
+        for i in range(metadata.num_columns):
+            column = metadata.row_group(group).column(i)
+            wanted = COLUMN_ENCODING.get(column.path_in_schema)
+            if wanted and wanted not in {str(e) for e in column.encodings}:
+                faults.append(
+                    f"row group {group}: column {column.path_in_schema} was written as "
+                    f"{','.join(str(e) for e in column.encodings)}, not {wanted}"
+                )
+                break
+    return faults
+
+
+def verify(source: str, out: str, expected: Optional[pa.Table] = None) -> tuple[list[str], int]:
+    """Check the written artifact against what it was supposed to contain.
 
     Exhaustive rather than sampled, and in both directions: an id the artifact invented has to
-    fail as loudly as one it lost. The source is re-read here rather than reusing the table
-    build() wrote, so a truncated or corrupt output file is caught too.
+    fail as loudly as one it lost.
 
-    Comparison is per column via Array.equals, which treats nulls as equal to nulls -- that
-    matters because five of the ten columns are legitimately null for whole id classes (a nexus
-    has no area, a catchment has no divide_id), and a comparison that called those mismatches
-    would fail on correct data.
+    What this can and cannot catch is worth being precise about. It proves the write and read
+    path: truncation, corruption, a lost or invented row, a changed value, a dropped column, a
+    lost encoding. It cannot prove `project` itself, because the expected table comes from that
+    same function -- a deterministic bug there (the wrong column, the wrong cast, the wrong sort
+    key) would appear identically on both sides and pass. Guarding that needs a test against
+    known values, which tests/test_build_slim_index.py provides; this guards the artifact.
+
+    `expected` is the table build() just wrote, passed in to avoid reading a 103 MB source twice
+    per build. Without it the source is re-read, which is what --verify-only has to do.
+
+    Comparison is per column via Array.equals, which treats nulls as equal to nulls -- five of
+    the ten columns are legitimately null for whole id classes (a nexus has no area, a catchment
+    has no divide_id), and a comparison that called those mismatches would fail on correct data.
     """
-    failures = []
-    expected = project(source)
+    failures: list[str] = []
+    if not Path(out).is_file():
+        # Checked before the source is read: --verify-only on a missing path should not spend
+        # 103 MB discovering there is nothing to compare against.
+        return [f"{out}: no artifact to verify"], 0
+    if expected is None:
+        expected = project(source)
     actual = pq.read_table(out)
 
     if actual.num_rows != expected.num_rows:
         failures.append(f"row count {actual.num_rows:,} != source {expected.num_rows:,}")
 
-    missing_cols = [c for c in COLUMNS if c not in actual.schema.names]
-    if missing_cols:
-        failures.append(f"artifact is missing column(s) {', '.join(missing_cols)}")
-        return failures, expected, actual
+    missing = [c for c in COLUMNS if c not in actual.schema.names]
+    if missing:
+        failures.append(f"artifact is missing column(s) {', '.join(missing)}")
+        return failures, expected.num_rows
 
-    exp_ids = set(expected.column("id").to_pylist())
-    act_ids = set(actual.column("id").to_pylist())
-    if exp_ids - act_ids:
-        failures.append(f"{len(exp_ids - act_ids):,} source ids absent from the artifact")
-    if act_ids - exp_ids:
-        failures.append(f"{len(act_ids - exp_ids):,} artifact ids not present in the source")
-
-    # Encodings, not just values. If pyarrow ever silently ignored column_encoding the file would
-    # be 78 MiB instead of 45 and still read perfectly, so nothing else here would notice: a
-    # correctness check passes and the --min-bytes floor is far below both. This is what protects
-    # the 33 MiB the encodings buy.
-    if not failures:
-        meta = pq.ParquetFile(out).metadata
-        group = meta.row_group(0)
-        for i in range(meta.num_columns):
-            column = group.column(i)
-            wanted = COLUMN_ENCODING.get(column.path_in_schema)
-            if wanted and wanted not in {str(e) for e in column.encodings}:
-                failures.append(
-                    f"column {column.path_in_schema} was written as "
-                    f"{','.join(str(e) for e in column.encodings)}, not {wanted}"
-                )
+    failures.extend(encoding_faults(out))
 
     if not failures:
         for name in COLUMNS:
             e = expected.column(name).combine_chunks()
             a = actual.column(name).combine_chunks()
-            # Exact for every column, including the floats: the cast happens once in project()
-            # and both sides run it, so any difference here is a write or read fault rather than
-            # rounding. The encodings are lossless, which this is also checking.
             if not e.equals(a):
                 failures.append(f"column {name} differs from the source")
+        # Only when a column already disagrees: two 2M-entry sets cost hundreds of MB, and the
+        # per-column check above already proves membership and order when it passes.
+        if failures:
+            failures.extend(_id_set_faults(expected, actual))
 
-    return failures, expected, actual
+    return failures, expected.num_rows
 
 
-def main():
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+def _id_set_faults(expected: pa.Table, actual: pa.Table) -> list[str]:
+    """Which ids went missing or were invented, for a message worth reading."""
+    exp_ids = set(expected.column("id").to_pylist())
+    act_ids = set(actual.column("id").to_pylist())
+    faults = []
+    if exp_ids - act_ids:
+        faults.append(f"{len(exp_ids - act_ids):,} source ids absent from the artifact")
+    if act_ids - exp_ids:
+        faults.append(f"{len(act_ids - exp_ids):,} artifact ids not present in the source")
+    return faults
+
+
+class _HelpFormat(argparse.RawDescriptionHelpFormatter, argparse.ArgumentDefaultsHelpFormatter):
+    """Keep the usage examples readable and still print every default."""
+
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    ap = argparse.ArgumentParser(
+        description=__doc__.split("\n\n")[0],
+        epilog=USAGE,
+        formatter_class=_HelpFormat,
+    )
     ap.add_argument("--source", default=DEFAULT_SOURCE, help="index parquet, URL or path")
     ap.add_argument("--out", default=str(DEFAULT_OUT), help="artifact to write")
-    ap.add_argument("--verify", action="store_true", default=True)
-    ap.add_argument("--no-verify", dest="verify", action="store_false")
+    ap.add_argument("--verify", action="store_true", default=True, help=argparse.SUPPRESS)
+    ap.add_argument(
+        "--no-verify",
+        dest="verify",
+        action="store_false",
+        help="skip the exhaustive check, for iterating on the projection",
+    )
     ap.add_argument(
         "--verify-only",
         action="store_true",
-        help="check an existing artifact at --out without rebuilding it",
+        help="check the artifact at --out without rebuilding it",
     )
     ap.add_argument(
         "--min-bytes",
@@ -251,20 +309,26 @@ def main():
         default=30_000_000,
         help="fail if the artifact is smaller than this, so a truncated write cannot ship",
     )
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
+
+    if args.verify_only and not args.verify:
+        # Together these mean "do nothing and say it went well", which is the one outcome a
+        # script whose whole job is refusing to ship an unverified artifact must never produce.
+        ap.error("--verify-only and --no-verify cannot be combined: that would check nothing")
 
     out = Path(args.out)
     started = time.time()
+    built: Optional[pa.Table] = None
 
     if not args.verify_only:
         print(f"reading {args.source}")
         try:
-            table = build(args.source, out)
+            built = build(args.source, out)
         except SourceShapeError as err:
             print(f"\nFAILED: {err}", file=sys.stderr)
             return 2
         written = out.stat().st_size
-        print(f"  {table.num_rows:,} rows, {len(COLUMNS)} columns, {time.time() - started:.1f}s")
+        print(f"  {built.num_rows:,} rows, {len(COLUMNS)} columns, {time.time() - started:.1f}s")
         print(f"\nwrote {out}")
         print(f"  {written:,} bytes ({written / 1048576:.1f} MiB)")
         if written < args.min_bytes:
@@ -279,14 +343,14 @@ def main():
         return 0
 
     print("\nverifying against every row of the source")
-    failures, expected, _ = verify(args.source, out)
+    failures, rows = verify(args.source, out, expected=built)
     if failures:
         print("  FAILED", file=sys.stderr)
         for f in failures:
             print(f"    {f}", file=sys.stderr)
         return 1
     print(
-        f"  {expected.num_rows:,} rows, {len(COLUMNS)} columns: ids match both ways, "
+        f"  {rows:,} rows, {len(COLUMNS)} columns: ids match both ways, "
         f"every column identical to the source"
     )
     return 0
