@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { BsTrash } from 'react-icons/bs';
+import { BsDatabaseX } from 'react-icons/bs';
 import { useShallow } from 'zustand/react/shallow';
 
 import Spinner from 'features/Tethys/components/loader/Spinner';
@@ -18,6 +18,10 @@ import { useCacheTablesStore } from 'features/DataStream/store/CacheTables';
  *
  * No confirmation. Clearing costs a refetch of about 7 MB, and the button is disabled when
  * there is nothing to clear, so the destructive-sounding case is the one it will not offer.
+ *
+ * A struck-through database rather than a bin: a bin says "delete", which invites the reader to
+ * wonder what of theirs is being deleted. Nothing here belongs to them and nothing is lost, so
+ * the icon says stored data, removed.
  */
 export const ClearCacheButton = React.memo(function ClearCacheButton() {
   const { cached, refresh, clear } = useCacheTablesStore(
@@ -64,7 +68,7 @@ export const ClearCacheButton = React.memo(function ClearCacheButton() {
       aria-label={label}
       title={label}
     >
-      {clearing ? <Spinner size={20} /> : <BsTrash size="1.5rem" aria-hidden="true" />}
+      {clearing ? <Spinner size={20} /> : <BsDatabaseX size="1.5rem" aria-hidden="true" />}
     </StyledButton>
   );
 });
