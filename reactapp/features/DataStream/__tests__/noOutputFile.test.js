@@ -17,6 +17,9 @@ import { useFeatureStore, useVPUStore } from 'features/DataStream/store/Layers';
 jest.mock('features/DataStream/actions/loadVpu', () => ({ loadVpu: jest.fn() }));
 jest.mock('features/DataStream/lib/opfsCache', () => ({ getCacheKey: () => 'vpu-01' }));
 jest.mock('features/DataStream/lib/duckdbClient', () => ({ terminateDatabase: jest.fn() }));
+jest.mock('features/DataStream/lib/queryData', () => ({
+  getTimeseries: jest.fn(), checkForTable: jest.fn(), getVariables: jest.fn(),
+}));
 jest.mock('features/DataStream/lib/s3Utils', () => ({
   getOptionsFromURL: jest.fn(),
   makePrefix: () => 'prefix/',
@@ -91,6 +94,18 @@ describe('changing to a selection with no output file', () => {
     await changeDate();
 
     expect(useTimeSeriesStore.getState().series).toHaveLength(0);
+  });
+
+  test('lets go of the key that names the previous output file', async () => {
+    withLoadedAnimation();
+    useDataStreamStore.setState({ cache_key: 'the_previous_selection.parquet' });
+    getOptionsFromURL.mockResolvedValue([]);
+
+    await changeDate();
+
+    // Its table is still in duckdb, so leaving the key set meant the next catchment click
+    // charted the previous output file under the new selection's title.
+    expect(useDataStreamStore.getState().cache_key).toBe(null);
   });
 
   test('says so, as a failure rather than as progress', async () => {
@@ -201,5 +216,37 @@ describe('what an empty chart says', () => {
     render(<TimeSeriesCard />);
 
     expect(screen.getByText(/No data to chart for cat-2884494/i)).toBeInTheDocument();
+  });
+});
+
+describe('clicking a catchment while the selection has no output file', () => {
+  const queryData = require('features/DataStream/lib/queryData');
+  const { loadTimeseries } = require('features/DataStream/actions/loadTimeseries');
+
+  test('charts nothing, rather than the output file that is still cached', async () => {
+    // The previous selection's table outlives the selection, so without a key of its own the
+    // click read whatever was last loaded and labelled it with the current forecast.
+    useDataStreamStore.setState({ cache_key: null, forecast: 'MEDIUM_RANGE' });
+    useTimeSeriesStore.setState({ feature_id: 'cat-2860749', series: [] });
+
+    await loadTimeseries({ featureId: 'cat-2860749' });
+
+    expect(queryData.getTimeseries).not.toHaveBeenCalled();
+    expect(useTimeSeriesStore.getState().series).toHaveLength(0);
+  });
+
+  test('leaves the reason on screen rather than replacing it with a load message', async () => {
+    // The listing already said why. A click must not overwrite that with "Loading cat-...",
+    // which would read as work in progress that is never going to finish.
+    useDataStreamStore.setState({ cache_key: null });
+    useTimeSeriesStore.setState({
+      loadingText: 'No output file for this selection',
+      last_error: { kind: 'no-output-file' },
+    });
+
+    await loadTimeseries({ featureId: 'cat-2860749' });
+
+    expect(useTimeSeriesStore.getState().loadingText).toMatch(/no output file/i);
+    expect(useTimeSeriesStore.getState().last_error).toEqual({ kind: 'no-output-file' });
   });
 });

@@ -113,6 +113,11 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
    * output file stayed on screen indefinitely, presented as if they belonged to the selection
    * now showing in the controls. The selection itself is left alone: the panel is only open
    * because a feature is selected, so resetting that would close it mid-interaction.
+   *
+   * The cache key goes too. Clearing the animation and the chart was not enough, because the
+   * previous output file's table outlives the selection that loaded it: with the key still
+   * naming that table, the next catchment click charted it again, titled with the forecast now
+   * showing in the controls. A selection with nothing to read has no key.
    */
   const applyOutputFiles = useEvent((options) => {
     setAvailableOutputFiles(options);
@@ -121,6 +126,8 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
 
     useVPUStore.getState().resetVPU();
     useTimeSeriesStore.getState().reset_series();
+    set_cache_key(null);
+    set_prefix('');
     useTimeSeriesStore.setState({
       loadingText: 'No output file for this selection',
       last_error: { kind: 'no-output-file' },
