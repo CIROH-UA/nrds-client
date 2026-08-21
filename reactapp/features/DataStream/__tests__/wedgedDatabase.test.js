@@ -146,3 +146,20 @@ describe('a genuinely empty answer', () => {
     expect(waiting).toBeFalsy();
   });
 });
+
+describe('a click while the worker has stopped answering', () => {
+  it('reports it and leaves nothing claiming to load', async () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const stopped = Object.assign(new Error('the database did not answer within 20000 ms'), {
+      name: 'DatabaseTimeoutError',
+    });
+    queryData.checkForTable.mockRejectedValue(stopped);
+
+    await loadTimeseries({ featureId: 'cat-1' });
+
+    // The whole point of the deadline: the caller settles, so its catch and finally run.
+    expect(useTimeSeriesStore.getState().last_error).toMatchObject({ kind: 'timeseries' });
+    expect(useTimeSeriesStore.getState().loading).toBe(false);
+    consoleError.mockRestore();
+  });
+});

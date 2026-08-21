@@ -143,6 +143,8 @@ export function cacheFailureReason(err) {
     case 'TimeoutError':
     case 'AbortError':
       return 'the download stopped partway';
+    case 'DatabaseTimeoutError':
+      return 'the database stopped responding';
     case 'TypeError':
       return 'the file could not be fetched';
     default:

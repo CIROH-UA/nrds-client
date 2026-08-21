@@ -56,7 +56,10 @@ export async function getTimeseries(id, cacheKey, variable) {
     );
     return rows;
   } finally {
-    await conn.close();
+    // Released rather than awaited. Closing is another round trip to the worker, so on one
+    // that has stopped answering the wait for the close outlasted the timeout that was
+    // meant to escape it, and the caller still never settled.
+    void Promise.resolve(conn.close()).catch(() => {});
   }
 }
 
@@ -85,7 +88,7 @@ export async function getFeatureIDs(cacheKey) {
     );
     return featureIds;
   } finally {
-    await conn.close();
+    void Promise.resolve(conn.close()).catch(() => {});
   }
 }
 
@@ -110,7 +113,7 @@ export async function loadIndexData({ remoteUrl }) {
       return;
     }
   } finally {
-    await conn.close();
+    void Promise.resolve(conn.close()).catch(() => {});
   }
 
   // Cached in OPFS like the vpu tables: 103 MB and 2.07M ids, paid once per browser.
@@ -179,7 +182,7 @@ export async function getFeatureProperties({ cacheKey, feature_id }) {
     debugLog(`[getFeatureProperties] no row for ${candidates.join(', ')}`);
     return [];
   } finally {
-    await conn.close();
+    void Promise.resolve(conn.close()).catch(() => {});
   }
 }
 
@@ -203,7 +206,7 @@ export async function loadVpuData(
   try {
     await createTableFromOPFS({ conn, key: cacheKey, safeName: meta.safeName });
   } finally {
-    await conn.close();
+    void Promise.resolve(conn.close()).catch(() => {});
   }
 
   return fileSize;
@@ -234,7 +237,7 @@ export async function checkForTable(cacheKey) {
     const exists = existsResult.toArray()[0].cnt > 0;
     return exists;
   } finally {
-    await conn.close();
+    void Promise.resolve(conn.close()).catch(() => {});
   }
 }
 
@@ -246,7 +249,7 @@ export async function deleteTable(tableName){
     `);
     debugLog(`Table ${tableName} has been deleted.`);
   } finally {
-    await conn.close();
+    void Promise.resolve(conn.close()).catch(() => {});
   }
 }
 
@@ -282,7 +285,7 @@ export async function dropAllVpuDataTables() {
 
     debugLog('Finished dropping VPU cache tables (index_data_table preserved).');
   } finally {
-    await conn.close();
+    void Promise.resolve(conn.close()).catch(() => {});
   }
 }
 
@@ -313,7 +316,7 @@ export async function getVariables({ cacheKey }) {
 
     return cols;
   } finally {
-    await conn.close();
+    void Promise.resolve(conn.close()).catch(() => {});
   }
 }
 
@@ -344,7 +347,7 @@ export async function getDistinctFeatureIds(cacheKey) {
 
     return featureIds;
   } finally {
-    await conn.close();
+    void Promise.resolve(conn.close()).catch(() => {});
   }
 }
 
@@ -375,7 +378,7 @@ export async function getDistinctTimes(cacheKey) {
 
     return times;
   } finally {
-    await conn.close();
+    void Promise.resolve(conn.close()).catch(() => {});
   }
 }
 
@@ -425,6 +428,6 @@ export async function getVpuVariableFlat(cacheKey, variable) {
     }
     return resized;
   } finally {
-    await conn.close();
+    void Promise.resolve(conn.close()).catch(() => {});
   }
 }
