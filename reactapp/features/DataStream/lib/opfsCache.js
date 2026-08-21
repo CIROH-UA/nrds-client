@@ -527,14 +527,44 @@ export async function getFilesFromCache() {
 const PARQUET_MAGIC = "PAR1";
 const ARROW_MAGIC = "ARROW1";
 
-const magicFor = (key) => {
-  if (isParquetFile(key)) return PARQUET_MAGIC;
-  if (isArrowFile(key)) return ARROW_MAGIC;
-  return null;
-};
+/**
+ * The Arrow IPC stream format, which is what this app's own backend writes.
+ *
+ * It has no "ARROW1" anywhere: that belongs to the file format. A stream opens with a four byte
+ * continuation marker and closes with that marker followed by a zero length. Asking for the file
+ * format's magic meant every NetCDF selection was fetched, converted, written to the cache and
+ * then refused by the check that was supposed to catch half a download, which surfaced as no
+ * data available for a vpu whose data was on disk a moment earlier. Copied from a real reply:
+ * 7,689,208 bytes opening ff ff ff ff 50 06 00 00 and closing ff ff ff ff 00 00 00 00.
+ */
+const ARROW_STREAM_START = Uint8Array.of(0xff, 0xff, 0xff, 0xff);
+const ARROW_STREAM_END = Uint8Array.of(0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00);
+
+const readBytes = async (file, start, length) =>
+  new Uint8Array(await file.slice(start, start + length).arrayBuffer());
+
+const startsWith = (bytes, prefix) =>
+  prefix.length <= bytes.length && prefix.every((b, i) => bytes[i] === b);
 
 const readMagic = async (file, start, length) =>
   ascii4(new Uint8Array(await file.slice(start, start + length).arrayBuffer()));
+
+/**
+ * Whether a cached Arrow file is whole, in either format it might have been written in.
+ *
+ * The file format brackets itself with ARROW1, and the stream format with its own markers, so
+ * both can be told from a download that stopped early. Both are accepted because the app reads
+ * whatever its backend writes, and a change there should fail loudly rather than quietly
+ * refusing every file from then on.
+ */
+async function isCompleteArrow(file) {
+  if (file.size < ARROW_STREAM_END.length) return false;
+  const head = await readBytes(file, 0, ARROW_MAGIC.length);
+  if (ascii4(head) === ARROW_MAGIC) return true;
+  if (!startsWith(head, ARROW_STREAM_START)) return false;
+  const tail = await readBytes(file, file.size - ARROW_STREAM_END.length, ARROW_STREAM_END.length);
+  return startsWith(tail, ARROW_STREAM_END);
+}
 
 /**
  * Whether a cached file is a complete data file rather than the remains of a failed download.
@@ -544,12 +574,13 @@ const readMagic = async (file, start, length) =>
  * with PAR1 at both ends, so a truncated file is detectable too -- 8 bytes read either way.
  */
 async function isCompleteDataFile(file, key) {
-  const magic = magicFor(key);
-  if (!magic) return file.size > 0;
-  if (file.size < magic.length * 2) return false;
-  if (await readMagic(file, 0, magic.length) !== magic) return false;
-  if (magic !== PARQUET_MAGIC) return true;
-  return await readMagic(file, file.size - PARQUET_MAGIC.length, PARQUET_MAGIC.length) === magic;
+  if (isArrowFile(key)) return isCompleteArrow(file);
+  if (!isParquetFile(key)) return file.size > 0;
+  if (file.size < PARQUET_MAGIC.length * 2) return false;
+  if (await readMagic(file, 0, PARQUET_MAGIC.length) !== PARQUET_MAGIC) return false;
+  return (
+    await readMagic(file, file.size - PARQUET_MAGIC.length, PARQUET_MAGIC.length) === PARQUET_MAGIC
+  );
 }
 
 /**
