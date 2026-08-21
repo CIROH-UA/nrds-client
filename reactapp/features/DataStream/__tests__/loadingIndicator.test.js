@@ -71,7 +71,46 @@ describe('status messages', () => {
   });
 
   test('renders nothing at all when idle, so it costs no space', () => {
+    require('features/DataStream/store/Datastream').default.setState({ index_status: 'ready' });
     const { container } = render(<LoadStatus />);
+    expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe('while the id index builds', () => {
+  const useDataStreamStore = require('features/DataStream/store/Datastream').default;
+  const initialDs = useDataStreamStore.getState();
+  beforeEach(() => { useDataStreamStore.setState(initialDs, true); });
+
+  test('the header says so, so the map does not look ready', () => {
+    // It takes about seven seconds and blocks nothing else on the map, which is exactly why an
+    // idle-looking header reads as "ready".
+    useDataStreamStore.setState({ index_status: 'loading' });
+    render(<LoadStatus />);
+
+    expect(screen.getByRole('status')).toHaveTextContent('Building the search index');
+  });
+
+  test('a real load takes the strip instead, so it says one thing at a time', () => {
+    useDataStreamStore.setState({ index_status: 'loading' });
+    useTimeSeriesStore.setState({ loading: true, loadingText: 'Loading VPU_16' });
+    render(<LoadStatus />);
+
+    expect(screen.getByRole('status')).toHaveTextContent('Loading VPU_16');
+    expect(screen.getByRole('status')).not.toHaveTextContent('search index');
+  });
+
+  test('it goes quiet once the index is ready', () => {
+    useDataStreamStore.setState({ index_status: 'ready' });
+    const { container } = render(<LoadStatus />);
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  test('a failed index is not reported here, since the search box owns that', () => {
+    useDataStreamStore.setState({ index_status: 'failed' });
+    const { container } = render(<LoadStatus />);
+
     expect(container).toBeEmptyDOMElement();
   });
 });

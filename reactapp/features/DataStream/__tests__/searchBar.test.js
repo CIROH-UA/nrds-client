@@ -69,18 +69,6 @@ describe('the search box', () => {
     expect(queryData.getFeatureProperties).not.toHaveBeenCalled();
   });
 
-  it('is disabled until the index is built, and explains why', async () => {
-    let release;
-    queryData.loadIndexData.mockImplementation(() => new Promise((r) => { release = r; }));
-    render(<SearchBar />);
-
-    expect(box()).toBeDisabled();
-    expect(box()).toHaveAttribute('placeholder', expect.stringMatching(/index/i));
-
-    await act(async () => { release(); });
-    expect(box()).not.toBeDisabled();
-  });
-
   it('searches once, on submit', async () => {
     await ready();
     type('cat-1');
@@ -132,16 +120,77 @@ describe('the search box', () => {
     consoleError.mockRestore();
   });
 
-  it('reports an index that cannot be built', async () => {
+  it('is disabled while the index builds, and the header says why', async () => {
+    // 2.07 million rows out of a 103 MB parquet: about seven seconds where the box must not
+    // invite a search it cannot answer.
+    let release;
+    queryData.loadIndexData.mockReturnValue(new Promise((resolve) => { release = resolve; }));
+
+    render(<SearchBar />);
+
+    expect(box()).toBeDisabled();
+    expect(box()).toHaveAttribute('aria-busy', 'true');
+    // The status strip says the words; printing them here as well put the same sentence twice
+    // in one header, so the control only reports that it is busy.
+    expect(box()).toHaveAttribute('placeholder', 'Search for an id');
+    expect(useDataStreamStore.getState().index_status).toBe('loading');
+
+    await act(async () => { release(); });
+    await waitFor(() => expect(box()).toBeEnabled());
+    expect(useDataStreamStore.getState().index_status).toBe('ready');
+  });
+
+  it('replaces the box with the reason when the index cannot be built', async () => {
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
     queryData.loadIndexData.mockRejectedValue(new Error('404'));
 
     render(<SearchBar />);
-    await waitFor(() =>
-      expect(useTimeSeriesStore.getState().last_error).toEqual({ kind: 'search-index' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/id index could not be loaded/i);
 
-    expect(useTimeSeriesStore.getState().loadingText).toMatch(/Search is unavailable/);
-    expect(box()).toBeDisabled();
+    // A control that can never work is worse than none: it invites typing and swallows it.
+    expect(screen.queryByRole('textbox')).toBeNull();
+    expect(useDataStreamStore.getState().index_status).toBe('failed');
+    consoleError.mockRestore();
+  });
+
+  it('does not keep claiming to be building the index after it has given up', async () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+    queryData.loadIndexData.mockRejectedValue(new Error('404'));
+
+    render(<SearchBar />);
+    await screen.findByRole('alert');
+
+    // The old box sat disabled saying "Building the id index" for the rest of the session.
+    expect(screen.queryByRole('textbox')).toBeNull();
+    expect(useDataStreamStore.getState().index_status).not.toBe('loading');
+    consoleError.mockRestore();
+  });
+
+  it('the failure survives a later load writing its own status', async () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+    queryData.loadIndexData.mockRejectedValue(new Error('404'));
+    render(<SearchBar />);
+    await screen.findByRole('alert');
+
+    // This is what erased the one explanation the reader used to get.
+    act(() => { useTimeSeriesStore.setState({ loadingText: 'Loading VPU_16', last_error: null }); });
+
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    consoleError.mockRestore();
+  });
+
+  it('can be retried without reloading the page', async () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+    queryData.loadIndexData.mockRejectedValue(new Error('404'));
+    render(<SearchBar />);
+    await screen.findByRole('alert');
+
+    // The usual cause is one failed fetch of a large file, not anything permanent.
+    queryData.loadIndexData.mockResolvedValue(undefined);
+    fireEvent.click(screen.getByRole('button', { name: /try again/i }));
+
+    expect(await screen.findByRole('textbox')).toBeEnabled();
+    expect(useDataStreamStore.getState().index_status).toBe('ready');
     consoleError.mockRestore();
   });
 });
@@ -190,11 +239,10 @@ describe('searching by the numeric part', () => {
     render(<SearchBar />);
     await waitFor(() => expect(box()).toBeEnabled());
 
-    await act(async () => {
-      fireEvent.change(box(), { target: { value: '2884494' } });
-    });
-    await act(async () => { button().click(); });
+    fireEvent.change(box(), { target: { value: '2884494' } });
+    fireEvent.click(button());
 
-    expect(useFeatureStore.getState().selected_feature._id).toBe('cat-2884494');
+    await waitFor(() =>
+      expect(useFeatureStore.getState().selected_feature._id).toBe('cat-2884494'));
   });
 });

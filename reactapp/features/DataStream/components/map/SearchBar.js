@@ -3,7 +3,13 @@ import PropTypes from 'prop-types';
 import { useShallow } from 'zustand/react/shallow';
 
 import Spinner from 'features/Tethys/components/loader/Spinner';
-import { SearchBarWrapper, SearchButton, SearchIcon, SearchInput } from '../styles/Styles';
+import {
+  SearchBarWrapper,
+  SearchButton,
+  SearchIcon,
+  SearchInput,
+  SearchNotice,
+} from '../styles/Styles';
 import { loadIndexData, getFeatureProperties } from 'features/DataStream/lib/queryData';
 import { searchCandidates } from 'features/DataStream/lib/utils';
 import { loadTimeseries } from 'features/DataStream/actions/loadTimeseries';
@@ -22,48 +28,53 @@ import { useFeatureStore } from 'features/DataStream/store/Layers';
  * exist". The handler had no catch, so those arrived as unhandled rejections in the console.
  *
  * Now the box owns its own text, searching is an explicit submit rather than a side effect of
- * typing, and it stays disabled with a plain explanation until the index is ready.
+ * typing, and it says what it is doing while the index builds.
  *
  * A miss is reported through the store rather than the placeholder. The placeholder only paints
  * on an empty input, and after a search the input still holds the id that was searched for, so
  * "no feature with id x" was written somewhere it could never be seen. Searching for something
  * absent looked exactly like searching for nothing, which is why it read as silently ignored.
+ *
+ * A failed index is a state, not a message. It used to leave the box disabled and still claiming
+ * to be building the index, with its one explanation in loadingText where the next vpu load
+ * overwrote it: the box lied for the rest of the session. It now says it plainly and offers to
+ * try again, since the usual cause is a transient fetch of a 103 MB file.
  */
 const SearchBar = ({ placeholder = 'Search for an id' }) => {
-  const { hydrofabric_index_url, vpu, set_vpu } = useDataStreamStore(
+  const { hydrofabric_index_url, vpu, set_vpu, indexStatus, setIndexStatus } = useDataStreamStore(
     useShallow((s) => ({
       hydrofabric_index_url: s.hydrofabric_index,
       vpu: s.vpu,
       set_vpu: s.set_vpu,
+      indexStatus: s.index_status,
+      setIndexStatus: s.set_index_status,
     }))
   );
   const set_selected_feature = useFeatureStore((s) => s.set_selected_feature);
 
   const [query, setQuery] = useState('');
-  const [indexReady, setIndexReady] = useState(false);
   const [searching, setSearching] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let alive = true;
+    setIndexStatus('loading');
     // Building the id index is the one load that has to happen without being asked for.
     loadIndexData({ remoteUrl: hydrofabric_index_url })
-      .then(() => { if (alive) setIndexReady(true); })
+      .then(() => { if (alive) setIndexStatus('ready'); })
       .catch((err) => {
         if (!alive) return;
         console.error('Could not build the search index', err);
-        useTimeSeriesStore.setState({
-          loadingText: 'Search is unavailable: the id index could not be loaded',
-          last_error: { kind: 'search-index' },
-        });
+        setIndexStatus('failed');
       });
     return () => { alive = false; };
-  }, [hydrofabric_index_url]);
+  }, [hydrofabric_index_url, attempt, setIndexStatus]);
 
   const runSearch = useCallback(async (event) => {
     event?.preventDefault();
     const id = query.trim();
-    if (!id || !indexReady || searching) return;
+    if (!id || indexStatus !== 'ready' || searching) return;
 
     setSearching(true);
     setNotFound(false);
@@ -104,9 +115,24 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
     } finally {
       setSearching(false);
     }
-  }, [query, indexReady, searching, vpu, set_vpu, set_selected_feature]);
+  }, [query, indexStatus, searching, vpu, set_vpu, set_selected_feature]);
 
-  const label = indexReady ? placeholder : 'Building the id index';
+  if (indexStatus === 'failed') {
+    return (
+      <SearchNotice role="alert">
+        <span>Search unavailable: the id index could not be loaded</span>
+        <button type="button" onClick={() => setAttempt((n) => n + 1)}>
+          Try again
+        </button>
+      </SearchNotice>
+    );
+  }
+
+  const loading = indexStatus === 'loading';
+  // The status strip beside it carries "Building the search index" with the spinner, so saying
+  // it here too printed the same sentence twice in one header. Disabled plus aria-busy is the
+  // part only the control can say.
+
 
   return (
     <SearchBarWrapper as="form" onSubmit={runSearch} role="search">
@@ -115,15 +141,16 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
         type="text"
         value={query}
         onChange={(e) => { setQuery(e.target.value); setNotFound(false); }}
-        placeholder={label}
+        placeholder={placeholder}
         aria-label={placeholder}
         aria-invalid={notFound || undefined}
+        aria-busy={loading || undefined}
         $notFound={notFound}
-        disabled={!indexReady}
+        disabled={loading}
       />
       <SearchButton
         type="submit"
-        disabled={!indexReady || searching || !query.trim()}
+        disabled={loading || searching || !query.trim()}
         aria-label={searching ? 'Searching' : 'Search'}
       >
         {searching ? <Spinner size={13} /> : 'Search'}

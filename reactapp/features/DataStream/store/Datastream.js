@@ -18,6 +18,15 @@ const DEFAULTS = {
   cycle: "00",
   outputFile: null,
   variables: [],
+  /**
+   * Whether the id index is loading, ready, or gave up.
+   *
+   * Held here rather than in the search box, and not in loadingText. The box's own state said
+   * "Building the id index" for the rest of the session after the load had failed, and the
+   * failure message went into loadingText where the next vpu load overwrote it, so a permanent
+   * condition was reported by a transient field and then lost.
+   */
+  index_status: 'loading',
 };
 
 const sameArrayValues = (a, b) => {
@@ -46,6 +55,9 @@ const useDataStreamStore = create((set) => ({
         set((s) => (s.community_pmtiles === community_pmtiles ? s : { community_pmtiles })),
     set_hydrofabric_index: (hydrofabric_index) =>
         set((s) => (s.hydrofabric_index === hydrofabric_index ? s : { hydrofabric_index })),
+    set_index_status: (index_status) =>
+      set((s) => (s.index_status === index_status ? s : { index_status })),
+
     set_variables: (variables) =>
         set((s) => (sameArrayValues(s.variables, variables) ? s : { variables })),
     reset: () =>

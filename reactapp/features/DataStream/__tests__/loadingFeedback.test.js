@@ -68,6 +68,9 @@ beforeEach(() => {
 
 describe('status line', () => {
   it('shows nothing at all while idle', () => {
+    // Idle means the index has landed too: on a real mount it is still building, and the strip
+    // says so rather than looking finished.
+    useDataStreamStore.setState({ index_status: 'ready' });
     const { container } = render(<LoadStatus />);
 
     // It sits in the header, so an idle app must not reserve space for it.

@@ -17,6 +17,7 @@ import {
 } from '../../lib/layers';
 import { useMapTheme } from '../../lib/mapTheme';
 import {
+  DIVIDES_MIN_ZOOM,
   FLOWPATHS_LAYER_ID,
   FLOWPATHS_MIN_ZOOM,
   addPaths,
@@ -490,7 +491,17 @@ const MainMap = () => {
     const features = map.queryRenderedFeatures(event.point, {
       layers: layersToQuery,
     });
-    if (!features || !features.length) return;
+    if (!features || !features.length) {
+      // Nothing to hit rather than a missed aim: no catchment geometry exists below this zoom,
+      // so the map looks identical and every click is silently ignored.
+      if (map.getZoom() < DIVIDES_MIN_ZOOM) {
+        useTimeSeriesStore.setState({
+          loadingText: `Zoom in past ${DIVIDES_MIN_ZOOM} to select a catchment`,
+          last_error: { kind: 'zoom-required' },
+        });
+      }
+      return;
+    }
 
     const [feature] = features;
     selectMapFeature(feature, feature.layer.id);

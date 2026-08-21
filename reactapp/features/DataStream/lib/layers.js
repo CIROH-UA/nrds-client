@@ -17,6 +17,16 @@ import { readMapTheme } from './mapTheme';
 export const FLOWPATHS_MIN_ZOOM = 1;
 
 /**
+ * The lowest zoom at which catchment geometry exists.
+ *
+ * Read from the tileset: merged.pmtiles declares conus_divides as minzoom 7, so below that its
+ * tiles carry no polygons and a click cannot hit one however carefully it is aimed. The map
+ * looks the same at zoom 4 either way, which is why clicking there reads as the app being
+ * broken rather than as there being nothing to click.
+ */
+export const DIVIDES_MIN_ZOOM = 7;
+
+/**
  * Our flowpaths layer, and the one in the basemap style it stands in for.
  *
  * A distinct id is load bearing. The style at map/styles/*-style.json already defines a layer

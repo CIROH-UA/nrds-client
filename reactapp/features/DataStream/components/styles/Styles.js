@@ -692,6 +692,62 @@ export const SearchBarWrapper = styled.div`
   border: 1px solid var(--search-border);
 `;
 
+/**
+ * What stands in for the search box when the index could not be loaded.
+ *
+ * A disabled box with a placeholder would be the smaller change, but a control that can never
+ * work is worse than no control: it invites typing and then swallows it. This says why, and
+ * offers the retry, because the usual cause is one failed fetch of a 103 MB file rather than
+ * anything permanent.
+ */
+export const SearchNotice = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 6px 12px;
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-sm);
+  background-color: var(--status-failed-bg);
+  color: var(--status-failed-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+
+  > span {
+    min-width: 0;
+    white-space: nowrap;
+  }
+
+  > button {
+    flex: none;
+    min-height: 32px;
+    padding: 2px 10px;
+    border: 1px solid currentColor;
+    border-radius: var(--radius-sm);
+    background-color: transparent;
+    color: inherit;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    cursor: pointer;
+  }
+
+  > button:hover {
+    background-color: var(--nav-button-hover-bg);
+  }
+
+  > button:focus-visible {
+    outline: 2px solid var(--nav-pill-active-bg);
+    outline-offset: 2px;
+  }
+
+  @media (max-width: 768px) {
+    > span {
+      white-space: normal;
+    }
+  }
+`;
+
 export const SearchIcon = styled(FiSearch)`
   flex-shrink: 0;
   margin-right: 8px;

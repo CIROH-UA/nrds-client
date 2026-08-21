@@ -2,6 +2,7 @@ import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
+import useDataStreamStore from 'features/DataStream/store/Datastream';
 import Spinner from 'features/Tethys/components/loader/Spinner';
 import { StatusStrip } from '../styles/Styles';
 
@@ -17,6 +18,7 @@ import { StatusStrip } from '../styles/Styles';
  * Renders nothing when there is nothing to say, so it costs no space while idle.
  */
 export const LoadStatus = React.memo(function LoadStatus() {
+  const indexLoading = useDataStreamStore((s) => s.index_status === 'loading');
   const { loading, loadingText, failed } = useTimeSeriesStore(
     useShallow((s) => ({
       loading: s.loading,
@@ -24,6 +26,18 @@ export const LoadStatus = React.memo(function LoadStatus() {
       failed: s.last_error !== null,
     }))
   );
+
+  // The index takes about seven seconds and blocks nothing else, so without saying so here the
+  // map looks ready while the one thing that needs it is not. Yielding to a real load keeps the
+  // strip to one statement at a time.
+  if (indexLoading && !loading && !loadingText) {
+    return (
+      <StatusStrip role="status" aria-live="polite">
+        <Spinner size={14} />
+        <span>Building the search index</span>
+      </StatusStrip>
+    );
+  }
 
   if (!loading && !loadingText) return null;
 
