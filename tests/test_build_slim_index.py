@@ -38,6 +38,23 @@ def write_source(path, rows=None, drop=(), extra=None):
     return path
 
 
+def write_like_generator(table, path):
+    """Write a fixture the way the generator does, so a test isolates the fault it injects.
+
+    Without this the encoding check fires first and every corruption test reports the same thing.
+    """
+    pq.write_table(
+        table,
+        path,
+        compression=gen.COMPRESSION,
+        compression_level=gen.COMPRESSION_LEVEL,
+        row_group_size=gen.ROW_GROUP_SIZE,
+        use_dictionary=list(gen.DICTIONARY_ENCODED),
+        column_encoding=gen.COLUMN_ENCODING,
+        version="2.6",
+    )
+
+
 def build(tmp_path, **kwargs):
     src = write_source(tmp_path / "source.parquet", **kwargs)
     out = tmp_path / "slim.parquet"
@@ -137,7 +154,34 @@ def test_verification_catches_corruption(tmp_path, mutate, expected):
     """Each mutation class must be caught, or the build-time check is decoration."""
     src, out, table = build(tmp_path)
     bad = tmp_path / "bad.parquet"
-    pq.write_table(mutate(table), bad)
+    write_like_generator(mutate(table), bad)
     failures, _, _ = gen.verify(str(src), str(bad))
     assert failures, f"verification missed: {expected}"
     assert any(expected in f for f in failures), failures
+
+
+def test_written_encodings_are_the_tuned_ones(tmp_path):
+    """The encodings are the difference between 45 MiB and 78, so they are worth asserting.
+
+    Values alone cannot catch a regression here: a default-encoded file reads perfectly and is
+    only larger, which no correctness check and no size floor would notice.
+    """
+    _, out, _ = build(tmp_path)
+    metadata = pq.ParquetFile(out).metadata
+    group = metadata.row_group(0)
+    written = {
+        group.column(i).path_in_schema: {str(e) for e in group.column(i).encodings}
+        for i in range(metadata.num_columns)
+    }
+    for column, wanted in gen.COLUMN_ENCODING.items():
+        assert wanted in written[column], f"{column} was written as {written[column]}"
+
+
+def test_verification_catches_default_encodings(tmp_path):
+    src, out, table = build(tmp_path)
+    plain = tmp_path / "plain.parquet"
+    pq.write_table(table, plain, compression="zstd")
+
+    failures, _, _ = gen.verify(str(src), str(plain))
+
+    assert any("DELTA_BYTE_ARRAY" in f for f in failures), failures

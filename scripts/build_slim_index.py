@@ -205,6 +205,22 @@ def verify(source, out):
     if act_ids - exp_ids:
         failures.append(f"{len(act_ids - exp_ids):,} artifact ids not present in the source")
 
+    # Encodings, not just values. If pyarrow ever silently ignored column_encoding the file would
+    # be 78 MiB instead of 45 and still read perfectly, so nothing else here would notice: a
+    # correctness check passes and the --min-bytes floor is far below both. This is what protects
+    # the 33 MiB the encodings buy.
+    if not failures:
+        meta = pq.ParquetFile(out).metadata
+        group = meta.row_group(0)
+        for i in range(meta.num_columns):
+            column = group.column(i)
+            wanted = COLUMN_ENCODING.get(column.path_in_schema)
+            if wanted and wanted not in {str(e) for e in column.encodings}:
+                failures.append(
+                    f"column {column.path_in_schema} was written as "
+                    f"{','.join(str(e) for e in column.encodings)}, not {wanted}"
+                )
+
     if not failures:
         for name in COLUMNS:
             e = expected.column(name).combine_chunks()
