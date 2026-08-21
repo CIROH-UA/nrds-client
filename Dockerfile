@@ -77,7 +77,18 @@ RUN cd ${APP_SRC_ROOT} \
     && ${NPM} install \
     && ${NPM} run build \
     && rm -rf node_modules \
+    # Dependencies first, so the generator has pyarrow. Resolving through pdm rather than a bare
+    # pip install keeps the numpy<2 pin intact: this build runs inside the tethys conda env, where
+    # geopandas and xarray are already built against numpy 1.x.
+    && ${PDM} install --production \
+    # Before the wheel is built, not after: pdm install --no-editable packages the app, and Tethys
+    # serves public/ from the installed package rather than the source tree. This is the same
+    # reason npm run build has to precede it.
+    && ${PDM} run python scripts/build_slim_index.py \
     && ${PDM} install --no-editable --production \
+    # A missing artifact is a permanently dead search box, and the build would otherwise stay
+    # green, so fail here instead of in production.
+    && ${PDM} run python -c "import pathlib, sys, tethysapp.nrds as a; p = pathlib.Path(a.__file__).parent / 'public/data/hydrofabric_index_slim.parquet'; sys.exit(0) if p.is_file() and p.stat().st_size > 30_000_000 else sys.exit(f'slim index missing or too small in the installed package: {p}')" \
     # node is only needed to build the frontend; remove it so node CVEs
     # don't flag the runtime image in security scans
     && rm -rf ${NVM_DIR}

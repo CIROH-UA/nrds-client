@@ -74,7 +74,9 @@ include-package-data = true
 include = ["tethysapp*"]
 
 [tool.setuptools.package-data]
-"*" = ["*.js", "*.png", "*.gif", "*.jpg", "*.html", "*.css", "*.json", "*.svg"]
+# Scoped to public/data on purpose: a bare "*.parquet" would sweep any stray parquet
+# anywhere under tethysapp into the wheel.
+"*" = ["*.js", "*.png", "*.gif", "*.jpg", "*.html", "*.css", "*.json", "*.svg", "public/data/*.parquet"]
 
 [tool.setuptools_scm]
 # can be empty if no extra settings are needed, presence enables setuptools-scm
