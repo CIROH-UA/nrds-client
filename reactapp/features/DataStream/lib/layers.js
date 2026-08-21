@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import { readMapTheme } from './mapTheme';
 /**
  * The lowest zoom at which flowpath geometry exists.
@@ -26,7 +27,26 @@ export const FLOWPATHS_MIN_ZOOM = 1;
  * below zoom 7 would have done nothing at all.
  */
 export const FLOWPATHS_LAYER_ID = 'flowpaths-line';
+export const FLOWPATHS_HIGHLIGHT_LAYER_ID = 'flowpaths-highlight';
 const STYLE_FLOWPATHS_LAYER_ID = 'flowpaths';
+
+/**
+ * The vpu boundary layer, which belongs to the basemap style.
+ *
+ * It is the teal outline visible across the country at low zoom, drawn from map/vpu.pmtiles at
+ * zooms 0 to 6 by the style itself. Nothing in this app creates it, so its switch sets
+ * visibility on the style's layer rather than mounting one of ours.
+ */
+export const STYLE_VPU_LAYER_ID = 'vpu';
+
+/** The colour the basemap style draws vpu boundaries in, so the legend can match it. */
+export const VPU_BOUNDARY_COLOR = 'rgb(0, 153, 136)';
+
+/** Show or hide the style's vpu boundaries. */
+export const setVpuVisibility = (map, visible) => {
+  if (!map?.getLayer?.(STYLE_VPU_LAYER_ID)) return;
+  map.setLayoutProperty(STYLE_VPU_LAYER_ID, 'visibility', visible ? 'visible' : 'none');
+};
 
 /** Hide the basemap style's own flowpaths, so it neither double-draws nor answers queries. */
 export const hideStyleFlowpaths = (map) => {
@@ -39,6 +59,7 @@ export const reorderLayers = (map) => {
   // Draw order from bottom → top
   const LAYER_ORDER = [
     FLOWPATHS_LAYER_ID,
+    FLOWPATHS_HIGHLIGHT_LAYER_ID,
     'conus-gauges',
     'divides',
     'divides-highlight',
@@ -146,6 +167,21 @@ export const getSymbology = (typeSymbol, colors) => {
 }
 
 // --- Small SVG legend symbols ----------------------------------
+
+export const VpuSymbol = ({ stroke = VPU_BOUNDARY_COLOR }) => (
+  <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+    <path
+      d="M2 13 L6 5 L11 9 L16 3"
+      fill="none"
+      stroke={stroke}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+VpuSymbol.propTypes = { stroke: PropTypes.string };
 
 export const NexusSymbol = ({ fill, stroke }) => (
   <svg
@@ -480,7 +516,7 @@ export function getValueAtTimeFlat(varData, numTimes, featureIndex, timeIndex) {
 
 // Hoisted to module scope: writeColorInto runs once per flowpath per animation frame, and
 // rebuilding these seven arrays on every call cost about half its runtime.
-const COLOR_SCALE = [
+export const COLOR_SCALE = [
   [0, 119, 187],
   [0, 180, 216],
   [144, 224, 239],
@@ -600,6 +636,22 @@ export function normalizeValue(value, bounds) {
   return Math.log1p(curve * offset) / Math.log1p(curve * span);
 }
 
+
+/**
+ * The value at a given position on the ramp, the inverse of normalizeValue.
+ *
+ * A legend needs this: the ramp is logarithmic and bent to the median, so its midpoint is
+ * nowhere near the midpoint of the range and labelling it linearly would misdescribe the map.
+ */
+export function valueAtRampPosition(t, bounds) {
+  if (!bounds) return 0;
+  const span = bounds.max - bounds.min;
+  if (!(span > 0)) return bounds.min;
+  const curve = bounds.curve > 0 ? bounds.curve : 1;
+  const clamped = Math.min(Math.max(t, 0), 1);
+  const offset = (Math.exp(clamped * Math.log1p(curve * span)) - 1) / curve;
+  return bounds.min + Math.min(Math.max(offset, 0), span);
+}
 
 /**
  * A fresh store for collected paths.

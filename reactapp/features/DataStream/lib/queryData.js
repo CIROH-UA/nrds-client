@@ -125,16 +125,33 @@ export async function loadIndexData({ remoteUrl }) {
   }
 }
 
+/**
+ * The indexed row for a feature, given one id or several to try.
+ *
+ * Several, because a bare number names three things: the catchment cat-N, its flowpath wb-N and
+ * the nexus nex-N. The catchment wins when more than one matches, since that is what the app
+ * charts. Ids are reduced to word characters and dashes before they reach the query.
+ */
 export async function getFeatureProperties({ cacheKey, feature_id }) {
-  debugLog("getFeature called with cacheKey:", cacheKey, "feature_id:", feature_id);
+  const candidates = (Array.isArray(feature_id) ? feature_id : [feature_id])
+    .map((id) => String(id ?? '').replace(/[^\w-]/g, ''))
+    .filter(Boolean);
+  debugLog("getFeature called with cacheKey:", cacheKey, "candidates:", candidates);
+  if (!candidates.length) return [];
 
   const conn = await getConnection();
   const tableName = cacheKey.split('.')[0];
+  const inList = candidates.map((id) => `'${id}'`).join(', ');
+  // Ranked by the order asked for, so "cat first" is expressed once, at the call site.
+  const ranking = candidates
+    .map((id, i) => `WHEN '${id}' THEN ${i}`)
+    .join(' ');
   try {
     const stream = await conn.send(`
       SELECT *
       FROM "${tableName}"
-      WHERE id = '${feature_id}'
+      WHERE id IN (${inList})
+      ORDER BY CASE id ${ranking} ELSE ${candidates.length} END
       LIMIT 1
     `);
 
@@ -148,15 +165,11 @@ export async function getFeatureProperties({ cacheKey, feature_id }) {
         row[field.name] = col ? col.get(0) : null;
       }
 
-      debugLog(
-        `[getFeatureProperties] (literal) id=${feature_id} rows=1`
-      );
+      debugLog(`[getFeatureProperties] matched one of ${candidates.join(', ')}`);
       return [row];
     }
 
-    debugLog(
-      `[getFeatureProperties] (literal) id=${feature_id} rows=0`
-    );
+    debugLog(`[getFeatureProperties] no row for ${candidates.join(', ')}`);
     return [];
   } finally {
     await conn.close();

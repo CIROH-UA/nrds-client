@@ -89,7 +89,8 @@ describe('the search box', () => {
 
     expect(queryData.getFeatureProperties).toHaveBeenCalledTimes(1);
     expect(queryData.getFeatureProperties).toHaveBeenCalledWith({
-      cacheKey: 'index_data_table', feature_id: 'cat-1',
+      // Candidates, not one id: a bare number names a catchment, a flowpath and a nexus.
+      cacheKey: 'index_data_table', feature_id: ['cat-1'],
     });
     expect(useFeatureStore.getState().selected_feature).toMatchObject({ _id: 'cat-1' });
   });
@@ -142,5 +143,58 @@ describe('the search box', () => {
     expect(useTimeSeriesStore.getState().loadingText).toMatch(/Search is unavailable/);
     expect(box()).toBeDisabled();
     consoleError.mockRestore();
+  });
+});
+
+describe('searching by the numeric part', () => {
+  const { searchCandidates, numericPartOf } = require('features/DataStream/lib/utils');
+
+  /**
+   * People read an id off a chart title or a hover popup and type the number. Requiring the
+   * cat- or wb- prefix meant knowing which of the two the app charts before searching for it.
+   */
+  test('a bare number is looked up as the catchment first, then the reach, then the nexus', () => {
+    expect(searchCandidates('2884494')).toEqual([
+      'cat-2884494',
+      'wb-2884494',
+      'nex-2884494',
+      // Lakes carry no prefix at all in the index.
+      '2884494',
+    ]);
+  });
+
+  test('an id that already names its kind is taken as written', () => {
+    expect(searchCandidates('wb-2884494')).toEqual(['wb-2884494']);
+    expect(searchCandidates('cat-2884494')).toEqual(['cat-2884494']);
+  });
+
+  test('whitespace and case do not matter', () => {
+    expect(searchCandidates('  CAT-2884494 ')).toEqual(['cat-2884494']);
+  });
+
+  test('nothing typed is nothing to look for', () => {
+    expect(searchCandidates('')).toEqual([]);
+    expect(searchCandidates(null)).toEqual([]);
+  });
+
+  test('the numeric part is what the timeseries tables are keyed by', () => {
+    expect(numericPartOf('cat-2884494')).toBe('2884494');
+    expect(numericPartOf('wb-2884494')).toBe('2884494');
+    expect(numericPartOf('2884494')).toBe('2884494');
+    expect(numericPartOf('nex-1000009947')).toBe('1000009947');
+    expect(numericPartOf('')).toBeNull();
+  });
+
+  test('selects the id the index holds, not the number that was typed', async () => {
+    queryData.getFeatureProperties.mockResolvedValue([{ id: 'cat-2884494', vpuid: '16' }]);
+    render(<SearchBar />);
+    await waitFor(() => expect(box()).toBeEnabled());
+
+    await act(async () => {
+      fireEvent.change(box(), { target: { value: '2884494' } });
+    });
+    await act(async () => { button().click(); });
+
+    expect(useFeatureStore.getState().selected_feature._id).toBe('cat-2884494');
   });
 });

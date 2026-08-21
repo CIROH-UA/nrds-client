@@ -53,6 +53,9 @@ export const useLayersStore = create(
     catchments: { visible: true },
     flowpaths: { visible: true },
     conus_gauges: { visible: false },
+    // Drawn by the basemap style rather than by this app, so its switch reaches into the style
+    // instead of rendering a Layer of our own. Listed here so the legend can describe it.
+    vpu: { visible: true },
 
     colorBounds: {
       flow: { min: 0, max: 100 },
@@ -82,6 +85,9 @@ export const useLayersStore = create(
       set((s) =>
         s.flowpaths.visible === isVisible ? s : { flowpaths: { ...s.flowpaths, visible: isVisible } }
       ),
+
+    set_vpu_visibility: (isVisible) =>
+      set((s) => (s.vpu.visible === isVisible ? s : { vpu: { ...s.vpu, visible: isVisible } })),
 
     set_conus_gauges_visibility: (isVisible) =>
       set((s) =>

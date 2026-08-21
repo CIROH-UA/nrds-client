@@ -392,6 +392,61 @@ export const MapHint = styled.button`
   }
 `;
 
+/**
+ * The colour key for the animated flowpaths.
+ *
+ * Bottom right: bottom left is where the forecast panel sits, which covered it entirely, and the
+ * layer panel opens at the top right. Raised clear of the attribution bar. Small on purpose: it
+ * explains one ramp, and the map is the thing being read.
+ */
+export const LegendBox = styled.div`
+  position: absolute;
+  right: 10px;
+  bottom: 42px;
+  z-index: 1000;
+  width: 190px;
+  padding: 8px 10px;
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-md);
+  background-color: var(--map-panel-bg);
+  color: var(--map-panel-text);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+
+  @media (max-width: 768px) {
+    display: none;
+  }
+`;
+
+export const LegendTitle = styled.div`
+  margin-bottom: 6px;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-strong);
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+`;
+
+export const LegendBar = styled.div`
+  height: 8px;
+  border-radius: var(--radius-sm);
+`;
+
+export const LegendScale = styled.div`
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-family: SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  font-size: var(--text-xs);
+  color: var(--panel-text-muted);
+
+  /* The middle label is the ramp's midpoint, not the range's, so it is centred over the bar. */
+  > span:nth-child(2) {
+    transform: translateX(-50%);
+    margin-left: 50%;
+    position: absolute;
+  }
+`;
+
 export const StatusStrip = styled.div`
   display: flex;
   align-items: center;
@@ -672,7 +727,10 @@ export const SearchButton = styled.button`
 `;
 
 export const ViewContainer = styled.div`
-  height: 100%;
+  /* Takes the space the header and the banner leave, rather than a full 100% underneath them.
+     min-height: 0 so the map can shrink inside the column instead of forcing it taller. */
+  flex: 1 1 auto;
+  min-height: 0;
   width: 100%;
   display: flex;
   flex-direction: column;

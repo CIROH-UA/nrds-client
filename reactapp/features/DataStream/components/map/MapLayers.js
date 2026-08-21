@@ -1,7 +1,8 @@
 // mapLayers.js
 import React, { useMemo } from 'react';
 import { Layer } from 'react-map-gl/maplibre';
-import { FLOWPATHS_LAYER_ID } from 'features/DataStream/lib/layers';
+import { FLOWPATHS_LAYER_ID, FLOWPATHS_HIGHLIGHT_LAYER_ID } from 'features/DataStream/lib/layers';
+import { numericPartOf } from 'features/DataStream/lib/utils';
 
 /**
  * Catchment (divides) layers
@@ -96,6 +97,38 @@ export function useFlowPathsLayer({ isFlowPathsVisible, flowpathsLineColor }) {
       />
     );
   }, [isFlowPathsVisible, flowpathsLineColor]);
+}
+
+/**
+ * The selected reach, drawn over the flowpaths.
+ *
+ * A separate layer from the catchment highlight because it reads a different property: the
+ * catchment tiles carry divide_id as "cat-2884494", while this archive carries it as the bare
+ * number 2884494. Selecting a catchment therefore highlights both its polygon and its reach,
+ * which is what someone searching an id is looking for.
+ */
+export function useFlowPathsHighlightLayer({ isFlowPathsVisible, selectedFeatureId, color }) {
+  return useMemo(() => {
+    if (!isFlowPathsVisible) return null;
+
+    const numeric = numericPartOf(selectedFeatureId);
+    return (
+      <Layer
+        key={FLOWPATHS_HIGHLIGHT_LAYER_ID}
+        id={FLOWPATHS_HIGHLIGHT_LAYER_ID}
+        type="line"
+        source="flowpath-geometry"
+        source-layer="flowpaths"
+        // An id that cannot match, rather than no filter, so nothing is highlighted by default.
+        filter={numeric ? ['==', ['get', 'divide_id'], Number(numeric)] : ['==', ['get', 'divide_id'], -1]}
+        paint={{
+          'line-color': color,
+          'line-width': { stops: [[2, 2], [7, 3], [10, 5]] },
+          'line-opacity': 0.9,
+        }}
+      />
+    );
+  }, [isFlowPathsVisible, selectedFeatureId, color]);
 }
 
 /**

@@ -3,7 +3,7 @@ import { Fragment, useMemo, useState } from 'react';
 import { Switch } from  '../styles/Styles';
 import { IoLayers } from "react-icons/io5";
 import { IconLabel, Row, Title, InfoPanel } from '../styles/Styles';
-import { NexusSymbol, CatchmentSymbol, FlowPathSymbol, GaugeSymbol, symbologyColors, CursorSymbol } from '../../lib/layers';
+import { NexusSymbol, CatchmentSymbol, FlowPathSymbol, GaugeSymbol, VpuSymbol, symbologyColors, CursorSymbol } from '../../lib/layers';
 import { usePrefersDark } from '../../lib/mapTheme';
 import { InfoToggle } from '../InfoDisclosure';
 import { LayerInfoContent } from '../InfoContent';
@@ -33,6 +33,9 @@ export const LayerControl = () => {
   const set_hovered_enabled = useLayersStore(
     (state) => state.set_hovered_enabled
   );
+
+  const vpuLayer = useLayersStore((state) => state.vpu);
+  const set_vpu_visibility = useLayersStore((state) => state.set_vpu_visibility);
 
   // The legend reads the same tokens the map layers do, so the two cannot disagree. It was
   // branching on styled-components' useTheme, and nothing here installs a ThemeProvider, so
@@ -143,6 +146,19 @@ export const LayerControl = () => {
         />
       </Row>
       {/* </Content> */}
+
+      <Row>
+        <IconLabel>
+          <VpuSymbol />
+          VPU Boundaries
+        </IconLabel>
+        <Switch
+          id="vpu-layer-switch"
+          checked={vpuLayer.visible}
+          onChange={() => set_vpu_visibility(!vpuLayer.visible)}
+          title="Toggle VPU boundaries"
+        />
+      </Row>
 
       <IconLabel $fontSize={14}>
         <span style={{ fontWeight: 600 }}>Map Interactions</span>

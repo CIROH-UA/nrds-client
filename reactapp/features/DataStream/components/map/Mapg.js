@@ -22,14 +22,17 @@ import {
   addPaths,
   createPathStore,
   hideStyleFlowpaths,
+  setVpuVisibility,
 } from '../../lib/layers';
 import { flowPathLayerProps, shouldPromptZoom } from './flowPathLayer';
+import { ValueLegend } from './ValueLegend';
 import { selectMapFeature } from '../../actions/selectFeature';
 import { hoveredFeatureOf, pickHoverFeature } from '../../actions/hoverFeature';
 
 import {
   useCatchmentLayers,
   useFlowPathsLayer,
+  useFlowPathsHighlightLayer,
   useConusGaugesLayer,
   useNexusLayers,
 } from './MapLayers';
@@ -63,16 +66,11 @@ const FlowPathsOverlay = React.memo(function FlowPathsOverlay({
   valuesByVar,
   timesArr,
   variable,
+  bounds,
   pathDataRef,
   pathTick,
 }) {
   const currentTimeIndex = useTimeSeriesStore((s) => s.currentTimeIndex);
-
-  // Bounds describe the data, not the frame: about 9 ms per frame at 20k flowpaths.
-  const bounds = useMemo(
-    () => (valuesByVar ? computeBounds(valuesByVar) : null),
-    [valuesByVar]
-  );
 
   const layers = useMemo(() => {
     const props = flowPathLayerProps({
@@ -96,6 +94,7 @@ FlowPathsOverlay.propTypes = {
   valuesByVar: PropTypes.object,
   timesArr: PropTypes.array,
   variable: PropTypes.string,
+  bounds: PropTypes.shape({ min: PropTypes.number, max: PropTypes.number }),
   pathDataRef: PropTypes.shape({ current: PropTypes.array }).isRequired,
   pathTick: PropTypes.number,
 };
@@ -106,6 +105,7 @@ const MainMap = () => {
     isCatchmentsVisible, 
     isFlowPathsVisible, 
     isConusGaugesVisible, 
+    isVpuVisible,
     enabledHovering 
   } = useLayersStore(
     useShallow((s) => ({
@@ -113,6 +113,7 @@ const MainMap = () => {
       isCatchmentsVisible: s.catchments.visible,
       isFlowPathsVisible: s.flowpaths.visible,
       isConusGaugesVisible: s.conus_gauges.visible,
+      isVpuVisible: s.vpu.visible,
       enabledHovering: s.hovered_enabled,
     }))
   );
@@ -162,6 +163,12 @@ const MainMap = () => {
 
   const [pathTick, setPathTick] = useState(0);
   const [zoom, setZoom] = useState(INITIAL_VIEW.zoom);
+
+  // One computation for both the layer and its legend: they must describe the same ramp.
+  const colorBounds = useMemo(
+    () => (valuesByVar ? computeBounds(valuesByVar) : null),
+    [valuesByVar]
+  );
 
   // pathTick is what re-renders this, so reading the ref during render is current.
   const belowFlowpathZoom = shouldPromptZoom({
@@ -235,6 +242,7 @@ const MainMap = () => {
     hoverMapRef.current = map;
 
     hideStyleFlowpaths(map);
+    setVpuVisibility(map, useLayersStore.getState().vpu.visible);
     reorderLayers(map);
 
   }, [hoverLayers, isMapUsable, removeHoverListeners, resetPointerCursor, setPointerCursor]);
@@ -329,6 +337,12 @@ const MainMap = () => {
     flowpathsLineColor: mapTheme.flowpaths,
   });
 
+  const flowPathsHighlightLayer = useFlowPathsHighlightLayer({
+    isFlowPathsVisible,
+    selectedFeatureId,
+    color: mapTheme.dividesHighlightOutline,
+  });
+
   const conusGaugesLayer = useConusGaugesLayer({
     isConusGaugesVisible,
     gaugesCircleColor: mapTheme.gauges,
@@ -364,6 +378,13 @@ const MainMap = () => {
 
     reorderLayers(map);
   }, [isNexusVisible, isCatchmentsVisible, isFlowPathsVisible, isConusGaugesVisible]);
+
+  // The vpu outlines belong to the basemap style, so this reaches into it rather than mounting
+  // a Layer. handleMapLoad reapplies it, since changing theme reloads the style from scratch.
+  useEffect(() => {
+    const map = mapRef.current?.getMap?.() ?? mapRef.current;
+    setVpuVisibility(map, isVpuVisible);
+  }, [isVpuVisible]);
 
  
   // Paths belong to the vpu whose values they are drawn from: featureIndex points into that
@@ -495,6 +516,7 @@ const MainMap = () => {
         url={`pmtiles://${flowpaths_pmtiles}`}
       >
         {flowPathsLayer}
+        {flowPathsHighlightLayer}
       </Source>
 
       <Source key="conus" id="conus" type="vector" url={`pmtiles://${conus_pmtiles}`}>
@@ -510,8 +532,14 @@ const MainMap = () => {
         valuesByVar={valuesByVar}
         timesArr={timesArr}
         variable={variable}
+        bounds={colorBounds}
         pathDataRef={pathDataRef}
         pathTick={pathTick}
+      />
+      <ValueLegend
+        bounds={colorBounds}
+        variable={variable}
+        visible={isFlowPathsVisible && Boolean(colorBounds) && (timesArr?.length || 0) > 0}
       />
       <CustomPopUp hovered_feature={hovered_feature} enabledHovering={enabledHovering} />
       {belowFlowpathZoom && (

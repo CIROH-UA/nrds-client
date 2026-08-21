@@ -5,6 +5,7 @@ import { useShallow } from 'zustand/react/shallow';
 import Spinner from 'features/Tethys/components/loader/Spinner';
 import { SearchBarWrapper, SearchButton, SearchIcon, SearchInput } from '../styles/Styles';
 import { loadIndexData, getFeatureProperties } from 'features/DataStream/lib/queryData';
+import { searchCandidates } from 'features/DataStream/lib/utils';
 import { loadTimeseries } from 'features/DataStream/actions/loadTimeseries';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
@@ -67,7 +68,11 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
     setSearching(true);
     setNotFound(false);
     try {
-      const features = await getFeatureProperties({ cacheKey: 'index_data_table', feature_id: id });
+      // A bare number is looked up as the catchment, its flowpath and its nexus, in that order.
+      const features = await getFeatureProperties({
+        cacheKey: 'index_data_table',
+        feature_id: searchCandidates(id),
+      });
       if (!features.length) {
         setNotFound(true);
         // Through the store, not the placeholder; see the note above.
@@ -79,12 +84,15 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
       }
       const feature = features[0];
       useTimeSeriesStore.setState({ loadingText: '', last_error: null });
-      set_selected_feature({ _id: id, ...feature });
+      // The id the index actually holds, not the one typed: searching "2884494" selects
+      // cat-2884494, and everything downstream keys off that.
+      const matchedId = feature.id ?? id;
+      set_selected_feature({ _id: matchedId, ...feature });
 
       const vpuName = `VPU_${feature.vpuid}`;
       // Same rule as a map click: chart it here only if its vpu is the one already loaded.
       if (vpuName === vpu) {
-        loadTimeseries({ featureId: id });
+        loadTimeseries({ featureId: matchedId });
       }
       set_vpu(vpuName);
     } catch (err) {

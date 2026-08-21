@@ -21,7 +21,10 @@ export default function Layout({ navLinks = [], routes = [], children }) {
   const closeNav = () => startTransition(() => setNavVisible(false));
 
   return (
-    <div className="h-100">
+    // A flex column, so the map takes what is left rather than a full 100% on top of whatever
+    // the banner occupies. With height: 100% on both, the banner pushed the map 52px past the
+    // bottom of the window and took the attribution control off screen with it.
+    <div className="h-100 d-flex flex-column">
       <Header onNavChange={setNavVisible} />
 
       {bannerVisible && (
