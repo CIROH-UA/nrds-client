@@ -1,5 +1,6 @@
 // DataMenu.js
 import React, { Fragment, useMemo } from 'react';
+import { makeFeatureTitle } from 'features/DataStream/lib/utils';
 import { XButton, Row, IconLabel, Notice } from '../styles/Styles';
 import SelectComponent from '../SelectComponent';
 import { getOptionsFromURL, makePrefix } from 'features/DataStream/lib/s3Utils';
@@ -128,6 +129,14 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
     useTimeSeriesStore.getState().reset_series();
     set_cache_key(null);
     set_prefix('');
+    // Stops the header naming a forecast this selection has no data for; see makeFeatureTitle.
+    if (selected_feature_id) {
+      const { layout } = useTimeSeriesStore.getState();
+      useTimeSeriesStore.getState().set_layout({
+        ...layout,
+        title: makeFeatureTitle(selected_feature_id),
+      });
+    }
     useTimeSeriesStore.setState({
       loadingText: 'No output file for this selection',
       last_error: { kind: 'no-output-file' },

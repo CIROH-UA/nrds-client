@@ -21,6 +21,17 @@ export const makeTitle = (forecast, feature_id) => {
   return capitalizeWords(`${cleanId} ${cleanForecast} Forecast`);
 };
 
+/**
+ * The panel's title when there is no forecast to name.
+ *
+ * makeTitle asserts a forecast, and a selection whose output-file listing is empty has none: the
+ * header went on reading "Cat 2884494 Short Range Forecast" over an empty chart while the
+ * controls showed a different forecast entirely. The catchment is still selected, so it keeps
+ * the header, and with it the control that closes the panel.
+ */
+export const makeFeatureTitle = (feature_id) =>
+  capitalizeWords(separateWords(String(feature_id ?? '')));
+
 export const formatLabel = (key) =>{
  return FEATURE_PROPERTIES[key] || key
     .replace(/_/g, ' ')
