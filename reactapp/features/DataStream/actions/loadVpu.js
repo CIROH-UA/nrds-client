@@ -46,7 +46,11 @@ export async function loadVpu() {
 
   // All inside the try: a throw before the finally would defer every later click for good.
   try {
-    timeseries.reset();
+    // Not a full reset: feature_id is what holds the panel open and the click that asked for
+    // this load is what set it, so clearing it closed the panel mid-load and reopened it once
+    // the series arrived, with the placeholder title in between.
+    timeseries.reset_series();
+    useTimeSeriesStore.setState({ last_error: null });
     useVPUStore.getState().resetVPU();
     beginLoading();
     timeseries.set_loading_text(`Loading ${vpu}`);
@@ -93,13 +97,17 @@ export async function loadVpu() {
     useVPUStore.getState().setVarData(currentVariable, flat);
 
     // Read at the point of use: the selection can have moved on while the vpu was loading.
+    // Asked for by name rather than left to loadTimeseries to fall back on feature_id, which
+    // this used to clear and no longer does: with nothing selected there is nothing to chart.
     const { selected_feature } = useFeatureStore.getState();
     const featureId = selected_feature?._id ?? null;
-    await loadTimeseries({ featureId, vpuGeneration: generation });
-    if (superseded()) return;
-
-    // Only when nothing charted: otherwise the series load owns this message.
-    if (!featureId) timeseries.set_loading_text('');
+    if (featureId) {
+      await loadTimeseries({ featureId, vpuGeneration: generation });
+      if (superseded()) return;
+    } else {
+      // Otherwise the series load owns this message.
+      timeseries.set_loading_text('');
+    }
   } catch (err) {
     if (superseded()) return;
     useTimeSeriesStore.setState({

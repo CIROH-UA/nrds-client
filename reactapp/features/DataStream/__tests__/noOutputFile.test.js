@@ -162,10 +162,44 @@ describe('what an empty chart says', () => {
 
   test('names the selected catchment instead of asking for one already chosen', () => {
     // Being told to select a catchment while one is selected reads as the app losing track.
-    useTimeSeriesStore.setState({ feature_id: 'cat-2884494', series: [] });
+    // last_loaded_key because this is the state a finished load leaves: it read the table and
+    // there was nothing there, which is what makes the message an answer rather than a guess.
+    useTimeSeriesStore.setState({
+      feature_id: 'cat-2884494', series: [], loading: false, last_loaded_key: 'key|flow|cat-2884494',
+    });
     render(<TimeSeriesCard />);
 
     expect(screen.queryByText(/select a catchment/i)).toBeNull();
+    expect(screen.getByText(/No data to chart for cat-2884494/i)).toBeInTheDocument();
+  });
+
+  test('does not call a load in progress an absence of data', () => {
+    // After the cache is cleared the click refetches the whole vpu, several seconds in which
+    // the chart was flatly reporting that the catchment has nothing to show.
+    useTimeSeriesStore.setState({ feature_id: 'cat-2884494', series: [], loading: true });
+    render(<TimeSeriesCard />);
+
+    expect(screen.queryByText(/No data to chart/i)).toBeNull();
+    expect(screen.getByText(/loading/i)).toBeInTheDocument();
+  });
+
+  test('waits through the gap between the click and the load starting', () => {
+    // The click records the selection, then duckdb may have to start before the load flag is
+    // raised. That gap is most of a second, which is long enough to read.
+    useTimeSeriesStore.setState({ feature_id: 'cat-2884494', series: [], loading: false });
+    render(<TimeSeriesCard />);
+
+    expect(screen.queryByText(/No data to chart/i)).toBeNull();
+    expect(screen.getByText(/loading/i)).toBeInTheDocument();
+  });
+
+  test('calls a failed load a failure rather than waiting for ever', () => {
+    useTimeSeriesStore.setState({
+      feature_id: 'cat-2884494', series: [], loading: false,
+      last_error: { kind: 'timeseries', featureId: 'cat-2884494' },
+    });
+    render(<TimeSeriesCard />);
+
     expect(screen.getByText(/No data to chart for cat-2884494/i)).toBeInTheDocument();
   });
 });
