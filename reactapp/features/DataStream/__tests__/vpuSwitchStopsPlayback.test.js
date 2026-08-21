@@ -6,6 +6,20 @@
  * arrays of the vpu just left for several seconds, under a title and controls that had already
  * moved on. Whoever changes the vpu knows it changed, so it happens there.
  */
+jest.mock('features/DataStream/lib/queryData', () => ({
+  checkForTable: jest.fn(),
+  loadVpuData: jest.fn(),
+  getFeatureIDs: jest.fn(),
+  getVariables: jest.fn(),
+  getDistinctFeatureIds: jest.fn(),
+  getDistinctTimes: jest.fn(),
+  getVpuVariableFlat: jest.fn(),
+}));
+jest.mock('features/DataStream/actions/loadTimeseries', () => ({ loadTimeseries: jest.fn() }));
+jest.mock('features/DataStream/store/CacheTables', () => ({
+  useCacheTablesStore: { getState: () => ({ refresh: jest.fn().mockResolvedValue([]) }) },
+}));
+
 const useDataStreamStore = require('features/DataStream/store/Datastream').default;
 const useTimeSeriesStore = require('features/DataStream/store/Timeseries').default;
 const { useVPUStore } = require('features/DataStream/store/Layers');
@@ -24,6 +38,7 @@ const playing = () => {
 };
 
 beforeEach(() => {
+  require('features/DataStream/actions/loadState').resetLoadState();
   useDataStreamStore.setState(initial.ds, true);
   useTimeSeriesStore.setState(initial.ts, true);
   useVPUStore.setState(initial.vpu, true);
@@ -55,5 +70,36 @@ describe('moving to another vpu', () => {
 
     expect(useTimeSeriesStore.getState().isPlaying).toBe(true);
     expect(useVPUStore.getState().times).toHaveLength(2);
+  });
+});
+
+describe('a load still running for the vpu being left', () => {
+  const queryData = require('features/DataStream/lib/queryData');
+  const useS3Store = require('features/DataStream/store/s3Store').default;
+
+  it('cannot land its data after the switch', async () => {
+    // Two reviewers found this independently: clearing the arrays does not disown the load that
+    // is about to refill them, so the old vpu's animation arrived under the new vpu's name.
+    let releaseCheck;
+    queryData.checkForTable.mockImplementation(() => new Promise((r) => { releaseCheck = r; }));
+    queryData.loadVpuData.mockResolvedValue('6.2 MB');
+    queryData.getFeatureIDs.mockResolvedValue(['cat-old']);
+    queryData.getVariables.mockResolvedValue(['flow']);
+    queryData.getDistinctFeatureIds.mockResolvedValue(['cat-old']);
+    queryData.getDistinctTimes.mockResolvedValue(['t0', 't1']);
+    queryData.getVpuVariableFlat.mockResolvedValue(Float32Array.from([9, 9]));
+    useDataStreamStore.setState({ vpu: 'VPU_16', cache_key: 'old.parquet' });
+    useS3Store.setState({ prefix: 'outputs/' });
+
+    const { loadVpu } = require('features/DataStream/actions/loadVpu');
+    const inFlight = loadVpu();
+    await Promise.resolve();
+
+    useDataStreamStore.getState().set_vpu('VPU_10L');
+    releaseCheck(false);
+    await inFlight;
+
+    expect(useVPUStore.getState().featureIds).toEqual([]);
+    expect(useVPUStore.getState().times).toEqual([]);
   });
 });

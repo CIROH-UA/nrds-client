@@ -62,10 +62,12 @@ export async function loadVpu() {
       try {
         const { prefix } = useS3DataStreamBucketStore.getState();
         await fetchVpuTable(cacheKey, prefix);
-        if (superseded()) return;
-        // Read back rather than appended: fetching evicts the previous file, so what is on
-        // disk afterwards is the only thing that knows what the cache now holds.
+        // Read back rather than appended, and before the supersession check: the download
+        // completed, so the file is on disk whether or not this load is still wanted. Returning
+        // first left the listing insisting the cache was empty over a file that had just landed,
+        // which is what a clear pressed mid-download used to produce.
         await useCacheTablesStore.getState().refresh();
+        if (superseded()) return;
       } catch (err) {
         if (superseded()) return;
         console.error('No data for VPU', vpu, err);

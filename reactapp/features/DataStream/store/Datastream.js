@@ -1,17 +1,25 @@
 import { create } from 'zustand';
+
+import { cancelVpuLoads } from 'features/DataStream/actions/loadState';
+import { useVPUStore } from 'features/DataStream/store/Layers';
+import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import { getYesterdayDateString } from '../lib/utils';
 
 /**
- * Stop playback and drop the animation arrays of the vpu being left behind.
+ * Leave a vpu: stop playback, drop its animation arrays, and disown the load still fetching it.
  *
- * Required lazily: the layers store and the timeseries store both import nothing from here, and
- * a static import would close a cycle between the three.
+ * Clearing the arrays is not enough on its own. A loadVpu already in flight for the vpu being
+ * left is not superseded by the vpu field changing, so it reaches its next checkpoint, finds the
+ * generation unchanged, and writes its animation arrays and variables in after the switch: the
+ * data of the vpu just left, under the name of the one now selected. Bumping the generation is
+ * how a cache clear disowns a running load, and leaving a vpu is the same act.
+ *
+ * An earlier version of this reached for the two stores with require() at call time, claiming a
+ * static import would close a cycle. There is no cycle: neither store imports anything from
+ * this project.
  */
-function stopAnimating() {
-  // eslint-disable-next-line global-require
-  const { useVPUStore } = require('features/DataStream/store/Layers');
-  // eslint-disable-next-line global-require
-  const useTimeSeriesStore = require('features/DataStream/store/Timeseries').default;
+function leaveCurrentVpu() {
+  cancelVpuLoads();
   useTimeSeriesStore.setState({ isPlaying: false });
   useVPUStore.getState().resetVPU();
 }
@@ -67,7 +75,7 @@ const useDataStreamStore = create((set) => ({
     set_vpu: (vpu) =>
       set((s) => {
         if (s.vpu === vpu) return s;
-        stopAnimating();
+        leaveCurrentVpu();
         return { vpu };
       }),
     set_date: (date) => set((s) => (s.date === date ? s : { date })),
