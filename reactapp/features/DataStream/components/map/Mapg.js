@@ -516,9 +516,12 @@ const MainMap = () => {
       mapStyle={mapTheme.styleUrl}
       onClick={handleMapClick}
       onLoad={handleMapLoad}
+      // No interactiveLayerIds: react-map-gl uses it to build event.features, which means a
+      // second queryRenderedFeatures on every pointer move, and onHover ignores that in favour
+      // of its own box query. The pointer cursor comes from the mouseenter/mouseleave listeners
+      // registered in handleMapLoad, not from this prop.
       onMouseMove={onHover}
       onZoomEnd={(e) => setZoom(e.viewState.zoom)}
-      interactiveLayerIds={hoverableLayerIds}
     >
       <Source
         key="flowpath-geometry"
