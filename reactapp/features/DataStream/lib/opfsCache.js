@@ -74,33 +74,49 @@ export async function pruneCache(keep) {
     await dropCachedTable(id);
     if (await deleteFileFromCache(id)) evicted.push(id);
   }
-  await sweepLeftovers(dir);
+  await sweepLeftovers(dir, keep);
   return evicted;
 }
 
 /**
+ * Whether a .partial is the copy the app is currently reading rather than abandoned bytes.
+ *
+ * The same rule eviction follows: the file named plus the ones the app manages for itself. A
+ * landed copy of either is the only thing standing in for a data file, so sweeping it would
+ * throw away the download and force it again.
+ */
+const isLandedCopy = (name, keep) => {
+  if (!name.endsWith(PARTIAL_SUFFIX)) return false;
+  const id = decodeURIComponent(name.slice(0, -PARTIAL_SUFFIX.length));
+  return id === keep || INTERNAL_FILES.has(id);
+};
+
+/**
  * Remove what an interrupted download left behind.
  *
- * A .partial never became a data file and a .crswap is the staging file behind createWritable,
- * so eviction, the clear button and the cached-files listing all walked past them: an
- * interrupted 103 MB index left 103 MB on disk that nothing in the interface could see or
- * reclaim. Anything written to in the last minute is left alone, since another tab downloading
- * the same file is not this one's to delete.
+ * A .partial that nothing is reading never became a data file, and a .crswap is the staging
+ * file behind createWritable, so eviction, the clear button and the cached-files listing all
+ * walked past them: an interrupted 103 MB index left 103 MB on disk that nothing in the
+ * interface could see or reclaim. Anything written to in the last minute is left alone, since
+ * another tab downloading the same file is not this one's to delete.
  */
-async function sweepLeftovers(dir) {
+async function sweepLeftovers(dir, keep) {
   const stale = [];
   for await (const handle of dir.values()) {
     if (handle.kind !== "file") continue;
     const name = handle.name;
     if (!name.endsWith(PARTIAL_SUFFIX) && !name.endsWith(".crswap")) continue;
     if (writingNow.has(name) || writingNow.has(name.replace(/\.crswap$/, ""))) continue;
-    if (landedAs.has(decodeURIComponent(name.replace(PARTIAL_SUFFIX, "")))) continue;
+    if (isLandedCopy(name, keep)) continue;
     const file = await handle.getFile().catch(() => null);
     if (file && Date.now() - file.lastModified < 60_000) continue;
     stale.push(name);
   }
 
-  for (const name of stale) await dir.removeEntry(name).catch(() => {});
+  for (const name of stale) {
+    await dir.removeEntry(name).catch(() => {});
+    landedAs.delete(decodeURIComponent(name.replace(PARTIAL_SUFFIX, "")));
+  }
   return stale;
 }
 
@@ -426,6 +442,26 @@ async function isCompleteDataFile(file, key) {
   return await readMagic(file, file.size - PARQUET_MAGIC.length, PARQUET_MAGIC.length) === magic;
 }
 
+/**
+ * Take up a download that had to be left under its .partial name.
+ *
+ * landedAs only lives for the session, so after a reload the canonical name was consulted,
+ * found unusable, and the whole file downloaded again while a complete copy sat beside it: 103
+ * MB for the index on every single reload, for as long as something held the canonical name.
+ * Adopting it here is what makes the fallback outlive the page.
+ */
+async function adoptLandedCopy(dir, key) {
+  const partialName = `${encodeURIComponent(key)}${PARTIAL_SUFFIX}`;
+  try {
+    const file = await (await dir.getFileHandle(partialName)).getFile();
+    if (!(await isCompleteDataFile(file, key))) return null;
+    landedAs.set(key, partialName);
+    return { safeName: partialName, sizeBytes: file.size };
+  } catch {
+    return null;
+  }
+}
+
 export async function statFromCache(key) {
   const dir = await getCacheDir();
   if (!dir) return null;
@@ -434,18 +470,18 @@ export async function statFromCache(key) {
   try {
     const fileHandle = await dir.getFileHandle(safeName);
     const file = await fileHandle.getFile();
-    if (!(await isCompleteDataFile(file, key))) {
-      // Leads with what happens next: returning null is what makes the caller refetch.
-      console.warn(
-        `Refetching ${key}: the cached copy is incomplete (${file.size} bytes on disk)`
-      );
-      await deleteFileFromCache(key);
-      return null;
-    }
-    return { safeName, sizeBytes: file.size };
+    if (await isCompleteDataFile(file, key)) return { safeName, sizeBytes: file.size };
+
+    // Leads with what happens next, which is a refetch unless a complete copy turns up below.
+    console.warn(
+      `Refetching ${key}: the cached copy is incomplete (${file.size} bytes on disk)`
+    );
+    await deleteFileFromCache(key);
   } catch {
-    return null;
+    return adoptLandedCopy(dir, key);
   }
+
+  return adoptLandedCopy(dir, key);
 }
 
 /**

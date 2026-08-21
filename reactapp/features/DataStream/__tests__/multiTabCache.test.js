@@ -171,4 +171,37 @@ describe('when another context holds the destination file open', () => {
 
     expect(store.has('index_data_table.parquet.partial')).toBe(true);
   });
+
+  it('adopts the landed copy on the next page load instead of downloading again', async () => {
+    const store = opfsWithLockedDestination();
+    // What a previous session left: the canonical name held at 0 bytes, the bytes beside it.
+    store.set('index_data_table.parquet.partial', asFile([PARQUET]));
+    const { statFromCache } = load();
+
+    const meta = await statFromCache('index_data_table.parquet');
+
+    expect(meta).toMatchObject({ safeName: 'index_data_table.parquet.partial' });
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('does not adopt a partial that is itself half a download', async () => {
+    const store = opfsWithLockedDestination();
+    store.set('index_data_table.parquet.partial', asFile([PARQUET.slice(0, 20)]));
+    const { statFromCache } = load();
+
+    expect(await statFromCache('index_data_table.parquet')).toBe(null);
+  });
+
+  it('keeps the index copy when a data file is what is being kept', async () => {
+    const store = opfsWithLockedDestination();
+    store.set('index_data_table.parquet.partial', asFile([PARQUET], 0));
+    store.set('someone-elses.parquet.partial', asFile([PARQUET], 0));
+    const { pruneCache } = load();
+
+    await pruneCache('vpu.parquet');
+
+    // The index is exempt from eviction, and so is the copy standing in for it.
+    expect(store.has('index_data_table.parquet.partial')).toBe(true);
+    expect(store.has('someone-elses.parquet.partial')).toBe(false);
+  });
 });
