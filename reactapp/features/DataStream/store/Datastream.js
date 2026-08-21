@@ -1,6 +1,21 @@
 import { create } from 'zustand';
 import { getYesterdayDateString } from '../lib/utils';
 
+/**
+ * Stop playback and drop the animation arrays of the vpu being left behind.
+ *
+ * Required lazily: the layers store and the timeseries store both import nothing from here, and
+ * a static import would close a cycle between the three.
+ */
+function stopAnimating() {
+  // eslint-disable-next-line global-require
+  const { useVPUStore } = require('features/DataStream/store/Layers');
+  // eslint-disable-next-line global-require
+  const useTimeSeriesStore = require('features/DataStream/store/Timeseries').default;
+  useTimeSeriesStore.setState({ isPlaying: false });
+  useVPUStore.getState().resetVPU();
+}
+
 const DEFAULTS = {
   bucket: "ciroh-community-ngen-datastream",
   nexus_pmtiles: "https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/nexus.pmtiles",
@@ -41,7 +56,20 @@ const useDataStreamStore = create((set) => ({
     ...DEFAULTS,
     set_bucket: (bucket) => set((s) => (s.bucket === bucket ? s : { bucket })),
     set_cache_key: (cache_key) => set((s) => (s.cache_key === cache_key ? s : { cache_key })),
-    set_vpu: (vpu) => set((s) => (s.vpu === vpu ? s : { vpu })),
+    /**
+     * Move to another vpu, and stop animating the one being left.
+     *
+     * The reset used to wait for loadVpu, which only gets there after the s3 listing chain
+     * resolves: several seconds in which playback kept stepping the old vpu's arrays while the
+     * controls, the title and the map had already moved on. Whoever changes the vpu is the one
+     * who knows it changed, so it happens here rather than at the end of a load.
+     */
+    set_vpu: (vpu) =>
+      set((s) => {
+        if (s.vpu === vpu) return s;
+        stopAnimating();
+        return { vpu };
+      }),
     set_date: (date) => set((s) => (s.date === date ? s : { date })),
     set_forecast: (forecast) => set((s) => (s.forecast === forecast ? s : { forecast })),
     set_ensemble: (ensemble) => set((s) => (s.ensemble === ensemble ? s : { ensemble })),

@@ -23,6 +23,7 @@ jest.mock('features/DataStream/lib/queryData', () => ({
 jest.mock('features/DataStream/lib/s3Utils', () => ({
   getOptionsFromURL: jest.fn(),
   makePrefix: () => 'prefix/',
+  initialS3Data: jest.fn(),
 }));
 
 // A stand-in for react-select that exposes each row's change handler as a button.
@@ -248,5 +249,30 @@ describe('clicking a catchment while the selection has no output file', () => {
 
     expect(useTimeSeriesStore.getState().loadingText).toMatch(/no output file/i);
     expect(useTimeSeriesStore.getState().last_error).toEqual({ kind: 'no-output-file' });
+  });
+});
+
+describe('the first load of a vpu with no output file', () => {
+  const s3Utils = require('features/DataStream/lib/s3Utils');
+  const { loadVpu } = require('features/DataStream/actions/loadVpu');
+  const { InitialS3Loader } = require('features/DataStream/views/InitialS3Loader');
+
+  test('does not key a table that cannot exist, and says so', async () => {
+    // Built from outputFiles[0]?.value === undefined, the key named a table nothing could have
+    // created, and the previous vpu's chart stayed up as though it belonged to this one.
+    s3Utils.initialS3Data.mockResolvedValue({
+      models: [{ value: 'cfe_nom' }], dates: [{ value: 'a' }, { value: 'b' }],
+      forecasts: [{ value: 'short_range' }], cycles: [{ value: '00' }],
+      ensembles: [], outputFiles: [],
+    });
+    useDataStreamStore.setState({ vpu: 'VPU_16', cache_key: 'previous.parquet' });
+    useTimeSeriesStore.setState({ series: [{ x: 1, y: 2 }] });
+
+    await act(async () => { render(<InitialS3Loader />); });
+
+    expect(useDataStreamStore.getState().cache_key).toBe(null);
+    expect(useTimeSeriesStore.getState().series).toHaveLength(0);
+    expect(useTimeSeriesStore.getState().last_error).toEqual({ kind: 'no-output-file' });
+    expect(loadVpu).not.toHaveBeenCalled();
   });
 });
