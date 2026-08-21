@@ -292,3 +292,46 @@ describe('the first load of a vpu with no output file', () => {
     expect(loadVpu).not.toHaveBeenCalled();
   });
 });
+
+describe('both routes into "nothing to read" agree', () => {
+  const { abandonSelectionWithNoOutput } = require('features/DataStream/actions/noOutputFile');
+  const useS3Store = require('features/DataStream/store/s3Store').default;
+
+  // The sequence drifted twice while it lived in two places: first the cache key, then the
+  // title. This is the one description of what the state means.
+  const stateAfter = () => ({
+    cacheKey: useDataStreamStore.getState().cache_key,
+    outputFile: useDataStreamStore.getState().outputFile,
+    prefix: useS3Store.getState().prefix,
+    series: useTimeSeriesStore.getState().series.length,
+    title: useTimeSeriesStore.getState().layout.title,
+    errorKind: useTimeSeriesStore.getState().last_error?.kind,
+    times: useVPUStore.getState().times.length,
+  });
+
+  test('the shared action leaves the state the reader is told about', () => {
+    withLoadedAnimation();
+    useFeatureStore.setState({ selected_feature: { _id: 'cat-2884494' } });
+    useDataStreamStore.setState({ cache_key: 'previous.parquet' });
+    useS3Store.setState({ prefix: 'outputs/previous/' });
+
+    abandonSelectionWithNoOutput();
+
+    expect(stateAfter()).toEqual({
+      cacheKey: null, outputFile: '', prefix: '', series: 0,
+      title: 'Cat 2884494', errorKind: 'no-output-file', times: 0,
+    });
+  });
+
+  test('a control change reaches exactly that state', async () => {
+    withLoadedAnimation();
+    useFeatureStore.setState({ selected_feature: { _id: 'cat-2884494' } });
+    getOptionsFromURL.mockResolvedValue([]);
+
+    await changeDate();
+
+    expect(stateAfter()).toMatchObject({
+      cacheKey: null, series: 0, title: 'Cat 2884494', errorKind: 'no-output-file',
+    });
+  });
+});

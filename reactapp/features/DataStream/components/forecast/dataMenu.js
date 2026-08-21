@@ -1,6 +1,6 @@
 // DataMenu.js
 import React, { Fragment, useMemo } from 'react';
-import { makeFeatureTitle } from 'features/DataStream/lib/utils';
+import { abandonSelectionWithNoOutput } from 'features/DataStream/actions/noOutputFile';
 import { XButton, Row, IconLabel, Notice } from '../styles/Styles';
 import SelectComponent from '../SelectComponent';
 import { getOptionsFromURL, makePrefix } from 'features/DataStream/lib/s3Utils';
@@ -9,7 +9,7 @@ import { loadVpu } from 'features/DataStream/actions/loadVpu';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
 import useS3DataStreamBucketStore from 'features/DataStream/store/s3Store';
-import { useFeatureStore, useVPUStore } from 'features/DataStream/store/Layers';
+import { useFeatureStore } from 'features/DataStream/store/Layers';
 import { useShallow } from 'zustand/react/shallow';
 import {
   ModelIcon,
@@ -125,22 +125,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
     set_outputFile(options[0]?.value ?? '');
     if (options.length) return;
 
-    useVPUStore.getState().resetVPU();
-    useTimeSeriesStore.getState().reset_series();
-    set_cache_key(null);
-    set_prefix('');
-    // Stops the header naming a forecast this selection has no data for; see makeFeatureTitle.
-    if (selected_feature_id) {
-      const { layout } = useTimeSeriesStore.getState();
-      useTimeSeriesStore.getState().set_layout({
-        ...layout,
-        title: makeFeatureTitle(selected_feature_id),
-      });
-    }
-    useTimeSeriesStore.setState({
-      loadingText: 'No output file for this selection',
-      last_error: { kind: 'no-output-file' },
-    });
+    abandonSelectionWithNoOutput();
   });
 
   const handleVisulization = useEvent(async () => {

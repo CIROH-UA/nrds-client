@@ -3,11 +3,10 @@ import { useShallow } from 'zustand/react/shallow';
 
 import useDataStreamStore from 'features/DataStream/store/Datastream';
 import useS3DataStreamBucketStore from 'features/DataStream/store/s3Store';
-import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
-import { useVPUStore } from 'features/DataStream/store/Layers';
 import { initialS3Data, makePrefix } from 'features/DataStream/lib/s3Utils';
 import { getCacheKey } from 'features/DataStream/lib/opfsCache';
 import { loadVpu } from 'features/DataStream/actions/loadVpu';
+import { abandonSelectionWithNoOutput } from 'features/DataStream/actions/noOutputFile';
 
 /**
  * Exported for its own sake: the first load of a vpu decides what the app opens on, and until
@@ -55,16 +54,18 @@ export function InitialS3Loader() {
         // animation stayed on screen as though they belonged to this one. The manual path
         // through applyOutputFiles already refuses on the same condition.
         if (!outputFiles.length) {
+          // The controls still describe this vpu: the lists it can offer, and the first of each
+          // that exists. Leaving them at the previous vpu's values meant every later dropdown
+          // built its s3 url from path segments belonging to somewhere else.
           setInitialData({
             models: _models, dates, forecasts, cycles, outputFiles, prefix: '',
           });
-          set_cache_key(null);
-          useVPUStore.getState().resetVPU();
-          useTimeSeriesStore.getState().reset_series();
-          useTimeSeriesStore.setState({
-            loadingText: 'No output file for this selection',
-            last_error: { kind: 'no-output-file' },
-          });
+          set_model(_models[0]?.value);
+          set_forecast(forecasts[0]?.value);
+          set_cycle(cycles[0]?.value);
+          set_date(dates[1]?.value);
+          set_ensemble(ensembles[0]?.value || null);
+          abandonSelectionWithNoOutput();
           return;
         }
 
