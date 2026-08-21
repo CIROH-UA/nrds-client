@@ -105,6 +105,9 @@ export async function loadTimeseries({ featureId, variable, vpuGeneration } = {}
     // for a second ask being answered, and it is the only way this recovers if the data arrives.
     store.setState({
       last_loaded_key: points.length ? requestKey : null,
+      // Recorded either way: this is the answer arriving, which is a different fact from
+      // something being charted, and the chart's empty state depends on telling them apart.
+      last_answered_key: requestKey,
       loadingText: points.length ? '' : `No ${requestedVariable} data for ${targetId}`,
       last_error: null,
     });

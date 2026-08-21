@@ -7,7 +7,7 @@
  * belonged to the selection now showing. Pressing Update could not correct it either, since
  * there was nothing to load, so the stale view was permanent.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
@@ -181,7 +181,8 @@ describe('what an empty chart says', () => {
     // last_loaded_key because this is the state a finished load leaves: it read the table and
     // there was nothing there, which is what makes the message an answer rather than a guess.
     useTimeSeriesStore.setState({
-      feature_id: 'cat-2884494', series: [], loading: false, last_loaded_key: 'key|flow|cat-2884494',
+      feature_id: 'cat-2884494', series: [], loading: false,
+      last_answered_key: 'key|flow|cat-2884494',
     });
     render(<TimeSeriesCard />);
 
@@ -207,6 +208,19 @@ describe('what an empty chart says', () => {
 
     expect(screen.queryByText(/No data to chart/i)).toBeNull();
     expect(screen.getByText(/loading/i)).toBeInTheDocument();
+  });
+
+  test('an answer of "nothing" is an answer, not a load still running', () => {
+    // What a completed empty load leaves: answered, nothing charted. Reading the charted-key
+    // for this made the chart claim to be loading for ever.
+    useTimeSeriesStore.setState({
+      feature_id: 'cat-2884494', series: [], loading: false,
+      last_loaded_key: null, last_answered_key: 'key|flow|cat-2884494',
+    });
+    render(<TimeSeriesCard />);
+
+    expect(screen.queryByText(/loading/i)).toBeNull();
+    expect(screen.getByText(/No data to chart for cat-2884494/i)).toBeInTheDocument();
   });
 
   test('calls a failed load a failure rather than waiting for ever', () => {
@@ -268,9 +282,11 @@ describe('the first load of a vpu with no output file', () => {
     useDataStreamStore.setState({ vpu: 'VPU_16', cache_key: 'previous.parquet' });
     useTimeSeriesStore.setState({ series: [{ x: 1, y: 2 }] });
 
-    await act(async () => { render(<InitialS3Loader />); });
+    render(<InitialS3Loader />);
+    // Its effect resolves an s3 listing; waitFor is what lets that settle without wrapping
+    // render in act, which render already does for itself.
+    await waitFor(() => expect(useDataStreamStore.getState().cache_key).toBe(null));
 
-    expect(useDataStreamStore.getState().cache_key).toBe(null);
     expect(useTimeSeriesStore.getState().series).toHaveLength(0);
     expect(useTimeSeriesStore.getState().last_error).toEqual({ kind: 'no-output-file' });
     expect(loadVpu).not.toHaveBeenCalled();

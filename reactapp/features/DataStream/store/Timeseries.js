@@ -21,6 +21,16 @@ const useTimeSeriesStore = create(
       loadingText: '' ,
       // Whose data `series` holds, as vpu|variable|feature; null means nothing is loaded.
       last_loaded_key: null,
+      /**
+       * The request a load last answered, whether or not it found anything.
+       *
+       * Separate from last_loaded_key, which means "this series is charted" and is what the
+       * already-charted short circuit reads. The chart needs the other question: has an answer
+       * arrived at all. One key answered both until an empty result stopped being recorded as
+       * charted, and then the chart read as still loading for ever after a load that completed
+       * and found nothing.
+       */
+      last_answered_key: null,
       // What went wrong last, as {kind, ...}, so failure is readable without parsing prose.
       last_error: null,
       currentTimeIndex: 0,
@@ -113,11 +123,18 @@ const useTimeSeriesStore = create(
             s.series === EMPTY_SERIES &&
             s.currentTimeIndex === 0 &&
             s.isPlaying === false &&
-            s.last_loaded_key === null
+            s.last_loaded_key === null &&
+            s.last_answered_key === null
           ) {
             return s;
           }
-          return { series: EMPTY_SERIES, currentTimeIndex: 0, isPlaying: false, last_loaded_key: null };
+          return {
+            series: EMPTY_SERIES,
+            currentTimeIndex: 0,
+            isPlaying: false,
+            last_loaded_key: null,
+            last_answered_key: null,
+          };
         }),
 
       reset: () =>
@@ -130,6 +147,7 @@ const useTimeSeriesStore = create(
           currentTimeIndex: 0,
           isPlaying: false,
           last_loaded_key: null,
+          last_answered_key: null,
           last_error: null,
         })),
   }))

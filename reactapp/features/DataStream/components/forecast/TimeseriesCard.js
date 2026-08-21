@@ -7,14 +7,14 @@ import { useShallow } from 'zustand/react/shallow';
 
 
 const TimeSeriesCard = () => {
-  const { series, variable, layout, featureId, loading, loaded, failed } = useTimeSeriesStore(
+  const { series, variable, layout, featureId, loading, answered, failed } = useTimeSeriesStore(
     useShallow((state) => ({
       series: state.series,
       variable: state.variable,
       layout: state.layout,
       featureId: state.feature_id,
       loading: state.loading,
-      loaded: state.last_loaded_key,
+      answered: state.last_answered_key,
       failed: state.last_error,
     }))
   );
@@ -33,8 +33,10 @@ const TimeSeriesCard = () => {
    * cover it: the selection is recorded before the load begins, and the gap is long enough to
    * read when duckdb has to start again. A load that found nothing sets last_loaded_key and one
    * that broke sets last_error, so an absence of both with nothing charted means not yet.
+   * last_answered_key rather than last_loaded_key: a load that found nothing has answered, and
+   * reading the charted-key here made an empty answer read as still loading for ever.
    */
-  const waiting = featureId && (loading || (!series.length && !loaded && !failed));
+  const waiting = featureId && (loading || (!series.length && !answered && !failed));
   const emptyMessage = waiting
     ? 'Loading the timeseries'
     : featureId

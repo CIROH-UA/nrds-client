@@ -124,3 +124,21 @@ describe('asking again for a feature that had nothing', () => {
     expect(queryData.getTimeseries).not.toHaveBeenCalled();
   });
 });
+
+describe('a genuinely empty answer', () => {
+  it('is not left reading as still loading', async () => {
+    // The condition TimeseriesCard renders from. Reading the charted-key for this made it
+    // permanently true once an empty result stopped being recorded as charted: the chart said
+    // it was loading for ever after a load that completed and found nothing.
+    queryData.checkForTable.mockResolvedValue(true);
+    queryData.getTimeseries.mockResolvedValue([]);
+    useTimeSeriesStore.setState({ variable: 'flow' });
+
+    await loadTimeseries({ featureId: 'cat-1' });
+
+    const s = useTimeSeriesStore.getState();
+    const waiting =
+      s.feature_id && (s.loading || (!s.series.length && !s.last_answered_key && !s.last_error));
+    expect(waiting).toBeFalsy();
+  });
+});
