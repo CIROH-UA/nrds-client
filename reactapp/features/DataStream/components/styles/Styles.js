@@ -197,6 +197,28 @@ export const PopupContent = styled.div`
     gap: 6px;
   }
 
+  /* The headline reading, set apart from the feature's own attributes below it. The time is
+     part of the label because the number is one step of the forecast, not the forecast. */
+  .popup-measure {
+    align-items: baseline;
+    padding-bottom: 4px;
+    margin-bottom: 2px;
+    border-bottom: 1px solid var(--panel-border-color);
+    font-size: 13px;
+  }
+
+  .popup-measure .popup-value {
+    font-family: SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+    font-weight: 650;
+  }
+
+  .popup-measure em {
+    margin-left: 6px;
+    font-style: normal;
+    font-size: 11px;
+    color: var(--panel-text-muted);
+  }
+
   .popup-label {
     font-weight: 500;
     opacity: 0.8;

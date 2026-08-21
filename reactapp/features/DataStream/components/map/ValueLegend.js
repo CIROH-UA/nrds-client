@@ -3,19 +3,11 @@ import { useMemo } from 'react';
 
 import { COLOR_SCALE, valueAtRampPosition } from 'features/DataStream/lib/layers';
 import { getVariableUnits } from 'features/DataStream/lib/data';
+import { formatMeasurement } from 'features/DataStream/lib/utils';
 import { LegendBox, LegendBar, LegendScale, LegendTitle } from '../styles/Styles';
 
 // Three ticks, not five: this sits over the map and is meant to be read at a glance.
 const TICKS = [0, 0.5, 1];
-
-const format = (value) => {
-  const magnitude = Math.abs(value);
-  if (magnitude === 0) return '0';
-  if (magnitude < 0.01) return value.toExponential(1);
-  if (magnitude < 1) return value.toFixed(2);
-  if (magnitude < 100) return value.toFixed(1);
-  return Math.round(value).toLocaleString();
-};
 
 /**
  * What the colours on the animated flowpaths mean.
@@ -34,7 +26,7 @@ export const ValueLegend = ({ bounds, variable, visible }) => {
     []
   );
   const ticks = useMemo(
-    () => (bounds ? TICKS.map((t) => format(valueAtRampPosition(t, bounds))) : []),
+    () => (bounds ? TICKS.map((t) => formatMeasurement(valueAtRampPosition(t, bounds))) : []),
     [bounds]
   );
 

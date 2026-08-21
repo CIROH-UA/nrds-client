@@ -64,3 +64,50 @@ export const numericPartOf = (id) => {
   const match = /(\d+)\s*$/.exec(String(id ?? ''));
   return match ? match[1] : null;
 };
+
+/**
+ * A measurement rounded to something readable at a glance.
+ *
+ * Streamflow spans orders of magnitude in one vpu, so a fixed number of decimals is either
+ * noise at the top of the range or nothing at the bottom. Shared with the map's colour key so
+ * the same number reads the same in both places.
+ */
+export const formatMeasurement = (value) => {
+  if (!Number.isFinite(value)) return null;
+  const magnitude = Math.abs(value);
+  if (magnitude === 0) return '0';
+  if (magnitude < 0.01) return value.toExponential(1);
+  if (magnitude < 1) return value.toFixed(2);
+  if (magnitude < 100) return value.toFixed(1);
+  return Math.round(value).toLocaleString();
+};
+
+/**
+ * How far into the forecast a time step is, in the same form the slider shows.
+ *
+ * Read from the vpu's own time axis rather than the charted series, because that is the axis the
+ * animated values are indexed by. A value without its time invites the reader to take it as the
+ * flow rather than the flow at one step of eighteen.
+ */
+export const timeOffsetLabel = (times, index) => {
+  const first = times?.[0];
+  const at = times?.[index];
+  if (first === undefined || at === undefined) return null;
+  const from = new Date(first).getTime();
+  const to = new Date(at).getTime();
+  if (!Number.isFinite(from) || !Number.isFinite(to)) return null;
+  return `T+${Math.round((to - from) / 3600000)}h`;
+};
+
+/**
+ * A feature property as a reader should see it.
+ *
+ * Areas and lengths arrive from the tiles as raw doubles, and "36.32444856899953" is not a
+ * measurement anyone reads. FeatureInformation already rounds the same fields, so the hover
+ * popup should not disagree with the panel about the size of the same catchment.
+ */
+export const formatPropertyValue = (value) => {
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  if (typeof value === 'number') return formatMeasurement(value) ?? String(value);
+  return String(value);
+};

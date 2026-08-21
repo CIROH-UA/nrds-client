@@ -2,7 +2,10 @@ import React,{ useMemo } from 'react';
 import { Popup } from 'react-map-gl/maplibre';
 import { PopupContent } from '../styles/Styles';
 import { hoverRows } from 'features/DataStream/actions/hoverFeature';
-import { formatLabel } from 'features/DataStream/lib/utils';
+import PropTypes from 'prop-types';
+
+import { formatLabel, formatPropertyValue } from 'features/DataStream/lib/utils';
+import HoverValue from './HoverValue';
 
 const CustomPopUp = React.memo(({ hovered_feature, enabledHovering }) => {
   // hoverId, longitude and latitude are ours, added so the popup can place itself: they were
@@ -20,15 +23,27 @@ const CustomPopUp = React.memo(({ hovered_feature, enabledHovering }) => {
     >
       <PopupContent>
         <div className="popup-title">Feature</div>
+        <HoverValue hoverId={hovered_feature.hoverId} />
         {rows.map(([k, v]) => (
           <div className="popup-row" key={k}>
             <span className="popup-label">{formatLabel(k)}</span>
-            <span className="popup-value">{String(v)}</span>
+            <span className="popup-value">{formatPropertyValue(v)}</span>
           </div>
         ))}
       </PopupContent>
     </Popup>
   );
 });
+
+CustomPopUp.displayName = 'CustomPopUp';
+
+CustomPopUp.propTypes = {
+  hovered_feature: PropTypes.shape({
+    hoverId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    longitude: PropTypes.number,
+    latitude: PropTypes.number,
+  }),
+  enabledHovering: PropTypes.bool,
+};
 
 export default CustomPopUp;
