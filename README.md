@@ -81,6 +81,16 @@ You need to install both the Tethys dependencies and the node dependencies.
 
 The webpack dev server is configured to proxy the Tethys development server (see `webpack.config.js`). The app endpoint will be handled by the webpack development server and all other endpoints will be handled by the Tethys (Django) development server. As such, you will need to start both in separate terminals.
 
+### The search index
+
+The search box reads a slim hydrofabric index that the Docker build generates. A dev server has no image build, so build it once by hand:
+
+```bash
+python3 scripts/build_slim_index.py       # see --help for options and a local-copy shortcut
+```
+
+Without it the app falls back to the full 103 MB upstream index, so search still works but is slower to become available.
+
 
 0. First create a Virtual Environment with the tool of your choice and then run the following commands
 
