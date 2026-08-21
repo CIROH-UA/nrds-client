@@ -51,12 +51,26 @@ export async function loadTimeseries({ featureId, variable, vpuGeneration } = {}
   const requestKey = `${cacheKey}|${requestedVariable}|${targetId}`;
 
   // Ahead of the already-charted check on purpose; see the note above on a dropped table.
-  if (vpuGeneration === undefined && !(await checkForTable(cacheKey))) {
-    store.setState({ last_loaded_key: null });
-    // Imported here so this module does not pull duckdb in through the cache store.
-    const { loadVpu } = await import('features/DataStream/actions/loadVpu');
-    await loadVpu();
-    return;
+  // Guarded on its own, because beginLoading has not been called yet and so the finally below
+  // is not the thing that has to run: asking duckdb a question can fail, and this ran outside
+  // every catch, so a worker that never started made a click do nothing observable at all.
+  if (vpuGeneration === undefined) {
+    try {
+      if (!(await checkForTable(cacheKey))) {
+        store.setState({ last_loaded_key: null });
+        // Imported here so this module does not pull duckdb in through the cache store.
+        const { loadVpu } = await import('features/DataStream/actions/loadVpu');
+        await loadVpu();
+        return;
+      }
+    } catch (err) {
+      console.error('Could not read the table for', targetId, err);
+      store.setState({
+        loadingText: `Failed to load timeseries for id: ${targetId}`,
+        last_error: { kind: 'timeseries', featureId: targetId, variable: requestedVariable },
+      });
+      return;
+    }
   }
 
   // This exact series is already charted, so there is nothing to fetch.
@@ -84,8 +98,13 @@ export async function loadTimeseries({ featureId, variable, vpuGeneration } = {}
       title: makeTitle(forecast, targetId),
     });
     // Say when a load found nothing; the chart's empty state cannot distinguish that.
+    //
+    // Recorded as loaded only when something was actually charted. Recording an empty result
+    // made the already-charted check above match on the next ask, so clicking the same catchment
+    // again did nothing whatsoever: no query, no message, no change. One query is a cheap price
+    // for a second ask being answered, and it is the only way this recovers if the data arrives.
     store.setState({
-      last_loaded_key: requestKey,
+      last_loaded_key: points.length ? requestKey : null,
       loadingText: points.length ? '' : `No ${requestedVariable} data for ${targetId}`,
       last_error: null,
     });

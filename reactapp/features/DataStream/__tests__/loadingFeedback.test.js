@@ -200,13 +200,18 @@ describe('a feature with no data', () => {
     expect(useTimeSeriesStore.getState().loading).toBe(false);
   });
 
-  it('keeps that message when the feature is asked for again', async () => {
-    queryData.getTimeseries.mockResolvedValueOnce([]);
+  it('answers again when the feature is asked for again', async () => {
+    // This used to assert the opposite: that the second ask was short-circuited by the
+    // already-charted check. Nothing was charted, so the reader clicking the same catchment got
+    // no query, no message and no change, and no way back short of picking something else. One
+    // query is the price of a second ask being answered at all.
+    queryData.getTimeseries.mockResolvedValue([]);
     await load({ featureId: 'wb-606' });
+    useTimeSeriesStore.setState({ loadingText: '' });
 
     await load({ featureId: 'wb-606' });
 
-    expect(queryData.getTimeseries).toHaveBeenCalledTimes(1);
+    expect(queryData.getTimeseries).toHaveBeenCalledTimes(2);
     expect(useTimeSeriesStore.getState().loadingText).toMatch(/No .* data for wb-606/);
   });
 

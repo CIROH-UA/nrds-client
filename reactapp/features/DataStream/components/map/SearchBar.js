@@ -106,7 +106,9 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
       const vpuName = `VPU_${feature.vpuid}`;
       // Same rule as a map click: chart it here only if its vpu is the one already loaded.
       if (vpuName === vpu) {
-        loadTimeseries({ featureId: matchedId });
+        loadTimeseries({ featureId: matchedId }).catch((err) => {
+          console.error('Could not chart', matchedId, err);
+        });
       }
       set_vpu(vpuName);
     } catch (err) {

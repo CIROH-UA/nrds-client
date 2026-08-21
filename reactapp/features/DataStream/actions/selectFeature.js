@@ -39,7 +39,12 @@ export function selectMapFeature(feature, layerId) {
   // Only for a feature we could name: loadTimeseries falls back to the store's feature_id, so
   // passing nothing re-charted the previous selection as though it had been clicked again.
   if (featureId != null && vpuName === vpu) {
-    loadTimeseries({ featureId });
+    // Not awaited: a click returns immediately and the load reports itself. The catch is the
+    // backstop for anything that escapes its own reporting, so it cannot become an unhandled
+    // rejection that leaves the click looking ignored.
+    loadTimeseries({ featureId }).catch((err) => {
+      console.error('Could not chart', featureId, err);
+    });
   }
   set_vpu(vpuName);
 
