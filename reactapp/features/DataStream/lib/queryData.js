@@ -150,13 +150,16 @@ export async function loadIndexData({ remoteUrl, fallbackUrl }) {
 
   const tableConn = await getConnection();
   const bindings = tableConn.bindings;
+  // Read before registering: registerFileBuffer transfers the ArrayBuffer to the duckdb worker,
+  // which detaches it here, so byteLength afterwards is 0 and any log of it reads as a failure.
+  const byteLength = buffer.byteLength;
   try {
     await bindings.registerFileBuffer(INDEX_DUCK_PATH, buffer);
     await tableConn.query(`
       CREATE TABLE ${sqlIdent(tableName)} AS
       SELECT * FROM read_parquet(${sqlStr(INDEX_DUCK_PATH)});
     `);
-    debugLog(`Created table "${tableName}" from ${buffer.byteLength} bytes`);
+    debugLog(`Created table "${tableName}" from ${byteLength} bytes`);
   } finally {
     await Promise.resolve(bindings.dropFile(INDEX_DUCK_PATH)).catch(() => {});
     await tableConn.close();
