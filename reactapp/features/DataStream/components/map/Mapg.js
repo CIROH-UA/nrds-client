@@ -29,7 +29,6 @@ import {
 import { flowPathLayerProps, shouldPromptZoom } from './flowPathLayer';
 import { ValueLegend } from './ValueLegend';
 import { selectMapFeature } from '../../actions/selectFeature';
-import { selectIndexedFeature } from '../../actions/selectIndexedFeature';
 import { hoveredFeatureOf, pickHoverFeature } from '../../actions/hoverFeature';
 
 import {
@@ -194,10 +193,17 @@ const MainMap = () => {
 
 
 
-  /** The layers a click acts on, and so the ones that get the pointer cursor. */
+  /**
+   * The layers a click acts on, and so the ones that get the pointer cursor.
+   *
+   * Catchments only. A reach is reached by clicking the catchment it runs through, which then
+   * highlights it -- see useFlowPathsHighlightLayer. Flowpaths were briefly clickable in their
+   * own right; that needed the index to name the vpu, since the archive drops vpuid, and
+   * selecting the catchment gets to the same place without the lookup.
+   */
   const clickableLayers = useMemo(
-    () => clickableLayerIds({ isCatchmentsVisible, isFlowPathsVisible }),
-    [isCatchmentsVisible, isFlowPathsVisible]
+    () => clickableLayerIds({ isCatchmentsVisible }),
+    [isCatchmentsVisible]
   );
 
 
@@ -497,21 +503,7 @@ const MainMap = () => {
       return;
     }
 
-    // The same precedence hovering uses, so what the popup named is what the click selects.
-    // queryRenderedFeatures returns topmost first, and divides draw above flowpaths, so taking
-    // features[0] would make a reach unclickable wherever a catchment is shown.
-    const feature = pickHoverFeature(features) ?? features[0];
-
-    if (feature.layer.id === FLOWPATHS_LAYER_ID) {
-      // This archive carries divide_id and drops vpuid, so the tile can name the catchment but
-      // not where to load it from. The index knows both, and is the same lookup the search box
-      // makes -- see actions/selectIndexedFeature.
-      const divideId = feature.properties?.divide_id;
-      if (divideId == null) return;
-      await selectIndexedFeature([`cat-${divideId}`]);
-      return;
-    }
-
+    const [feature] = features;
     selectMapFeature(feature, feature.layer.id);
   };
 

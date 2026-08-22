@@ -20,11 +20,12 @@ describe('clickableLayerIds', () => {
     expect(clickableLayerIds({})).toEqual([]);
   });
 
-  it('offers the flowpaths when they are shown', () => {
-    // Their clicks resolve through the index, since the archive drops vpuid.
-    expect(clickableLayerIds({ isFlowPathsVisible: true })).toEqual(['flowpaths-line']);
+  it('leaves flowpaths out even when they are shown', () => {
+    // A reach is reached by clicking the catchment it runs through, which highlights it. The
+    // reach itself is not a click target, so it does not get the pointer either.
+    expect(clickableLayerIds({ isFlowPathsVisible: true })).toEqual([]);
     expect(clickableLayerIds({ isCatchmentsVisible: true, isFlowPathsVisible: true }))
-      .toEqual(['divides', 'flowpaths-line']);
+      .toEqual(['divides']);
   });
 
   it('leaves gauges out even when they are shown', () => {

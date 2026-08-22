@@ -66,17 +66,15 @@ export const setVpuVisibility = (map, visible) => {
  * turning catchments off and on left the pointer behind, and any layer added to one would have
  * been missed by the other.
  *
- * Deliberately narrower than the hoverable set. Gauges produce a hover popup and cannot be
- * selected -- a gauge has no timeseries in this app -- so a pointer over one would promise a
- * click that does nothing. Keeping the two questions apart is what stops that.
+ * Deliberately narrower than the hoverable set, which also carries gauges and flowpaths. Both
+ * can be hovered and neither can be selected: a gauge has no timeseries in this app, and a reach
+ * is selected by clicking the catchment it runs through, which highlights the reach. A pointer
+ * over either would promise a click that does nothing. Keeping the two questions apart is what
+ * stops that.
  */
-export const clickableLayerIds = ({
-  isCatchmentsVisible = false,
-  isFlowPathsVisible = false,
-} = {}) => {
+export const clickableLayerIds = ({ isCatchmentsVisible = false } = {}) => {
   const ids = [];
   if (isCatchmentsVisible) ids.push('divides');
-  if (isFlowPathsVisible) ids.push(FLOWPATHS_LAYER_ID);
   return ids;
 };
 

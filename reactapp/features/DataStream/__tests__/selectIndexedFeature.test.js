@@ -1,11 +1,9 @@
 /**
  * Selecting a feature the hydrofabric index has to name.
  *
- * The search box and a clicked flowpath arrive from opposite directions and need the same
- * finish. Search has an id and no position; a flowpath has a position and a catchment id but no
- * vpu, because upstream_index/flowpaths.pmtiles carries divide_id and drops vpuid. Sending a
- * flowpath through the ordinary click path would have read that missing field and set the vpu
- * to the string "VPU_undefined".
+ * The search box has an id and nothing else: no position, and no vpu to load it from. The index
+ * is what supplies both, and these pin what follows from a hit, a miss, and an id the index
+ * knows by a different name than the one that was asked for.
  */
 import { selectIndexedFeature } from 'features/DataStream/actions/selectIndexedFeature';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
@@ -28,7 +26,7 @@ beforeEach(() => {
   loadTimeseries.mockResolvedValue(undefined);
 });
 
-it('names the vpu from the index, which is the field the tile does not carry', async () => {
+it('names the vpu from the index, which the caller has no other way to know', async () => {
   useDataStreamStore.setState({ vpu: 'VPU_01' });
   getFeatureProperties.mockResolvedValue([{ id: 'cat-7', vpuid: '16', lon: -111, lat: 40 }]);
 
@@ -59,7 +57,7 @@ it('charts straight away only when the vpu is already loaded', async () => {
   expect(loadTimeseries).toHaveBeenCalledWith({ featureId: 'cat-7' });
 });
 
-it('does not chart when the click lands in another vpu', async () => {
+it('does not chart when the match is in another vpu', async () => {
   useDataStreamStore.setState({ vpu: 'VPU_01' });
   getFeatureProperties.mockResolvedValue([{ id: 'cat-7', vpuid: '16' }]);
 
@@ -70,7 +68,7 @@ it('does not chart when the click lands in another vpu', async () => {
 });
 
 it('changes nothing when the index holds no candidate', async () => {
-  // A stray click says nothing; the search box is the one that reports a miss out loud.
+  // The caller owns the message: the search box reports a miss out loud.
   useDataStreamStore.setState({ vpu: 'VPU_01' });
   getFeatureProperties.mockResolvedValue([]);
 

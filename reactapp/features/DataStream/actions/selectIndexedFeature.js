@@ -7,21 +7,21 @@ import { loadTimeseries } from 'features/DataStream/actions/loadTimeseries';
  * Select the feature an id names, using the hydrofabric index to fill in what the caller cannot
  * know.
  *
- * Two callers need this and they arrive from opposite directions. The search box has an id and
- * no position; a clicked flowpath has a position and an id but no vpu, because
- * upstream_index/flowpaths.pmtiles carries divide_id and drops vpuid. Both need the same three
- * things afterwards -- the selection recorded under the id the index actually holds, the vpu
- * pointed at the right place, and the chart drawn if that vpu is already loaded.
+ * The search box is the caller: it has an id and nothing else, and needs three things to follow
+ * from it -- the selection recorded under the id the index actually holds, the vpu pointed at
+ * the right place, and the chart drawn if that vpu is already loaded.
  *
- * It lived inline in SearchBar until the map needed it too. Copying it would have put the same
- * rule in two places, which is the mistake this branch has now paid for three times.
+ * It lived inline in SearchBar. It was lifted out when a clicked flowpath briefly needed the
+ * same lookup, because that archive drops vpuid and only the index could name it; clicking the
+ * catchment replaced that, so this has one caller again. It stays out here because the rule is
+ * worth stating once and testing without rendering a component, not because two places need it.
  *
  * Charting only when the vpu already matches is deliberate and predates this: switching vpu
  * starts a load that charts the selection when it finishes, so charting here as well would draw
  * the same series twice.
  *
  * Returns the id the index matched, or null when it holds nothing for any candidate. The caller
- * owns what to say about that: a search says so out loud, a stray click says nothing.
+ * owns what to say about that; the search box says so out loud.
  */
 export async function selectIndexedFeature(candidates) {
   const ids = (Array.isArray(candidates) ? candidates : [candidates]).filter(Boolean);
