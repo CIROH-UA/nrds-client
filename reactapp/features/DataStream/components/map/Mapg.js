@@ -305,6 +305,13 @@ const MainMap = () => {
     });
   }, [isMapUsable, setPointerCursor, resetPointerCursor]);
 
+  /**
+   * Once the map exists, say so.
+   *
+   * setMapReady is what the cursor effect below waits on. A ref cannot do that job: mutating
+   * .current is invisible to React's dependency diffing, so an effect watching mapRef would run
+   * once at whatever moment it happened to hold and never again.
+   */
   const handleMapLoad = useCallback((event) => {
     const map = event.target;
     if (!isMapUsable(map)) return;
@@ -313,9 +320,6 @@ const MainMap = () => {
     hideStyleFlowpaths(map);
     setVpuVisibility(map, useLayersStore.getState().vpu.visible);
     reorderLayers(map);
-    // Announces the map to the cursor effect below. A ref cannot do this job: mutating .current
-    // is invisible to React's dependency diffing, so an effect watching mapRef would run once at
-    // whatever moment it happened to hold and never again.
     setMapReady(true);
   }, [isMapUsable]);
 

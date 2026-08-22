@@ -13,8 +13,10 @@ import { loadTimeseries } from 'features/DataStream/actions/loadTimeseries';
  *
  * It lived inline in SearchBar. It was lifted out when a clicked flowpath briefly needed the
  * same lookup, because that archive drops vpuid and only the index could name it; clicking the
- * catchment replaced that, so this has one caller again. It stays out here because the rule is
- * worth stating once and testing without rendering a component, not because two places need it.
+ * catchment replaced that, so this has one caller again. Keeping it out here is a judgement
+ * call, not a necessity -- SearchBar is rendered and tested directly, so "testable without a
+ * component" is not the reason. The reason is that the vpu-and-chart consequences of a match
+ * are a rule worth stating once, somewhere a second caller can find it.
  *
  * Charting only when the vpu already matches is deliberate and predates this: switching vpu
  * starts a load that charts the selection when it finishes, so charting here as well would draw

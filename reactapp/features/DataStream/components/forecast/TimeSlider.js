@@ -32,9 +32,7 @@ export const TimeSlider = React.memo(() => {
 
   const currentLabel = useMemo(() => {
     if (!timeSteps) return "T+0h";
-    // duckdb hands these back as epoch milliseconds, even though the parquet column is a
-    // nanosecond timestamp. Dates are tolerated too, since that is the shape the chart's series
-    // carries and this label used to be built from it.
+    // Epoch milliseconds from duckdb; Dates tolerated because the chart's series carries those.
     const ms = (t) => (t instanceof Date ? t.getTime() : Number(t));
     const t0 = ms(times[0]);
     const t = ms(times[Math.min(currentTimeIndex, timeSteps - 1)]);

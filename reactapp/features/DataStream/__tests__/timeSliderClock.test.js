@@ -101,10 +101,9 @@ describe('the slider', () => {
     useVPUStore.setState({ times: times(24) });
     useTimeSeriesStore.setState({ series: [], currentTimeIndex: 0 });
 
-    const { container } = render(<TimeSlider />);
+    render(<TimeSlider />);
 
-    // By id: the speed control is a range input too, so the role alone matches both.
-    const scrub = container.querySelector('#timeSlider');
+    const scrub = screen.getByRole('slider', { name: /animation time/i });
     expect(scrub).toHaveAttribute('max', '23');
     expect(scrub).not.toBeDisabled();
   });

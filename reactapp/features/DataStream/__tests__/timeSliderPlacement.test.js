@@ -72,19 +72,18 @@ describe('the slider on the map', () => {
 
     const { container } = render(<TimeSlider />);
 
-    expect(container.querySelector('#timeSlider')).toBeDisabled();
-    // By class, not by role and name: the transport buttons are icon-only and carry no
-    // accessible name, which is worth fixing but is not what this unit changed.
-    const transport = [...container.querySelectorAll('.play-btn')];
-    expect(transport).not.toHaveLength(0);
-    transport.forEach((b) => expect(b).toBeDisabled());
+    expect(screen.getByRole('slider', { name: /animation time/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /play the animation/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /step forward/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /step back/i })).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: /playback speed/i })).toBeDisabled();
   });
 
   it('enables itself once the animation has a clock', () => {
     useVPUStore.setState({ times: [1787364000000, 1787367600000] });
 
-    const { container } = render(<TimeSlider />);
+    render(<TimeSlider />);
 
-    expect(container.querySelector('#timeSlider')).not.toBeDisabled();
+    expect(screen.getByRole('slider', { name: /animation time/i })).not.toBeDisabled();
   });
 });

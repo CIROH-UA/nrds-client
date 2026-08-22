@@ -9,8 +9,8 @@ This app was created using an experimental Tethys + React app scaffold. It uses 
 
 ![GeoSpatial Visualization](static/imgs/nrds-fig-1.png)
 
-- **Geospatial visualization** of catchments, nexus points, flowpaths, and conus gauges
-- **Time series analysis** of catchments and nexus points
+- **Geospatial visualization** of catchments, flowpaths, and conus gauges
+- **Time series analysis** of catchments
 
 Built on the Tethys Platform [(Swain et al., 2015)](https://doi.org/10.1016/j.envsoft.2015.01.014), it enables web-based exploration of model outputs [(CIROH, 2025)](https://github.com/CIROH-UA/ngiab-client).
 
@@ -62,14 +62,13 @@ Access at: http://localhost:80
 
 ###  Visualization Features 
 
-**Nexus** points can be visualized when the user selects the output that wants to visualize. Time series can be retrieved by clicking on any of the **Nexus** points, or by changing the select dropdown assigned to the Nexus. 
+**Catchments** time series can be retrieved by clicking on any of the **Catchments** polygons, or by changing the select dropdown assigned to the Catchments. Clicking a catchment also highlights the reach that runs through it.
 
-![Figure 2: NRDS Visualizer time series visualization from Nexus points](static/imgs/nrds-fig-2.png)
-**Catchments** time series can be retrieved by clicking on any of the **Catchments** polygons, or by changing the select dropdown assigned to the Catchments.
+![Figure 2: NRDS Visualizer time series visualization](static/imgs/nrds-fig-2.png)
 
 ![Figure 3: NRDS Visualizer time series visualization from Catchments ](static/imgs/nrds-fig-3.png)
 
-Data from CFE_NOM and LSTM can be retrieved for the avaialble forecasts for the **Nexus** and **Catcments**
+Data from CFE_NOM and LSTM can be retrieved for the available forecasts for the **Catchments**
 
 
 This functionality allows the user to be able to quicklu search the data they want from the [S3 bucket](https://datastream.ciroh.org/index.html) containing the output of the [NextGen DataStream](https://github.com/CIROH-UA/ngen-datastream). They can explore and download as needed.
