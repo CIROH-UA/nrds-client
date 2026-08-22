@@ -28,7 +28,6 @@ function leaveCurrentVpu() {
 
 const DEFAULTS = {
   bucket: "ciroh-community-ngen-datastream",
-  nexus_pmtiles: "https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/nexus.pmtiles",
   community_pmtiles: "https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/merged.pmtiles",
   // Flowpaths come from their own archive because merged.pmtiles only carries them from zoom 7.
   flowpaths_pmtiles:
@@ -95,8 +94,6 @@ const useDataStreamStore = create((set) => ({
     set_model: (model) => set((s) => (s.model === model ? s : { model })),
     set_outputFile: (outputFile) =>
         set((s) => (s.outputFile === outputFile ? s : { outputFile })),
-    set_nexus_pmtiles: (nexus_pmtiles) =>
-        set((s) => (s.nexus_pmtiles === nexus_pmtiles ? s : { nexus_pmtiles })),
     set_community_pmtiles: (community_pmtiles) =>
         set((s) => (s.community_pmtiles === community_pmtiles ? s : { community_pmtiles })),
     set_hydrofabric_index: (hydrofabric_index) =>
@@ -110,7 +107,6 @@ const useDataStreamStore = create((set) => ({
         set((s) => {
             const already =
                 s.bucket === DEFAULTS.bucket &&
-                s.nexus_pmtiles === DEFAULTS.nexus_pmtiles &&
                 s.community_pmtiles === DEFAULTS.community_pmtiles &&
                 s.hydrofabric_index === DEFAULTS.hydrofabric_index &&
                 s.cache_key === DEFAULTS.cache_key &&

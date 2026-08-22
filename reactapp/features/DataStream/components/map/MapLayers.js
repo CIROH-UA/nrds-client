@@ -1,5 +1,5 @@
 // mapLayers.js
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Layer } from 'react-map-gl/maplibre';
 import { FLOWPATHS_LAYER_ID, FLOWPATHS_HIGHLIGHT_LAYER_ID } from 'features/DataStream/lib/layers';
 import { numericPartOf } from 'features/DataStream/lib/utils';
@@ -156,72 +156,4 @@ export function useConusGaugesLayer({
       />
     );
   }, [isConusGaugesVisible, gaugesCircleColor]);
-}
-
-/**
- * Nexus point + highlight layers
- */
-export function useNexusLayers({
-  isNexusVisible,
-  selectedFeatureId,
-  nexusCircleColor,
-  nexusStrokeColor,
-  nexusHighlightCircleColor,
-}) {
-  return useMemo(() => {
-    if (!isNexusVisible) return null;
-
-    const pointsLayer = (
-      <Layer
-        key="nexus-points"
-        id="nexus-points"
-        type="circle"
-        source="nexus"
-        source-layer="nexus"
-        filter={['!', ['has', 'point_count']]} // do not show the clusters
-        minzoom={5}
-        paint={{
-          'circle-radius': 7,
-          'circle-color': nexusCircleColor,
-          'circle-stroke-width': 1,
-          'circle-stroke-color': nexusStrokeColor,
-        }}
-      />
-    );
-
-    const nexusHighlightLayer = (
-      <Layer
-        key="nexus-highlight"
-        id="nexus-highlight"
-        type="circle"
-        source="nexus"
-        source-layer="nexus"
-        minzoom={5}
-        beforeId="nexus-points"
-        filter={
-          selectedFeatureId
-            ? [
-                'all',
-                ['!', ['has', 'point_count']],
-                ['==', ['get', 'id'], selectedFeatureId],
-              ]
-            : ['boolean', false]
-        }
-        paint={{
-          'circle-radius': 10,
-          'circle-stroke-width': 3,
-          'circle-stroke-color': nexusStrokeColor,
-          'circle-color': nexusHighlightCircleColor,
-        }}
-      />
-    );
-
-    return [pointsLayer, nexusHighlightLayer];
-  }, [
-    isNexusVisible,
-    selectedFeatureId,
-    nexusCircleColor,
-    nexusStrokeColor,
-    nexusHighlightCircleColor,
-  ]);
 }

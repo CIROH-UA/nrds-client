@@ -35,7 +35,6 @@ import {
   useFlowPathsLayer,
   useFlowPathsHighlightLayer,
   useConusGaugesLayer,
-  useNexusLayers,
 } from './MapLayers';
 import { MapHint } from '../styles/Styles';
 
@@ -102,7 +101,6 @@ FlowPathsOverlay.propTypes = {
 
 const MainMap = () => {
   const { 
-    isNexusVisible, 
     isCatchmentsVisible, 
     isFlowPathsVisible, 
     isConusGaugesVisible, 
@@ -110,7 +108,6 @@ const MainMap = () => {
     enabledHovering 
   } = useLayersStore(
     useShallow((s) => ({
-      isNexusVisible: s.nexus.visible,
       isCatchmentsVisible: s.catchments.visible,
       isFlowPathsVisible: s.flowpaths.visible,
       isConusGaugesVisible: s.conus_gauges.visible,
@@ -122,12 +119,10 @@ const MainMap = () => {
 
 
   const {
-    nexus_pmtiles,
     conus_pmtiles,
     flowpaths_pmtiles,
   } = useDataStreamStore(
     useShallow((s) => ({
-      nexus_pmtiles: s.nexus_pmtiles,
       conus_pmtiles: s.community_pmtiles,
       flowpaths_pmtiles: s.flowpaths_pmtiles,
     }))
@@ -196,7 +191,7 @@ const MainMap = () => {
 
 
 
-  const hoverLayers = useMemo(() => ["divides", "nexus-points"], []);
+  const hoverLayers = useMemo(() => ["divides"], []);
 
   const isMapUsable = useCallback((map) => {
     if (!map || typeof map.on !== "function" || typeof map.off !== "function") return false;
@@ -266,11 +261,10 @@ const MainMap = () => {
   const hoverableLayerIds = useMemo(() => {
     const ids = [];
     if (isCatchmentsVisible) ids.push('divides');
-    if (isNexusVisible) ids.push('nexus-points');
     if (isFlowPathsVisible) ids.push(FLOWPATHS_LAYER_ID);
     if (isConusGaugesVisible) ids.push('conus-gauges');
     return ids;
-  }, [isCatchmentsVisible, isNexusVisible, isFlowPathsVisible, isConusGaugesVisible]);
+  }, [isCatchmentsVisible, isFlowPathsVisible, isConusGaugesVisible]);
 
   /**
    * What is under the pointer, asked of the live map with a few pixels of tolerance.
@@ -349,14 +343,6 @@ const MainMap = () => {
     gaugesCircleColor: mapTheme.gauges,
   });
 
-  const nexusLayers = useNexusLayers({
-    isNexusVisible,
-    selectedFeatureId,
-    nexusCircleColor: mapTheme.nexusCircle,
-    nexusStrokeColor: mapTheme.nexusStroke,
-    nexusHighlightCircleColor: mapTheme.nexusHighlightCircle,
-  });
-
   useEffect(() => {
     const protocol = new Protocol({ metadata: true });
     maplibregl.addProtocol('pmtiles', protocol.tile);
@@ -378,7 +364,7 @@ const MainMap = () => {
     if (!map) return;
 
     reorderLayers(map);
-  }, [isNexusVisible, isCatchmentsVisible, isFlowPathsVisible, isConusGaugesVisible]);
+  }, [isCatchmentsVisible, isFlowPathsVisible, isConusGaugesVisible]);
 
   // The vpu outlines belong to the basemap style, so this reaches into it rather than mounting
   // a Layer. handleMapLoad reapplies it, since changing theme reloads the style from scratch.
@@ -470,10 +456,9 @@ const MainMap = () => {
 
   const layersToQuery = useMemo(() => {
     const layers = [];
-    if (isNexusVisible) layers.push('nexus-points');
     if (isCatchmentsVisible) layers.push('divides');
     return layers;
-  }, [isNexusVisible, isCatchmentsVisible]);
+  }, [isCatchmentsVisible]);
 
 
   // A popup describing a layer that is no longer shown has to go. Toggling catchments off left
@@ -538,9 +523,6 @@ const MainMap = () => {
         {conusGaugesLayer}
       </Source>
 
-      <Source key="nexus" id="nexus" type="vector" url={`pmtiles://${nexus_pmtiles}`}>
-        {nexusLayers}
-      </Source>
       <FlowPathsOverlay
         visible={isFlowPathsVisible}
         valuesByVar={valuesByVar}

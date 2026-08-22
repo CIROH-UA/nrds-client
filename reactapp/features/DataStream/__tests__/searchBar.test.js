@@ -239,14 +239,25 @@ describe('searching by the numeric part', () => {
    * People read an id off a chart title or a hover popup and type the number. Requiring the
    * cat- or wb- prefix meant knowing which of the two the app charts before searching for it.
    */
-  test('a bare number is looked up as the catchment first, then the reach, then the nexus', () => {
+  test('a bare number is looked up as the catchment first, then the reach', () => {
+    // nex- was tried third until the nexus layer was removed. The index still holds those rows,
+    // so offering them would fly the map to a point with nothing drawn and nothing selectable.
     expect(searchCandidates('2884494')).toEqual([
       'cat-2884494',
       'wb-2884494',
-      'nex-2884494',
       // Lakes carry no prefix at all in the index.
       '2884494',
     ]);
+  });
+
+  test('a nexus id is a miss, not a flight to an empty point', () => {
+    // Dropping nex- from the bare-number prefixes only covers "2884494". An id typed with the
+    // prefix was still taken as written and still resolves against the index, which carries
+    // 409,122 nexus-family rows that nothing on the map can show any more.
+    expect(searchCandidates('nex-2884494')).toEqual([]);
+    expect(searchCandidates('tnx-100')).toEqual([]);
+    expect(searchCandidates('cnx-100')).toEqual([]);
+    expect(searchCandidates('inx-100')).toEqual([]);
   });
 
   test('an id that already names its kind is taken as written', () => {

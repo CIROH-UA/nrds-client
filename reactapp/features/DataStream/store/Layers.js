@@ -49,7 +49,6 @@ const MAX_CACHED_VARS = 3;
 
 export const useLayersStore = create(
   subscribeWithSelector((set, get) => ({
-    nexus: { visible: false },
     catchments: { visible: true },
     flowpaths: { visible: true },
     conus_gauges: { visible: false },
@@ -66,15 +65,11 @@ export const useLayersStore = create(
     hovered_enabled: false,
 
     // ---- getters (fine to keep, but note: using get() doesn't subscribe) ----
-    get_nexus_visibility: () => get().nexus.visible,
     get_catchments_visibility: () => get().catchments.visible,
 
     // ---- setters with guards ----
     set_hovered_enabled: (isEnabled) =>
       set((s) => (s.hovered_enabled === isEnabled ? s : { hovered_enabled: isEnabled })),
-
-    set_nexus_visibility: (isVisible) =>
-      set((s) => (s.nexus.visible === isVisible ? s : { nexus: { ...s.nexus, visible: isVisible } })),
 
     set_catchments_visibility: (isVisible) =>
       set((s) =>

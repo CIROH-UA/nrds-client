@@ -77,14 +77,16 @@ describe('selectMapFeature', () => {
   });
 
   it('reads the id property that matches the layer', () => {
+    // A divide carries both id and divide_id, and only divide_id names the catchment the reader
+    // means. This was asserted against a nexus point until that layer was removed.
     useDataStreamStore.setState({ vpu: 'VPU_01' });
-    const nexus = {
-      layer: { id: 'nexus-points' },
+    const divide = {
+      layer: { id: 'divides' },
       geometry: { type: 'Point', coordinates: [-97, 41] },
-      properties: { id: 'nex-7', divide_id: 'cat-should-be-ignored', vpuid: '01' },
+      properties: { id: 'wb-should-be-ignored', divide_id: 'cat-7', vpuid: '01' },
     };
 
-    expect(selectMapFeature(nexus, 'nexus-points')).toBe('nex-7');
+    expect(selectMapFeature(divide, 'divides')).toBe('cat-7');
   });
 
   it('switches vpu but records nothing when no id can be determined', () => {

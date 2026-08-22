@@ -112,13 +112,15 @@ describe('choosing what is under the pointer', () => {
     expect(picked.layer.id).toBe('flowpaths-line');
   });
 
-  test('a nexus point beats both, being the smallest target', () => {
+  test('a gauge beats both, being the smallest target', () => {
+    // Nexus points used to head this order and were removed from the app; a gauge is now the
+    // smallest thing a reader can aim at, so it keeps the top of the ranking.
     const picked = pickHoverFeature([
       at('divides', { divide_id: 'cat-1' }),
       at('flowpaths-line'),
-      at('nexus-points', { id: 'nex-1' }),
+      at('conus-gauges', { id: 'gage-1' }),
     ]);
-    expect(picked.layer.id).toBe('nexus-points');
+    expect(picked.layer.id).toBe('conus-gauges');
   });
 
   test('a catchment on its own is still hovered', () => {

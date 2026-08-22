@@ -11,7 +11,7 @@ const BOOKKEEPING = new Set(['_id', 'layerId', 'hoverId', 'longitude', 'latitude
  * answer was always the catchment and a flowpath could never be hovered at all. A 4px line the
  * reader deliberately aimed at should beat a polygon that happens to be under the whole cursor.
  */
-const TARGET_ORDER = ['nexus-points', 'conus-gauges', 'flowpaths-line', 'divides'];
+const TARGET_ORDER = ['conus-gauges', 'flowpaths-line', 'divides'];
 
 /** The feature the reader most likely meant, out of everything under the pointer. */
 export function pickHoverFeature(features) {

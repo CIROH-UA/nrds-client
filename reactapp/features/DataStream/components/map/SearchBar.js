@@ -93,7 +93,7 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
     setSearching(true);
     setNotFound(false);
     try {
-      // A bare number is looked up as the catchment, its flowpath and its nexus, in that order.
+      // A bare number is looked up as the catchment first, then its flowpath.
       const features = await getFeatureProperties({
         cacheKey: 'index_data_table',
         feature_id: searchCandidates(id),

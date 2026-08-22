@@ -208,9 +208,9 @@ async function buildIndexTable({ remoteUrl, fallbackUrl }) {
 /**
  * The indexed row for a feature, given one id or several to try.
  *
- * Several, because a bare number names three things: the catchment cat-N, its flowpath wb-N and
- * the nexus nex-N. The catchment wins when more than one matches, since that is what the app
- * charts. Ids are reduced to word characters and dashes before they reach the query.
+ * Several, because a bare number names more than one thing: the catchment cat-N and its
+ * flowpath wb-N. The catchment wins when both match, since that is what the app charts. Ids are
+ * reduced to word characters and dashes before they reach the query.
  */
 export async function getFeatureProperties({ cacheKey, feature_id }) {
   const candidates = (Array.isArray(feature_id) ? feature_id : [feature_id])

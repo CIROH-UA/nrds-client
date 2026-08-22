@@ -59,7 +59,6 @@ const readToken = (name, fallback) => {
  * insurance, so a wrong one is a bug rather than a theme.
  */
 export const readMapTheme = () => {
-  const nexusCircle = readToken('--map-nexus-circle-color', '#1f78b4');
   return {
     styleUrl: readToken('--map-style-url', LIGHT_STYLE),
     dividesOutline: readToken('--map-divides-outline-color', 'rgba(91, 44, 111, 0.5)'),
@@ -67,9 +66,9 @@ export const readMapTheme = () => {
     dividesHighlightOutline: readToken('--map-divides-highlight-outline', 'rgba(253, 0, 253, 0.7)'),
     flowpaths: readToken('--map-flowpaths-color', '#0b0e10'),
     gauges: readToken('--map-gauges-color', '#646464'),
-    nexusCircle,
-    nexusStroke: readToken('--map-nexus-stroke-color', '#f7fafe'),
-    nexusHighlightCircle: readToken('--map-nexus-highlight-circle-color', nexusCircle),
+    cursorSymbolFill: readToken('--map-cursor-symbol-fill', '#1f78b4'),
+    // Shared: the gauge outline and the cursor legend symbol both read it.
+    pointStroke: readToken('--map-point-stroke-color', '#f7fafe'),
   };
 };
 

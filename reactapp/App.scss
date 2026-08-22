@@ -83,9 +83,10 @@ $theme-colors: (
   --map-gauges-color: #646464;
 
   
-  --map-nexus-circle-color: #1f78b4;
-  --map-nexus-stroke-color: #f7fafe;
-  --map-nexus-highlight-circle-color: #1f78b4;
+  // Shared by the gauge outline and the cursor legend symbol. Named for the nexus layer
+  // until that layer was removed; the colours are unchanged.
+  --map-cursor-symbol-fill: #1f78b4;
+  --map-point-stroke-color: #f7fafe;
 
   --button-primary-bg: #{$light};
   --button-primary-hover-bg: #{$light};
@@ -194,9 +195,8 @@ $theme-colors: (
 
     --map-gauges-color: #c8c8c8;
 
-    --map-nexus-circle-color: #2c3e50;
-    --map-nexus-stroke-color: #e9ecef;
-    --map-nexus-highlight-circle-color: #2c3e50;
+    --map-cursor-symbol-fill: #2c3e50;
+    --map-point-stroke-color: #e9ecef;
 
 
     --search-bg: #{$dark};

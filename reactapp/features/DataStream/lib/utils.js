@@ -43,8 +43,6 @@ export const formatLabel = (key) =>{
 
 export const layerIdToFeatureType = (layerId) => {
   switch(layerId) {
-    case 'nexus-points':
-      return 'id';
     case 'divides':
       return 'divide_id';
     default:
@@ -52,10 +50,11 @@ export const layerIdToFeatureType = (layerId) => {
   }
 };
 
-// The prefixes the hydrofabric index actually uses, in the order the app cares about: a
-// catchment is what gets charted, its flowpath is the same reach, and a nexus is the junction
-// below it. Lakes carry no prefix, so the bare number is tried last.
-const ID_PREFIXES = ['cat', 'wb', 'nex'];
+// The prefixes the hydrofabric index uses for things this app can show, in the order it cares
+// about: a catchment is what gets charted and its flowpath is the same reach. nex- was tried
+// third until the nexus layer was removed; the index still carries those rows, but a search
+// hitting one would fly the map to a point where nothing is drawn and nothing can be selected.
+const ID_PREFIXES = ['cat', 'wb'];
 
 /**
  * The ids worth looking for, given whatever was typed.
@@ -64,9 +63,15 @@ const ID_PREFIXES = ['cat', 'wb', 'nex'];
  * should not have to know that the catchment is cat-2884494 while its flowpath is wb-2884494.
  * Anything already carrying a prefix is taken as written.
  */
+// The nexus family: a plain nexus, and the terminal, coastal and internal variants. The index
+// still carries 409,122 of these rows, and none of them can be shown since the nexus layer was
+// removed, so a search naming one is a miss rather than a place to fly to.
+const UNMAPPED_PREFIXES = /^(nex|tnx|cnx|inx)-/;
+
 export const searchCandidates = (input) => {
   const trimmed = String(input ?? '').trim().toLowerCase();
   if (!trimmed) return [];
+  if (UNMAPPED_PREFIXES.test(trimmed)) return [];
   if (!/^\d+$/.test(trimmed)) return [trimmed];
   return [...ID_PREFIXES.map((prefix) => `${prefix}-${trimmed}`), trimmed];
 };

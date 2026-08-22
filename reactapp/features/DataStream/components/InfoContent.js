@@ -41,15 +41,6 @@ export const LayerInfoContent = () => (
       </li>
       <li>
         <a
-          href="https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/nexus.pmtiles"
-          target="_blank"
-          rel="noreferrer"
-        >
-          nexus.pmtiles
-        </a>, for nexus points
-      </li>
-      <li>
-        <a
           href="https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/hydrofabric_index.parquet"
           target="_blank"
           rel="noreferrer"

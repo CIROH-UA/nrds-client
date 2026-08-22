@@ -3,7 +3,7 @@ import { Fragment, useMemo, useState } from 'react';
 import { Switch } from  '../styles/Styles';
 import { IoLayers } from "react-icons/io5";
 import { IconLabel, Row, Title, InfoPanel } from '../styles/Styles';
-import { NexusSymbol, CatchmentSymbol, FlowPathSymbol, GaugeSymbol, VpuSymbol, symbologyColors, CursorSymbol } from '../../lib/layers';
+import { CatchmentSymbol, FlowPathSymbol, GaugeSymbol, VpuSymbol, symbologyColors, CursorSymbol } from '../../lib/layers';
 import { usePrefersDark } from '../../lib/mapTheme';
 import { InfoToggle } from '../InfoDisclosure';
 import { LayerInfoContent } from '../InfoContent';
@@ -11,15 +11,11 @@ import { LayerInfoContent } from '../InfoContent';
 export const LayerControl = () => {
   const [layerInfoOpen, setLayerInfoOpen] = useState(false);
   
-  const nexusLayer = useLayersStore((state) => state.nexus);
   const catchmentLayer = useLayersStore((state) => state.catchments);
   const flowpathsLayer = useLayersStore((state) => state.flowpaths);
   const conusGaugesLayer = useLayersStore((state) => state.conus_gauges);
   const layerHoveredEnabled = useLayersStore((state) => state.hovered_enabled);
   
-  const set_nexus_visibility = useLayersStore(
-    (state) => state.set_nexus_visibility
-  );
   const set_catchments_visibility = useLayersStore(
     (state) => state.set_catchments_visibility
   );
@@ -43,10 +39,6 @@ export const LayerControl = () => {
   const prefersDark = usePrefersDark();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const colors = useMemo(() => symbologyColors(), [prefersDark]);
-
-  const handleToggleNexusLayer = () => {
-    set_nexus_visibility(!nexusLayer.visible);
-  };
 
   const handleToggleCatchmentLayer = () => {
     set_catchments_visibility(!catchmentLayer.visible);
@@ -85,21 +77,6 @@ export const LayerControl = () => {
 
 
       {/* <Content> */}
-      <Row>
-        <IconLabel>
-          <NexusSymbol
-            fill={colors.nexusFill}
-            stroke={colors.nexusStroke}
-          />
-          Nexus
-        </IconLabel>
-        <Switch
-          id="nexus-layer-switch"
-          checked={nexusLayer.visible}
-          onChange={handleToggleNexusLayer}
-          title="Toggle Nexus Layer visualization"
-        />
-      </Row>
 
       <Row>
         <IconLabel>
@@ -166,7 +143,7 @@ export const LayerControl = () => {
 
       <Row>
         <IconLabel>
-          <CursorSymbol fill={colors.nexusFill} stroke={colors.nexusStroke} />
+          <CursorSymbol fill={colors.cursorFill} stroke={colors.cursorStroke} />
           Enable Hovering 
         </IconLabel>
         <Switch

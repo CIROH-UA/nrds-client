@@ -73,8 +73,6 @@ export const reorderLayers = (map) => {
     'conus-gauges',
     'divides',
     'divides-highlight',
-    'nexus-points',
-    'nexus-highlight',
   ];
 
   LAYER_ORDER.forEach((id) => {
@@ -142,13 +140,13 @@ export const getCentroid = (feature) => {
 export const symbologyColors = () => {
   const map = readMapTheme();
   return {
-    nexusFill: map.nexusCircle,
-    nexusStroke: map.nexusStroke,
+    cursorFill: map.cursorSymbolFill,
+    cursorStroke: map.pointStroke,
     catchmentFill: map.dividesHighlightFill,
     catchmentStroke: map.dividesOutline,
     flowStroke: map.flowpaths,
     gaugeFill: map.gauges,
-    gaugeStroke: map.nexusStroke,
+    gaugeStroke: map.pointStroke,
   };
 }
 
@@ -168,17 +166,6 @@ export const VpuSymbol = ({ stroke = VPU_BOUNDARY_COLOR }) => (
 );
 
 VpuSymbol.propTypes = { stroke: PropTypes.string };
-
-export const NexusSymbol = ({ fill, stroke }) => (
-  <svg
-    width="18"
-    height="18"
-    viewBox="0 0 18 18"
-    style={{ marginRight: '8px' }}
-  >
-    <circle cx="9" cy="9" r="5" fill={fill} stroke={stroke} strokeWidth="2" />
-  </svg>
-);
 
 export const CatchmentSymbol = ({ fill, stroke }) => (
   <svg
