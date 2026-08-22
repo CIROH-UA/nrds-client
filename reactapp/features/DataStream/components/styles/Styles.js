@@ -470,8 +470,12 @@ export const LegendBox = styled.div`
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   pointer-events: none;
 
+  /* Narrower on a phone, not absent. This used to be display:none, which left the animation
+     running in six colours with nothing on screen to say what they meant -- and the slider that
+     drives it stayed, so the one control the reader had was the one they could not interpret. */
   @media (max-width: 768px) {
-    display: none;
+    width: 140px;
+    bottom: 96px;
   }
 `;
 

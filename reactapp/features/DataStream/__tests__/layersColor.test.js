@@ -12,18 +12,22 @@
  * somewhere in the middle. Endpoints stay pinned, since those are the ramp's definition.
  */
 import { computeBounds, normalizeValue } from 'features/DataStream/lib/layers';
-import { writeColorInto } from 'features/DataStream/lib/valueRamp';
+import { LIGHT_RAMP, writeColorInto } from 'features/DataStream/lib/valueRamp';
 
 const B = { min: 0, max: 50 };
-const color = (value, bounds = B) => writeColorInto(value, bounds, [0, 0, 0, 0]);
+// One theme's ramp is enough here: this exercises the interpolation, not the palette. Which
+// colours are correct for which basemap is valueRamp.test.js's question.
+const color = (value, bounds = B) => writeColorInto(value, bounds, [0, 0, 0, 0], LIGHT_RAMP);
+const LOW = [...LIGHT_RAMP[0]];
+const HIGH = [...LIGHT_RAMP[LIGHT_RAMP.length - 1]];
 
 describe('writeColorInto', () => {
   // [name, value, bounds, expected rgb] -- alpha is asserted separately below.
   const cases = [
-    ['at min', 0, B, [0, 119, 187]],
-    ['at max', 50, B, [208, 0, 0]],
-    ['degenerate bounds', 5, { min: 3, max: 3 }, [0, 119, 187]],
-    ['no bounds', 5, null, [0, 119, 187]],
+    ['at min', 0, B, LOW],
+    ['at max', 50, B, HIGH],
+    ['degenerate bounds', 5, { min: 3, max: 3 }, LOW],
+    ['no bounds', 5, null, LOW],
   ];
 
   it.each(cases)('%s', (_name, value, bounds, rgb) => {
@@ -41,9 +45,9 @@ describe('writeColorInto', () => {
 
   // Out of range used to index past the end of the scale and throw inside a deck.gl accessor.
   it.each([
-    ['above max', 60, [208, 0, 0]],
-    ['below min', -5, [0, 119, 187]],
-    ['NaN', NaN, [0, 119, 187]],
+    ['above max', 60, HIGH],
+    ['below min', -5, LOW],
+    ['NaN', NaN, LOW],
   ])('clamps %s instead of throwing', (_name, value, rgb) => {
     expect(() => color(value)).not.toThrow();
     expect(color(value)).toEqual([...rgb, 255]);
@@ -51,18 +55,18 @@ describe('writeColorInto', () => {
 
   it('writes into the array it is given rather than allocating', () => {
     const target = [0, 0, 0, 0];
-    expect(writeColorInto(25, B, target)).toBe(target);
+    expect(writeColorInto(25, B, target, LIGHT_RAMP)).toBe(target);
     expect(target[3]).toBe(255);
     // Somewhere in the ramp rather than at either end, which is all this test is about.
-    expect(target.slice(0, 3)).not.toEqual([0, 119, 187]);
-    expect(target.slice(0, 3)).not.toEqual([208, 0, 0]);
+    expect(target.slice(0, 3)).not.toEqual(LOW);
+    expect(target.slice(0, 3)).not.toEqual(HIGH);
   });
 
   it('always writes alpha, so a reused target cannot leak the previous value', () => {
     const target = [0, 0, 0, 0];
-    writeColorInto(-9999, B, target);
+    writeColorInto(-9999, B, target, LIGHT_RAMP);
     expect(target[3]).toBe(150);
-    writeColorInto(25, B, target);
+    writeColorInto(25, B, target, LIGHT_RAMP);
     expect(target[3]).toBe(255);
   });
 
@@ -70,7 +74,7 @@ describe('writeColorInto', () => {
     const bounds = computeBounds(Float32Array.from([0, 10, 25, 50, -9999]));
     const target = [0, 0, 0, 0];
     for (let v = -20; v <= 70; v += 0.5) {
-      writeColorInto(v, bounds, target);
+      writeColorInto(v, bounds, target, LIGHT_RAMP);
       expect(target.every((channel) => Number.isFinite(channel))).toBe(true);
     }
   });

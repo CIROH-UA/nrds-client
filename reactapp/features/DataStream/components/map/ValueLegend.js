@@ -2,7 +2,7 @@ import PropTypes from 'prop-types';
 import { useMemo } from 'react';
 
 import { valueAtRampPosition } from 'features/DataStream/lib/layers';
-import { COLOR_SCALE } from 'features/DataStream/lib/valueRamp';
+import { rampGradient } from 'features/DataStream/lib/valueRamp';
 import { getVariableUnits } from 'features/DataStream/lib/data';
 import { formatMeasurement } from 'features/DataStream/lib/utils';
 import { LegendBox, LegendBar, LegendScale, LegendTitle } from '../styles/Styles';
@@ -20,25 +20,21 @@ const TICKS = [0, 0.5, 1];
  *
  * Renders nothing until there is an animation to describe.
  */
-export const ValueLegend = ({ bounds, variable, visible }) => {
-  const stops = useMemo(
-    () => COLOR_SCALE.map(([r, g, b], i) =>
-      `rgb(${r},${g},${b}) ${((i / (COLOR_SCALE.length - 1)) * 100).toFixed(1)}%`).join(', '),
-    []
-  );
+export const ValueLegend = ({ bounds, ramp, variable, visible }) => {
+  const gradient = useMemo(() => rampGradient(ramp), [ramp]);
   const ticks = useMemo(
     () => (bounds ? TICKS.map((t) => formatMeasurement(valueAtRampPosition(t, bounds))) : []),
     [bounds]
   );
 
-  if (!visible || !bounds || !variable) return null;
+  if (!visible || !bounds || !variable || !ramp?.length) return null;
 
   const units = getVariableUnits(variable);
 
   return (
     <LegendBox aria-label={`Colour scale for ${variable}`}>
       <LegendTitle>{units ? `${variable} (${units})` : variable}</LegendTitle>
-      <LegendBar style={{ background: `linear-gradient(to right, ${stops})` }} />
+      <LegendBar style={{ background: gradient }} />
       <LegendScale>
         {ticks.map((label, i) => (
           <span key={TICKS[i]}>{label}</span>
@@ -50,6 +46,7 @@ export const ValueLegend = ({ bounds, variable, visible }) => {
 
 ValueLegend.propTypes = {
   bounds: PropTypes.shape({ min: PropTypes.number, max: PropTypes.number, curve: PropTypes.number }),
+  ramp: PropTypes.arrayOf(PropTypes.array),
   variable: PropTypes.string,
   visible: PropTypes.bool,
 };

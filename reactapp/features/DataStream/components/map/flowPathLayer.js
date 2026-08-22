@@ -59,9 +59,10 @@ export function flowPathLayerProps({
   currentTimeIndex,
   pathTick,
   zoom,
+  ramp,
 }) {
   const numTimes = timesArr?.length || 0;
-  if (!valuesByVar || !numTimes || !pathData?.length) return null;
+  if (!valuesByVar || !numTimes || !pathData?.length || !ramp) return null;
 
   const frame = visible ? currentTimeIndex : HIDDEN;
   return {
@@ -72,7 +73,7 @@ export function flowPathLayerProps({
     getPath: (d) => d.path,
     getColor: (d, { target }) => {
       const v = getValueAtTimeFlat(valuesByVar, numTimes, d.featureIndex, currentTimeIndex);
-      return writeColorInto(v, bounds, target);
+      return writeColorInto(v, bounds, target, ramp);
     },
     getWidth: (d) => {
       const v = getValueAtTimeFlat(valuesByVar, numTimes, d.featureIndex, currentTimeIndex);
@@ -89,7 +90,10 @@ export function flowPathLayerProps({
     jointRounded: true,
     pickable: false,
     updateTriggers: {
-      getColor: [frame, variable, pathTick],
+      // The ramp is in here because a theme switch changes no frame, no variable and no tick.
+      // Without it the reaches keep the old theme's colours until the animation next steps, and
+      // for ever if it is paused.
+      getColor: [frame, variable, pathTick, ramp],
       getWidth: [frame, variable, pathTick],
     },
   };

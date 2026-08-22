@@ -1,5 +1,6 @@
 import { flowPathLayerProps, shouldPromptZoom } from 'features/DataStream/components/map/flowPathLayer';
 import { FLOWPATHS_MIN_ZOOM } from 'features/DataStream/lib/layers';
+import { LIGHT_RAMP } from 'features/DataStream/lib/valueRamp';
 
 /**
  * The prompt exists because flowpath geometry has a floor: below the tileset's minzoom the
@@ -57,6 +58,7 @@ describe('animated path width', () => {
       pathData: [{ id: 'wb-1', featureIndex: 0, path: [[0, 0], [1, 1]] }],
       currentTimeIndex: 0,
       pathTick: 0,
+      ramp: LIGHT_RAMP,
     });
 
   test('stays narrower than the widest static flowpath line at 2 px', () => {

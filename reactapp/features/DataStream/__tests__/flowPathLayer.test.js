@@ -5,6 +5,7 @@
  * without a canvas or a deck.gl instance.
  */
 import { flowPathLayerProps } from 'features/DataStream/components/map/flowPathLayer';
+import { LIGHT_RAMP } from 'features/DataStream/lib/valueRamp';
 
 const base = {
   visible: true,
@@ -16,6 +17,7 @@ const base = {
   currentTimeIndex: 0,
   pathTick: 0,
   zoom: 10,
+  ramp: LIGHT_RAMP,
 };
 
 const triggersOf = (overrides) => flowPathLayerProps({ ...base, ...overrides }).updateTriggers;

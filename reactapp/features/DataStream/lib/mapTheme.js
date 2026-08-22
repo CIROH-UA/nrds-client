@@ -1,5 +1,7 @@
 import { useMemo, useSyncExternalStore } from 'react';
 
+import { DARK_RAMP, LIGHT_RAMP } from 'features/DataStream/lib/valueRamp';
+
 /**
  * The map's colours, read when they are needed rather than when the module loads.
  *
@@ -69,6 +71,11 @@ export const readMapTheme = () => {
     cursorSymbolFill: readToken('--map-cursor-symbol-fill', '#1f78b4'),
     // Shared: the gauge outline and the cursor legend symbol both read it.
     pointStroke: readToken('--map-point-stroke-color', '#f7fafe'),
+    // Picked from the media query rather than a token. The other colours here are single values
+    // a stylesheet can hold; the ramp is six stops that only work as a set, measured against the
+    // basemap each one is drawn on. Reading the same signal that switches the tokens keeps it in
+    // step with them without a parse step that could half-fail.
+    ramp: prefersDarkSnapshot() ? DARK_RAMP : LIGHT_RAMP,
   };
 };
 

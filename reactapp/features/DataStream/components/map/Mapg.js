@@ -74,6 +74,7 @@ const FlowPathsOverlay = React.memo(function FlowPathsOverlay({
   pathDataRef,
   pathTick,
   getCursor,
+  ramp,
 }) {
   const currentTimeIndex = useTimeSeriesStore((s) => s.currentTimeIndex);
 
@@ -102,9 +103,10 @@ const FlowPathsOverlay = React.memo(function FlowPathsOverlay({
       currentTimeIndex,
       pathTick,
       zoom,
+      ramp,
     });
     return props ? [new PathLayer(props)] : NO_LAYERS;
-  }, [visible, valuesByVar, bounds, variable, timesArr, currentTimeIndex, pathTick, pathDataRef, zoom]);
+  }, [visible, valuesByVar, bounds, variable, timesArr, currentTimeIndex, pathTick, pathDataRef, zoom, ramp]);
 
   return <DeckGLOverlay layers={layers} interleaved getCursor={getCursor} />;
 });
@@ -118,6 +120,7 @@ FlowPathsOverlay.propTypes = {
   bounds: PropTypes.shape({ min: PropTypes.number, max: PropTypes.number }),
   pathDataRef: PropTypes.shape({ current: PropTypes.array }).isRequired,
   pathTick: PropTypes.number,
+  ramp: PropTypes.arrayOf(PropTypes.array),
 };
 
 const MainMap = () => {
@@ -517,6 +520,7 @@ const MainMap = () => {
 
       <FlowPathsOverlay
         getCursor={getCursor}
+        ramp={mapTheme.ramp}
         visible={isFlowPathsVisible}
         valuesByVar={valuesByVar}
         timesArr={timesArr}
@@ -532,6 +536,7 @@ const MainMap = () => {
       )}
       <ValueLegend
         bounds={colorBounds}
+        ramp={mapTheme.ramp}
         variable={variable}
         visible={isFlowPathsVisible && Boolean(colorBounds) && (timesArr?.length || 0) > 0}
       />
