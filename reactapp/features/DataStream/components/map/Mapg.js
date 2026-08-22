@@ -4,7 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 import maplibregl from 'maplibre-gl';
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import { PathLayer } from "@deck.gl/layers";
-import Map, { Source, useControl } from 'react-map-gl/maplibre';
+import Map, { Source, useControl, useMap } from 'react-map-gl/maplibre';
 import { Protocol } from 'pmtiles';
 import useTimeSeriesStore from '../../store/Timeseries';
 import useDataStreamStore from '../../store/Datastream';
@@ -74,6 +74,27 @@ const FlowPathsOverlay = React.memo(function FlowPathsOverlay({
 }) {
   const currentTimeIndex = useTimeSeriesStore((s) => s.currentTimeIndex);
 
+  /**
+   * The live zoom, subscribed to here rather than passed down.
+   *
+   * The animated width follows the static flowpaths' zoom curve, so it has to move with the
+   * view, and maplibre only reports zoomend to the map component above -- which would leave the
+   * animation frozen at its pre-gesture width for the whole of a pinch while the network under
+   * it rescaled continuously. Reading it here keeps the per-frame re-render inside this
+   * component, which is the same reason the frame index is read here and not above.
+   */
+  const { current: mapRef } = useMap();
+  const [zoom, setZoom] = useState(() => mapRef?.getZoom?.() ?? 0);
+
+  useEffect(() => {
+    const map = mapRef?.getMap?.();
+    if (!map) return undefined;
+    const onZoom = () => setZoom(map.getZoom());
+    onZoom();
+    map.on('zoom', onZoom);
+    return () => map.off('zoom', onZoom);
+  }, [mapRef]);
+
   const layers = useMemo(() => {
     const props = flowPathLayerProps({
       visible,
@@ -84,9 +105,10 @@ const FlowPathsOverlay = React.memo(function FlowPathsOverlay({
       pathData: pathDataRef.current,
       currentTimeIndex,
       pathTick,
+      zoom,
     });
     return props ? [new PathLayer(props)] : NO_LAYERS;
-  }, [visible, valuesByVar, bounds, variable, timesArr, currentTimeIndex, pathTick, pathDataRef]);
+  }, [visible, valuesByVar, bounds, variable, timesArr, currentTimeIndex, pathTick, pathDataRef, zoom]);
 
   return <DeckGLOverlay layers={layers} interleaved getCursor={getCursor} />;
 });
