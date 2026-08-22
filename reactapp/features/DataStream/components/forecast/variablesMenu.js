@@ -5,7 +5,7 @@ import { getVpuVariableFlat } from 'features/DataStream/lib/queryData';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import { loadTimeseries } from 'features/DataStream/actions/loadTimeseries';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
-import { useVPUStore } from 'features/DataStream/store/Layers';
+import { useVPUStore } from 'features/DataStream/store/VPU';
 import { useShallow } from 'zustand/react/shallow';
 import { createSequence } from 'features/DataStream/lib/sequence';
 import {

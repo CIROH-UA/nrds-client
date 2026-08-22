@@ -1,7 +1,8 @@
 import useDataStreamStore from 'features/DataStream/store/Datastream';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import useS3DataStreamBucketStore from 'features/DataStream/store/s3Store';
-import { useFeatureStore, useVPUStore } from 'features/DataStream/store/Layers';
+import { useFeatureStore } from 'features/DataStream/store/Layers';
+import { useVPUStore } from 'features/DataStream/store/VPU';
 import { makeFeatureTitle } from 'features/DataStream/lib/utils';
 import { cancelVpuLoads } from 'features/DataStream/actions/loadState';
 

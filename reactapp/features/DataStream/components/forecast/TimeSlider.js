@@ -1,7 +1,7 @@
 // TimeSlider.jsx
 import React, { useEffect, useMemo, useRef, useCallback } from "react";
 import useTimeSeriesStore from "features/DataStream/store/Timeseries";
-import { useVPUStore } from "features/DataStream/store/Layers";
+import { useVPUStore } from "features/DataStream/store/VPU";
 import "./TimeSlider.css";
 
 export const TimeSlider = React.memo(() => {

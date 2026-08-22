@@ -59,3 +59,20 @@ export const widthAtZoom = (zoom, stops = FLOWPATHS_WIDTH_STOPS) => {
  */
 export const animationIsOnMap = ({ times, flowpathsVisible }) =>
   Boolean(flowpathsVisible) && (times?.length ?? 0) > 0;
+
+/**
+ * The zoom rounded to the step the animated width is actually redrawn at.
+ *
+ * maplibre fires 'zoom' continuously through a gesture, and the animated layer subscribes to it
+ * so its widths keep pace with the static ones. Rendering every one of those events rebuilds the
+ * deck.gl layer per frame of a pinch, for a width that has barely moved: the steepest part of
+ * the curve climbs a third of a pixel per zoom level, so an eighth of a level is four hundredths
+ * of a pixel. Quarter steps keep the divergence from the static line below that and cut a full
+ * pinch from hundreds of renders to a couple of dozen.
+ */
+export const QUANTISED_ZOOM_STEP = 0.25;
+
+export const quantiseZoom = (zoom) => {
+  if (!Number.isFinite(zoom)) return 0;
+  return Math.round(zoom / QUANTISED_ZOOM_STEP) * QUANTISED_ZOOM_STEP;
+};

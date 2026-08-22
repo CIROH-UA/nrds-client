@@ -12,6 +12,7 @@
 import {
   FLOWPATHS_WIDTH_STOPS,
   animationIsOnMap,
+  quantiseZoom,
   widthAtZoom,
 } from 'features/DataStream/lib/flowpaths';
 
@@ -82,5 +83,45 @@ describe('animationIsOnMap', () => {
     // The slider renders this straight into JSX, where a stray undefined leaks into the DOM.
     expect(animationIsOnMap({})).toBe(false);
     expect(animationIsOnMap({ times: undefined, flowpathsVisible: undefined })).toBe(false);
+  });
+});
+
+/**
+ * How often the animated widths are actually redrawn.
+ *
+ * maplibre fires 'zoom' continuously through a gesture and the animated layer subscribes to it,
+ * so without this a pinch rebuilds the deck.gl layer per frame. What matters is not the number
+ * of renders on its own but that quantising them does not visibly separate the animated widths
+ * from the static ones they are meant to match, which is what the last case measures.
+ */
+describe('quantiseZoom', () => {
+  it('snaps to quarter steps', () => {
+    expect(quantiseZoom(7.06)).toBe(7);
+    expect(quantiseZoom(7.13)).toBe(7.25);
+    expect(quantiseZoom(7.4)).toBe(7.5);
+  });
+
+  it('gives the same answer across a frame-by-frame drift', () => {
+    // The point of it: a gesture creeping through a quarter step renders once, not sixteen times.
+    const frames = [8.01, 8.02, 8.04, 8.05, 8.07, 8.09, 8.1, 8.11];
+
+    expect(new Set(frames.map(quantiseZoom)).size).toBe(1);
+  });
+
+  it('answers a number for a zoom it cannot read', () => {
+    // Feeds widthAtZoom, where a NaN draws nothing at all and does it silently.
+    expect(quantiseZoom(undefined)).toBe(0);
+    expect(quantiseZoom(NaN)).toBe(0);
+  });
+
+  it('never moves the animated width a visible distance from the static one', () => {
+    // Half a step is the worst case. The steepest stretch of the curve climbs a third of a pixel
+    // per zoom level, so the gap has to stay far below anything a reader could see.
+    let worst = 0;
+    for (let z = 2; z <= 10; z += 0.01) {
+      worst = Math.max(worst, Math.abs(widthAtZoom(z) - widthAtZoom(quantiseZoom(z))));
+    }
+
+    expect(worst).toBeLessThan(0.05);
   });
 });

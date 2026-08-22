@@ -106,7 +106,9 @@ describe('flowPathLayerProps', () => {
       const props = propsAt({ valuesByVar: Float32Array.from([-9999, -9999, -9999, -9999]) });
       // Fainter than even the quietest real reach, so "no answer" never reads as "a low answer".
       expect(widthOf(props)).toBeLessThan(0.5);
-      expect(props.widthMinPixels).toBeGreaterThan(0);
+      // The documented value, not merely a positive one: the floor was 0.5 and swallowed the
+      // bottom fifth of the ramp below zoom 7, where the curve itself is thinner than that.
+      expect(props.widthMinPixels).toBe(0.25);
     });
 
     it('does not rebuild every path just because the view moved', () => {

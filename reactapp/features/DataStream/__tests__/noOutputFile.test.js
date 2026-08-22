@@ -12,7 +12,8 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
 import useS3DataStreamBucketStore from 'features/DataStream/store/s3Store';
-import { useFeatureStore, useVPUStore } from 'features/DataStream/store/Layers';
+import { useFeatureStore } from 'features/DataStream/store/Layers';
+import { useVPUStore } from 'features/DataStream/store/VPU';
 
 jest.mock('features/DataStream/actions/loadVpu', () => ({ loadVpu: jest.fn() }));
 jest.mock('features/DataStream/lib/utils', () => ({

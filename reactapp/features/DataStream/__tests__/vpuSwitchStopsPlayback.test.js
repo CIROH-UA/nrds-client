@@ -19,7 +19,7 @@ jest.mock('features/DataStream/actions/loadTimeseries', () => ({ loadTimeseries:
 
 const useDataStreamStore = require('features/DataStream/store/Datastream').default;
 const useTimeSeriesStore = require('features/DataStream/store/Timeseries').default;
-const { useVPUStore } = require('features/DataStream/store/Layers');
+const { useVPUStore } = require('features/DataStream/store/VPU');
 
 const initial = {
   ds: useDataStreamStore.getState(),

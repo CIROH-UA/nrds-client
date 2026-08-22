@@ -7,7 +7,8 @@
  */
 import { selectIndexedFeature } from 'features/DataStream/actions/selectIndexedFeature';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
-import { useFeatureStore, useVPUStore } from 'features/DataStream/store/Layers';
+import { useFeatureStore } from 'features/DataStream/store/Layers';
+import { useVPUStore } from 'features/DataStream/store/VPU';
 
 jest.mock('features/DataStream/lib/queryData', () => ({ getFeatureProperties: jest.fn() }));
 jest.mock('features/DataStream/actions/loadTimeseries', () => ({ loadTimeseries: jest.fn() }));

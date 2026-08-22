@@ -5,7 +5,8 @@
  */
 import useDataStreamStore from 'features/DataStream/store/Datastream';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
-import { useFeatureStore, useVPUStore } from 'features/DataStream/store/Layers';
+import { useFeatureStore } from 'features/DataStream/store/Layers';
+import { useVPUStore } from 'features/DataStream/store/VPU';
 
 jest.mock('features/DataStream/actions/loadVpu', () => ({ loadVpu: jest.fn() }));
 jest.mock('features/DataStream/actions/loadState', () => ({

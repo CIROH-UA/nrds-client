@@ -19,7 +19,8 @@ import {
   startVpuLoad,
 } from 'features/DataStream/actions/loadState';
 import useS3DataStreamBucketStore from 'features/DataStream/store/s3Store';
-import { useVPUStore, useFeatureStore } from 'features/DataStream/store/Layers';
+import { useFeatureStore } from 'features/DataStream/store/Layers';
+import { useVPUStore } from 'features/DataStream/store/VPU';
 
 
 /**

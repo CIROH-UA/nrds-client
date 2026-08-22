@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 import { cancelVpuLoads } from 'features/DataStream/actions/loadState';
 import { cancelSelections } from 'features/DataStream/actions/selectionGeneration';
-import { useVPUStore } from 'features/DataStream/store/Layers';
+import { useVPUStore } from 'features/DataStream/store/VPU';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import { getYesterdayDateString } from '../lib/utils';
 

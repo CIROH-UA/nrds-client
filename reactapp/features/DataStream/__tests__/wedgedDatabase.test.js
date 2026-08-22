@@ -26,7 +26,7 @@ const { loadTimeseries } = require('features/DataStream/actions/loadTimeseries')
 const { resetLoadState, vpuLoadInFlight } = require('features/DataStream/actions/loadState');
 const useTimeSeriesStore = require('features/DataStream/store/Timeseries').default;
 const useDataStreamStore = require('features/DataStream/store/Datastream').default;
-const { useVPUStore } = require('features/DataStream/store/Layers');
+const { useVPUStore } = require('features/DataStream/store/VPU');
 
 const initial = {
   ts: useTimeSeriesStore.getState(),

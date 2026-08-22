@@ -8,7 +8,7 @@ import Map, { Source, useControl, useMap } from 'react-map-gl/maplibre';
 import { Protocol } from 'pmtiles';
 import useTimeSeriesStore from '../../store/Timeseries';
 import useDataStreamStore from '../../store/Datastream';
-import { useVPUStore } from '../../store/Layers';
+import { useVPUStore } from '../../store/VPU';
 import { useLayersStore, useFeatureStore } from '../../store/Layers';
 import CustomPopUp from './Popup';
 import {
@@ -17,7 +17,7 @@ import {
 } from '../../lib/layers';
 import { useMapTheme } from '../../lib/mapTheme';
 import { createPointerCursor } from '../../lib/mapCursor';
-import { animationIsOnMap } from '../../lib/flowpaths';
+import { animationIsOnMap, quantiseZoom } from '../../lib/flowpaths';
 import {
   DIVIDES_MIN_ZOOM,
   FLOWPATHS_LAYER_ID,
@@ -79,12 +79,13 @@ const FlowPathsOverlay = React.memo(function FlowPathsOverlay({
 
   // Zoom read here, not passed down, so only this component re-renders as it changes.
   const { current: mapRef } = useMap();
-  const [zoom, setZoom] = useState(() => mapRef?.getZoom?.() ?? 0);
+  const [zoom, setZoom] = useState(() => quantiseZoom(mapRef?.getZoom?.() ?? 0));
 
   useEffect(() => {
     const map = mapRef?.getMap?.();
     if (!map) return undefined;
-    const onZoom = () => setZoom(map.getZoom());
+    // Quantised: 'zoom' fires per frame of a gesture, for a width that has barely moved.
+    const onZoom = () => setZoom(quantiseZoom(map.getZoom()));
     onZoom();
     map.on('zoom', onZoom);
     return () => map.off('zoom', onZoom);

@@ -10,7 +10,7 @@ import { render, screen, act } from '@testing-library/react';
 
 import { HoverValue } from 'features/DataStream/components/map/HoverValue';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
-import { useVPUStore } from 'features/DataStream/store/Layers';
+import { useVPUStore } from 'features/DataStream/store/VPU';
 
 const initial = { ts: useTimeSeriesStore.getState(), vpu: useVPUStore.getState() };
 

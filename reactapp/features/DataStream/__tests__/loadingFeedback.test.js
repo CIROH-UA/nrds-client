@@ -13,7 +13,8 @@ import { render, screen, act } from '@testing-library/react';
 
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
-import { useVPUStore, useFeatureStore } from 'features/DataStream/store/Layers';
+import { useFeatureStore } from 'features/DataStream/store/Layers';
+import { useVPUStore } from 'features/DataStream/store/VPU';
 
 // These reach for duckdb-wasm and s3, neither of which runs in jsdom.
 jest.mock('features/DataStream/lib/duckdbClient', () => ({ terminateDatabase: jest.fn() }));

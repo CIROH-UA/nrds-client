@@ -15,7 +15,7 @@
 import { render, screen } from '@testing-library/react';
 
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
-import { useVPUStore } from 'features/DataStream/store/Layers';
+import { useVPUStore } from 'features/DataStream/store/VPU';
 import { TimeSlider } from 'features/DataStream/components/forecast/TimeSlider';
 
 jest.mock('features/DataStream/components/forecast/dataMenu', () => function DataMenu() {
@@ -48,10 +48,11 @@ describe('the side panel', () => {
     // The panel opens on a selected feature, so give it one.
     useTimeSeriesStore.setState({ feature_id: 'cat-7' });
 
-    const { container } = render(<ForecastMenu />);
+    render(<ForecastMenu />);
 
-    expect(container.querySelector('#timePanel')).toBeNull();
-    expect(container.querySelector('#timeSlider')).toBeNull();
+    // By role, not by id: the id would still pass if the control were rendered unreachable.
+    expect(screen.queryByRole('slider', { name: /animation time/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /play the animation/i })).not.toBeInTheDocument();
   });
 
   it('still carries the variables menu that shared its block', () => {
@@ -70,7 +71,7 @@ describe('the slider on the map', () => {
     // empties the clock reads as breakage rather than as context.
     useVPUStore.setState({ times: [] });
 
-    const { container } = render(<TimeSlider />);
+    render(<TimeSlider />);
 
     expect(screen.getByRole('slider', { name: /animation time/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /play the animation/i })).toBeDisabled();

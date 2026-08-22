@@ -23,7 +23,7 @@ const { loadVpu } = require('features/DataStream/actions/loadVpu');
 const { loadTimeseries } = require('features/DataStream/actions/loadTimeseries');
 const useTimeSeriesStore = require('features/DataStream/store/Timeseries').default;
 const useDataStreamStore = require('features/DataStream/store/Datastream').default;
-const { useVPUStore } = require('features/DataStream/store/Layers');
+const { useVPUStore } = require('features/DataStream/store/VPU');
 
 const KEY = 'cfe_nom_ngen_20260819_short_range_00_VPU_16_troute_output.parquet';
 const initial = {

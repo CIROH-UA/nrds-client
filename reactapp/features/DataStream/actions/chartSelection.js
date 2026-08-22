@@ -1,5 +1,5 @@
 import useDataStreamStore from 'features/DataStream/store/Datastream';
-import { useVPUStore } from 'features/DataStream/store/Layers';
+import { useVPUStore } from 'features/DataStream/store/VPU';
 import { loadTimeseries } from 'features/DataStream/actions/loadTimeseries';
 import { vpuLoadInFlight } from 'features/DataStream/actions/loadState';
 

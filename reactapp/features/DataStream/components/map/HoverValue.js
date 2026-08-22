@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
-import { useVPUStore } from 'features/DataStream/store/Layers';
+import { useVPUStore } from 'features/DataStream/store/VPU';
 import { getValueAtTimeFlat } from 'features/DataStream/lib/layers';
 import { getVariableUnits } from 'features/DataStream/lib/data';
 import { formatMeasurement, numericPartOf, timeOffsetLabel } from 'features/DataStream/lib/utils';

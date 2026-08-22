@@ -8,7 +8,7 @@ import { render, screen, act } from '@testing-library/react';
 
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
-import { useVPUStore } from 'features/DataStream/store/Layers';
+import { useVPUStore } from 'features/DataStream/store/VPU';
 
 // react-select renders its options through a virtualized list, which is awkward to drive and
 // beside the point: what matters here is what the change handler does.

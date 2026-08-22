@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 
-import { useLayersStore, useVPUStore } from 'features/DataStream/store/Layers';
+import { useLayersStore } from 'features/DataStream/store/Layers';
+import { useVPUStore } from 'features/DataStream/store/VPU';
 import { animationIsOnMap } from 'features/DataStream/lib/flowpaths';
 
 /**

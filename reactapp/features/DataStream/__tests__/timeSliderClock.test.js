@@ -10,7 +10,7 @@
 import { render, screen } from '@testing-library/react';
 
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
-import { useVPUStore } from 'features/DataStream/store/Layers';
+import { useVPUStore } from 'features/DataStream/store/VPU';
 import { TimeSlider } from 'features/DataStream/components/forecast/TimeSlider';
 
 const HOUR = 3600000;

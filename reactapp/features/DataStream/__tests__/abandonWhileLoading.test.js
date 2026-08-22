@@ -27,7 +27,8 @@ const { resetLoadState } = require('features/DataStream/actions/loadState');
 const useDataStreamStore = require('features/DataStream/store/Datastream').default;
 const useTimeSeriesStore = require('features/DataStream/store/Timeseries').default;
 const useS3Store = require('features/DataStream/store/s3Store').default;
-const { useVPUStore, useFeatureStore } = require('features/DataStream/store/Layers');
+const { useFeatureStore } = require('features/DataStream/store/Layers');
+const { useVPUStore } = require('features/DataStream/store/VPU');
 
 const initial = {
   ds: useDataStreamStore.getState(),
