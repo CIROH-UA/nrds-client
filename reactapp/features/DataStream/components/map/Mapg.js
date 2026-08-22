@@ -217,12 +217,28 @@ const MainMap = () => {
     }
   }, []);
 
+  /**
+   * How many clickable layers the pointer is currently inside.
+   *
+   * Counted rather than a boolean, following beginLoading/endLoading in actions/loadState.js.
+   * maplibre fires mouseenter and mouseleave per layer, so leaving one is not leaving them all:
+   * with catchments and flowpaths both registered, a reach's mouseleave cleared the cursor while
+   * the reader was still well inside the catchment, and since flowpaths thread through every
+   * catchment the pointer spent most of its time reset to grab. Only one layer is registered
+   * today, so this cannot bite -- but the whole point of clickableLayerIds is that the list can
+   * grow, and it would come straight back.
+   */
+  const insideClickable = useRef(0);
+
   const setPointerCursor = useCallback((e) => {
+    insideClickable.current += 1;
     const canvas = e?.target?.getCanvas?.();
     if (canvas?.style) canvas.style.cursor = "pointer";
   }, []);
 
   const resetPointerCursor = useCallback((e) => {
+    insideClickable.current = Math.max(0, insideClickable.current - 1);
+    if (insideClickable.current > 0) return;
     const canvas = e?.target?.getCanvas?.();
     if (canvas?.style) canvas.style.cursor = "";
   }, []);
@@ -261,6 +277,7 @@ const MainMap = () => {
     if (!mapReady || !isMapUsable(map)) return undefined;
 
     removeHoverListeners(map, clickableLayers);
+    insideClickable.current = 0;
     clickableLayers.forEach((layer) => {
       map.on("mouseenter", layer, setPointerCursor);
       map.on("mouseleave", layer, resetPointerCursor);
