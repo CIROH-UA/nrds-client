@@ -5,7 +5,6 @@ import json
 import fsspec
 import tempfile
 import pandas as pd
-import xarray as xr
 from urllib.parse import urlparse
 import io
 import pyarrow as pa
@@ -184,18 +183,6 @@ def merge_usgs_nwm30_crosswalk_nc(df, ngen_usgs_gages, usgs_nwm_xwalk_df):
 
     return df
 
-def get_troute_df(s3_nc_url: str) -> pd.DataFrame:
-    """Load the t-route crosswalk DataFrame."""
-
-    nc_xarray = xr.open_dataset(
-        s3_nc_url,
-        engine="h5netcdf",
-        backend_kwargs={"storage_options": {"anon": True}},
-    )
-    nc_df = nc_xarray.to_dataframe()
-    nc_df = nc_df.reset_index()
-
-    return nc_df
 
 def get_usgs_nwm_xwalk_df() -> pd.DataFrame:
     """Load the USGS-NWM 3.0 crosswalk DataFrame."""
@@ -204,9 +191,4 @@ def get_usgs_nwm_xwalk_df() -> pd.DataFrame:
     usgs_nwm_xwalk_df = usgs_nwm_xwalk_df.set_index("primary_location_id")
     return usgs_nwm_xwalk_df
 
-
-def convert_nc_2_df(s3_nc_url: str) -> pd.DataFrame:
-    """Convert NetCDF files to Parquet format."""
-    df = get_troute_df(s3_nc_url)
-    return df
 

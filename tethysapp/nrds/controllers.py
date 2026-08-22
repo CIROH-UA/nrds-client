@@ -1,15 +1,7 @@
-from django.http import JsonResponse, HttpResponse
-import pandas as pd
 import os
-import io
-import pyarrow as pa
-import json
 import geopandas as gpd
 from tethys_sdk.routing import controller
 
-from .data_utils import (
-    convert_nc_2_df,
-)
 from .app import App
 import logging
 
@@ -26,25 +18,3 @@ logger.setLevel(logging.INFO)
 def home(request):
     """Controller for the app home page."""
     return App.render(request, "index.html")
-
-
-@controller
-def getArrowPerVpu(request):
-    print("Getting parquet file per vpu...")
-    
-    file_prefix =  json.loads(request.body.decode("utf-8"))['ncFile']
-    print("file_prefix", file_prefix)
-    complete_df = convert_nc_2_df(
-        s3_nc_url=file_prefix,
-    )
-    table = pa.Table.from_pandas(complete_df)
-
-    buf = io.BytesIO()
-    with pa.ipc.new_stream(buf, table.schema) as writer:
-        writer.write_table(table)
-    buf.seek(0)
-
-    return HttpResponse(
-        buf.read(),
-        content_type="application/vnd.apache.arrow.stream",
-    )

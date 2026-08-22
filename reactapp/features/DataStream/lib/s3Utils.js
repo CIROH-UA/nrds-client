@@ -76,9 +76,14 @@ export async function getOptionsFromURL(url, { signal } = {}) {
   try{
     if (url.split('/').includes('troute')){
       const files = await listPublicS3Files(url, { signal });
-      const ncFiles = files.filter(f => f.endsWith('.nc') || f.endsWith('.parquet'));
-      // const ncFilesParsed = ncFiles.map(f => `s3://ciroh-community-ngen-datastream/${f}`);
-      const options = ncFiles.map((d) => ({ value: d.split('/').pop(), label: d.split('/').pop() }));
+      // Parquet only, which is the one place a NetCDF output can be kept out of the interface.
+      // The pipeline moved to parquet around March 2026 and every model has published it since;
+      // what is left under .nc is archived runs from before that, which duckdb cannot read. They
+      // are filtered here rather than refused later, so nothing offers a choice that cannot work.
+      // A selection whose directory holds only .nc lists nothing, which is the existing
+      // "no output file" state rather than a new one.
+      const readable = files.filter((f) => f.endsWith('.parquet'));
+      const options = readable.map((d) => ({ value: d.split('/').pop(), label: d.split('/').pop() }));
       // byValue, because Array.sort() on objects compares "[object Object]" and orders nothing.
       return options.sort(byValue).reverse();
     }
@@ -98,10 +103,11 @@ export const makePrefix = (model, avail_date,ngen_forecast,ngen_cycle, ngen_ense
     return prefix_path;
 }
 
-export function getNCFiles(prefix) {
-    const ncFileParsed = `s3://ciroh-community-ngen-datastream/${prefix}`;
-    return ncFileParsed
-}
+const DATASTREAM_BUCKET = 'https://ciroh-community-ngen-datastream.s3.us-east-1.amazonaws.com';
+
+/** The https url for an output key, which is what the browser fetches directly. */
+export const makeOutputUrl = (prefix) =>
+  /^https?:\/\//i.test(prefix) ? prefix : `${DATASTREAM_BUCKET}/${prefix}`;
 
 export const makeGpkgUrl = (vpu) => {
     const vpu_gpkg = `s3://ciroh-community-ngen-datastream/resources/v2.2_hydrofabric/geopackages/${vpu}/nextgen_${vpu}.gpkg`;
