@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 
-import { useVPUStore } from 'features/DataStream/store/Layers';
+import { useLayersStore, useVPUStore } from 'features/DataStream/store/Layers';
 
 /**
  * How many steps the time cursor may take.
@@ -67,8 +67,9 @@ const useTimeSeriesStore = create(
 
           // No fingerprint guard: two features can share endpoints and differ in between.
 
-          // A shorter series can leave the playback index past the end.
-          const maxIdx = Math.max(0, (nextSeries?.length || 0) - 1);
+          // Bounded by the animation when there is one, like every other mutator here: a short
+          // series must not rewind the clock the map is running on.
+          const maxIdx = Math.max(0, stepCount(nextSeries) - 1);
           if (s.currentTimeIndex > maxIdx) {
             return { series: nextSeries, currentTimeIndex: maxIdx };
           }
@@ -167,4 +168,27 @@ const useTimeSeriesStore = create(
         })),
   }))
 );
+/**
+ * Playback stops when there is nothing left to play.
+ *
+ * Every path that tears the animation down through resetVPU already calls reset_series, which
+ * clears isPlaying -- closing the panel, switching vpu, a selection with no output. Hiding the
+ * flowpaths layer is the one that does not: it takes the animation off the map and unmounts the
+ * slider without touching any of it, so isPlaying stayed true and playback silently resumed the
+ * moment the layer came back.
+ *
+ * Watched here rather than fixed at that one switch, because the rule is about the clock rather
+ * than about any particular way of stopping it, and the next way of emptying it should not have
+ * to remember. Timeseries already depends on Layers, so this adds no new edge to the graph.
+ */
+const stopPlaybackWithNothingToPlay = () => {
+  if (!useTimeSeriesStore.getState().isPlaying) return;
+  const hasClock = useVPUStore.getState().times.length > 0;
+  const onScreen = useLayersStore.getState().flowpaths.visible;
+  if (!hasClock || !onScreen) useTimeSeriesStore.setState({ isPlaying: false });
+};
+
+useVPUStore.subscribe((s) => s.times, stopPlaybackWithNothingToPlay);
+useLayersStore.subscribe((s) => s.flowpaths.visible, stopPlaybackWithNothingToPlay);
+
 export default useTimeSeriesStore;

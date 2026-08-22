@@ -8,10 +8,15 @@ import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import { useFeatureStore, useVPUStore } from 'features/DataStream/store/Layers';
 
 jest.mock('features/DataStream/actions/loadVpu', () => ({ loadVpu: jest.fn() }));
+jest.mock('features/DataStream/actions/loadState', () => ({
+  ...jest.requireActual('features/DataStream/actions/loadState'),
+  vpuLoadInFlight: jest.fn(() => false),
+}));
 jest.mock('features/DataStream/actions/loadTimeseries', () => ({ loadTimeseries: jest.fn() }));
 
 const { loadTimeseries } = require('features/DataStream/actions/loadTimeseries');
 const { loadVpu } = require('features/DataStream/actions/loadVpu');
+const { vpuLoadInFlight } = require('features/DataStream/actions/loadState');
 const { selectMapFeature } = require('features/DataStream/actions/selectFeature');
 
 const initial = {
@@ -32,6 +37,7 @@ beforeEach(() => {
   useTimeSeriesStore.setState(initial.ts, true);
   useFeatureStore.setState(initial.fs, true);
   useVPUStore.setState(initial.vpu, true);
+  vpuLoadInFlight.mockReturnValue(false);
   loadTimeseries.mockResolvedValue(undefined);
 });
 
@@ -80,7 +86,8 @@ describe('selectMapFeature', () => {
    * slider. A vpu load over an existing table skips the download and rebuilds all three.
    */
   it('rebuilds the view when the animation has been closed away', async () => {
-    useDataStreamStore.setState({ vpu: 'VPU_01' });
+    // A closed panel still has a cache_key: the table stays built, only the arrays are dropped.
+    useDataStreamStore.setState({ vpu: 'VPU_01', cache_key: 'cfe_nom_d_short_range_00_VPU_01_t' });
     useVPUStore.setState({ times: [] });
 
     selectMapFeature(divide(), 'divides');
@@ -89,6 +96,38 @@ describe('selectMapFeature', () => {
 
     expect(loadTimeseries).not.toHaveBeenCalled();
     expect(loadVpu).toHaveBeenCalled();
+  });
+
+  /**
+   * An empty animation is not proof the panel was closed. It is also empty while a vpu's first
+   * load runs, because cache_key is filled in by the loader effect after an S3 round trip while
+   * the vpu itself updates on the click. A second click in that window used to start a second
+   * loadVpu; two of them reaching CREATE TABLE for one key leaves the loser reporting "No data
+   * available" for a feature that has data.
+   */
+  it('does not start a second load while the first is still in flight', async () => {
+    useDataStreamStore.setState({ vpu: 'VPU_01', cache_key: 'cfe_nom_d_short_range_00_VPU_01_t' });
+    useVPUStore.setState({ times: [] });
+    vpuLoadInFlight.mockReturnValue(true);
+
+    selectMapFeature(divide(), 'divides');
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(loadVpu).not.toHaveBeenCalled();
+  });
+
+  it('does not rebuild from a key that still names the previous vpu', async () => {
+    // The loader has not caught up yet, so the key belongs to whatever was loaded before. Acting
+    // on it would fill the animation and the variables from the wrong vpu under this one's name.
+    useDataStreamStore.setState({ vpu: 'VPU_01', cache_key: 'cfe_nom_d_short_range_00_VPU_09_t' });
+    useVPUStore.setState({ times: [] });
+
+    selectMapFeature(divide(), 'divides');
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(loadVpu).not.toHaveBeenCalled();
   });
 
   it('only switches vpu when the feature belongs to another one', () => {

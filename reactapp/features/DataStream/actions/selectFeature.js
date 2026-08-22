@@ -4,6 +4,7 @@ import useDataStreamStore from 'features/DataStream/store/Datastream';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import { useFeatureStore, useVPUStore } from 'features/DataStream/store/Layers';
 import { loadTimeseries } from 'features/DataStream/actions/loadTimeseries';
+import { vpuLoadInFlight } from 'features/DataStream/actions/loadState';
 
 /**
  * Record a map feature as the selection, and chart it when it belongs to the loaded vpu.
@@ -69,7 +70,23 @@ export function selectMapFeature(feature, layerId) {
      * exactly what is missing -- the ids, the variables, the animation -- and charts at the end
      * of it, which is the state a click should leave behind.
      */
-    const animationGone = useVPUStore.getState().times.length === 0;
+    /**
+     * An empty animation does not always mean the panel was closed.
+     *
+     * It is also empty while a vpu's very first load is still running: the vpu updates
+     * synchronously on the click, but cache_key is filled in later by the loader effect, after
+     * an S3 round trip. A second click in that window used to start a second loadVpu, and two of
+     * them reaching CREATE TABLE for the same key leaves the loser throwing a catalog error that
+     * surfaces as "No data available" for a feature that has data. Worse, if cache_key still
+     * named the previous vpu, the animation and variables came back for the wrong one.
+     *
+     * So the restore only runs when there is a key, it belongs to this vpu, and nothing is
+     * already loading. Otherwise the load in flight will chart this selection when it lands.
+     */
+    const { cache_key: cacheKey } = useDataStreamStore.getState();
+    const keyIsOurs = Boolean(cacheKey) && cacheKey.includes(vpuName);
+    const animationGone =
+      useVPUStore.getState().times.length === 0 && keyIsOurs && !vpuLoadInFlight();
     const restore = animationGone
       ? () => import('features/DataStream/actions/loadVpu').then((m) => m.loadVpu())
       : () => loadTimeseries({ featureId });

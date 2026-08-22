@@ -25,8 +25,13 @@ const HIDDEN = 'hidden';
  * with the floor at the network's own weight that was a lot of ink for reaches carrying almost
  * nothing. A quiet reach now recedes under the network and a busy one still stands well clear.
  * NO_DATA sits below even that, so a reach with nothing to report is the faintest thing on the
- * map rather than asserting a low value, and MIN_PIXELS stops anything vanishing outright where
- * the curve goes sub-pixel.
+ * map rather than asserting a low value.
+ *
+ * MIN_PIXELS stops anything vanishing outright where the curve goes sub-pixel, and is 0.25
+ * rather than 0.5 because at 0.5 it swallowed the bottom of the ramp: below zoom 7 the curve is
+ * under 1, so the quietest fifth of real values and a no-data reach all clamped to the same
+ * width and the distinction the factors describe did not survive to the screen. It is still a
+ * floor, so the very bottom compresses at CONUS scale -- colour is what separates them there.
  *
  * The ceiling stays at 4.5 px, which is where the old constants topped out: at zoom 10 the curve
  * alone is 2 px and a maximum value would reach 6, and 4.5 is the figure that stopped the
@@ -36,7 +41,7 @@ const FACTOR_MIN = 0.5;
 const FACTOR_RANGE = 2.5;
 const FACTOR_NO_DATA = 0.35;
 const MAX_PIXELS = 4.5;
-const MIN_PIXELS = 0.5;
+const MIN_PIXELS = 0.25;
 
 /**
  * The props for the animated flowpath layer, or null when there is nothing to draw.
