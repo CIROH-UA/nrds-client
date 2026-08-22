@@ -20,17 +20,21 @@ const HIDDEN = 'hidden';
  * heavier than the reaches it was following. They are factors now, and the curve they multiply
  * is the one the static layer publishes, so the animation is the same network at every scale.
  *
- * The value still varies the width, between the static width and three times it. NO_DATA is
- * below 1 so a reach with nothing to report recedes under the network rather than asserting a
- * low value, and MIN_PIXELS stops it disappearing altogether when the curve is sub-pixel.
+ * The value varies the width between half the static width and three times it. Starting below
+ * the network rather than at it is deliberate: at CONUS scale every headwater draws at once, and
+ * with the floor at the network's own weight that was a lot of ink for reaches carrying almost
+ * nothing. A quiet reach now recedes under the network and a busy one still stands well clear.
+ * NO_DATA sits below even that, so a reach with nothing to report is the faintest thing on the
+ * map rather than asserting a low value, and MIN_PIXELS stops anything vanishing outright where
+ * the curve goes sub-pixel.
  *
  * The ceiling stays at 4.5 px, which is where the old constants topped out: at zoom 10 the curve
  * alone is 2 px and a maximum value would reach 6, and 4.5 is the figure that stopped the
  * animation burying the basemap.
  */
-const FACTOR_MIN = 1;
-const FACTOR_RANGE = 2;
-const FACTOR_NO_DATA = 0.8;
+const FACTOR_MIN = 0.5;
+const FACTOR_RANGE = 2.5;
+const FACTOR_NO_DATA = 0.35;
 const MAX_PIXELS = 4.5;
 const MIN_PIXELS = 0.5;
 

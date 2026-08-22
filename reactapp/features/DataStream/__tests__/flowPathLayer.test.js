@@ -82,11 +82,17 @@ describe('flowPathLayerProps', () => {
       expect(propsAt({ zoom: 10 }).widthScale).toBeCloseTo(2, 10);
     });
 
-    it('multiplies that curve by the value, never going under it', () => {
-      // bounds are 0-4 and feature 0 holds the minimum, so it sits at the bottom of the ramp.
-      const props = propsAt({ bounds: { min: 0, max: 4 }, currentTimeIndex: 0 });
-      expect(widthOf(props)).toBeGreaterThanOrEqual(1);
-      expect(widthOf(props)).toBeLessThanOrEqual(3);
+    it('multiplies that curve by the value, from under the network to well over it', () => {
+      // The ramp is logarithmic, so only a value sitting exactly on a bound lands on an end of
+      // it. valuesByVar is [1, 2, 3, 4] over two times, so feature 0 at time 0 reads 1 and
+      // feature 1 at time 1 reads 4.
+      const props = propsAt({ bounds: { min: 1, max: 4 }, currentTimeIndex: 0 });
+      // The bottom is deliberately below 1: a quiet reach recedes under the static network
+      // rather than matching it, which is what keeps CONUS scale from filling with ink.
+      expect(props.getWidth({ featureIndex: 0 }, { target: [] })).toBeCloseTo(0.5, 10);
+
+      const atLastFrame = propsAt({ bounds: { min: 1, max: 4 }, currentTimeIndex: 1 });
+      expect(atLastFrame.getWidth({ featureIndex: 1 }, { target: [] })).toBeCloseTo(3, 10);
     });
 
     it('keeps the 4.5 px ceiling the old constants encoded', () => {
@@ -98,7 +104,8 @@ describe('flowPathLayerProps', () => {
     it('draws a reach with nothing to report thinner than the network', () => {
       // Sentinel and null both mean no value; it should recede rather than assert a low one.
       const props = propsAt({ valuesByVar: Float32Array.from([-9999, -9999, -9999, -9999]) });
-      expect(widthOf(props)).toBeLessThan(1);
+      // Fainter than even the quietest real reach, so "no answer" never reads as "a low answer".
+      expect(widthOf(props)).toBeLessThan(0.5);
       expect(props.widthMinPixels).toBeGreaterThan(0);
     });
 
