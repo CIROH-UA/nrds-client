@@ -76,6 +76,58 @@ describe('selectMapFeature', () => {
     expect(useDataStreamStore.getState().vpu).toBe('VPU_01');
   });
 
+  /**
+   * The click has to answer for itself before anything it starts can.
+   *
+   * A click into another vpu only set the vpu; the first message came from loadVpu, which the
+   * loader effect reaches only after an S3 round trip. A click inside the current vpu reached
+   * loadTimeseries, which asks duckdb whether the table exists before saying anything, and that
+   * question queues behind the index build for most of a second after a page load. Both left the
+   * screen unchanged long enough for the reader to doubt the click landed.
+   */
+  it('says what it is loading the moment a catchment in another vpu is clicked', () => {
+    useDataStreamStore.setState({ vpu: 'VPU_01' });
+    const divide = {
+      layer: { id: 'divides' },
+      geometry: { type: 'Point', coordinates: [-97, 41] },
+      properties: { divide_id: 'cat-7', vpuid: '16' },
+    };
+
+    // Synchronous on purpose: read straight after the call, with nothing awaited in between.
+    selectMapFeature(divide, 'divides');
+
+    expect(useTimeSeriesStore.getState().loadingText).toBe('Loading VPU_16');
+  });
+
+  it('names the feature when the vpu is the one already loaded', () => {
+    // The wording matches what loadTimeseries goes on to set, so the message refines instead of
+    // flickering between two descriptions of the same wait.
+    useDataStreamStore.setState({ vpu: 'VPU_16' });
+    const divide = {
+      layer: { id: 'divides' },
+      geometry: { type: 'Point', coordinates: [-97, 41] },
+      properties: { divide_id: 'cat-7', vpuid: '16' },
+    };
+
+    selectMapFeature(divide, 'divides');
+
+    expect(useTimeSeriesStore.getState().loadingText).toBe('Loading cat-7');
+  });
+
+  it('claims nothing for a click it cannot name', () => {
+    useDataStreamStore.setState({ vpu: 'VPU_01' });
+    useTimeSeriesStore.setState({ loadingText: '' });
+    const unnamed = {
+      layer: { id: 'divides' },
+      geometry: { type: 'Point', coordinates: [-97, 41] },
+      properties: { vpuid: '16' },
+    };
+
+    selectMapFeature(unnamed, 'divides');
+
+    expect(useTimeSeriesStore.getState().loadingText).toBe('');
+  });
+
   it('reads the id property that matches the layer', () => {
     // A divide carries both id and divide_id, and only divide_id names the catchment the reader
     // means. This was asserted against a nexus point until that layer was removed.

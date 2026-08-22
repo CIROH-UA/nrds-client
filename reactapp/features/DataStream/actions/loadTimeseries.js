@@ -78,8 +78,14 @@ export async function loadTimeseries({ featureId, variable, vpuGeneration } = {}
     }
   }
 
-  // This exact series is already charted, so there is nothing to fetch.
-  if (requestKey === state.last_loaded_key) return;
+  // This exact series is already charted, so there is nothing to fetch. The message the click
+  // put up has to come down with it: the click now reports itself immediately, and returning
+  // here without clearing would leave "Loading ..." on screen over a chart that is already
+  // drawn, for the rest of the session.
+  if (requestKey === state.last_loaded_key) {
+    store.setState({ loadingText: '' });
+    return;
+  }
 
   const ticket = series.next();
   // Superseded by a newer series load, or by a vpu load that replaced the table underneath.

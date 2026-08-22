@@ -1,6 +1,7 @@
 import { getCentroid } from 'features/DataStream/lib/layers';
 import { layerIdToFeatureType } from 'features/DataStream/lib/utils';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
+import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import { useFeatureStore } from 'features/DataStream/store/Layers';
 import { loadTimeseries } from 'features/DataStream/actions/loadTimeseries';
 
@@ -36,6 +37,25 @@ export function selectMapFeature(feature, layerId) {
 
   const vpuName = `VPU_${feature.properties?.vpuid}`;
   const { vpu, set_vpu } = useDataStreamStore.getState();
+
+  /**
+   * Say something now, while the click is still the last thing that happened.
+   *
+   * Nothing used to report until well after the press. A click into another vpu only called
+   * set_vpu, and the first message came from loadVpu -- which the loader effect reaches only
+   * after an S3 round trip for the output listing. A click inside the current vpu reached
+   * loadTimeseries, which asks duckdb whether the table exists before it says anything, and that
+   * question queues behind the index build for most of a second after a page load. Both left the
+   * reader looking at an unchanged screen wondering whether the click had registered.
+   *
+   * Worded as whichever step is actually next, so the message refines rather than flickers.
+   */
+  if (featureId != null) {
+    useTimeSeriesStore.setState({
+      loadingText: vpuName === vpu ? `Loading ${featureId}` : `Loading ${vpuName}`,
+      last_error: null,
+    });
+  }
   // Only for a feature we could name: loadTimeseries falls back to the store's feature_id, so
   // passing nothing re-charted the previous selection as though it had been clicked again.
   if (featureId != null && vpuName === vpu) {
