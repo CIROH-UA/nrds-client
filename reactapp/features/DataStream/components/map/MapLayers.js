@@ -1,7 +1,11 @@
 // mapLayers.js
 import { useMemo } from 'react';
 import { Layer } from 'react-map-gl/maplibre';
-import { FLOWPATHS_LAYER_ID, FLOWPATHS_HIGHLIGHT_LAYER_ID } from 'features/DataStream/lib/layers';
+import {
+  FLOWPATHS_LAYER_ID,
+  FLOWPATHS_HIGHLIGHT_LAYER_ID,
+  FLOWPATHS_WIDTH_STOPS,
+} from 'features/DataStream/lib/layers';
 import { numericPartOf } from 'features/DataStream/lib/utils';
 
 /**
@@ -93,7 +97,7 @@ export function useFlowPathsLayer({ isFlowPathsVisible, flowpathsLineColor }) {
         source-layer="flowpaths"
         paint={{
           'line-color': flowpathsLineColor,
-          'line-width': { stops: [[2, 0.6], [7, 1], [10, 2]] },
+          'line-width': { stops: FLOWPATHS_WIDTH_STOPS },
           'line-opacity': { stops: [[2, 0.45], [7, 0.7], [10, 1]] },
         }}
       />
