@@ -7,23 +7,34 @@
  */
 import { selectIndexedFeature } from 'features/DataStream/actions/selectIndexedFeature';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
-import { useFeatureStore } from 'features/DataStream/store/Layers';
+import { useFeatureStore, useVPUStore } from 'features/DataStream/store/Layers';
 
 jest.mock('features/DataStream/lib/queryData', () => ({ getFeatureProperties: jest.fn() }));
 jest.mock('features/DataStream/actions/loadTimeseries', () => ({ loadTimeseries: jest.fn() }));
+jest.mock('features/DataStream/actions/loadVpu', () => ({ loadVpu: jest.fn() }));
+jest.mock('features/DataStream/actions/loadState', () => ({
+  ...jest.requireActual('features/DataStream/actions/loadState'),
+  vpuLoadInFlight: jest.fn(() => false),
+}));
 
 const { getFeatureProperties } = require('features/DataStream/lib/queryData');
 const { loadTimeseries } = require('features/DataStream/actions/loadTimeseries');
+const { loadVpu } = require('features/DataStream/actions/loadVpu');
+const { vpuLoadInFlight } = require('features/DataStream/actions/loadState');
 
 const initial = {
   ds: useDataStreamStore.getState(),
   fs: useFeatureStore.getState(),
+  vpu: useVPUStore.getState(),
 };
 
 beforeEach(() => {
   useDataStreamStore.setState(initial.ds, true);
   useFeatureStore.setState(initial.fs, true);
+  useVPUStore.setState(initial.vpu, true);
+  vpuLoadInFlight.mockReturnValue(false);
   loadTimeseries.mockResolvedValue(undefined);
+  loadVpu.mockResolvedValue(undefined);
 });
 
 it('names the vpu from the index, which the caller has no other way to know', async () => {
@@ -83,4 +94,62 @@ it('asks for nothing when there are no candidates', async () => {
   expect(await selectIndexedFeature([])).toBeNull();
   expect(await selectIndexedFeature(null)).toBeNull();
   expect(getFeatureProperties).not.toHaveBeenCalled();
+});
+
+/**
+ * The search box selects the same way the map click does.
+ *
+ * These two paths drifted: the click learned that charting alone is not enough once the panel has
+ * been closed, and the search box kept calling loadTimeseries directly for a release afterwards.
+ * A search made in that state drew a plot with no variable selected, no animated reaches and no
+ * slider -- the exact bug the click had just been fixed for. Both now go through chartSelection,
+ * and these are here so the next fix to one is a failure in the other rather than a silence.
+ */
+describe('recovering an animation the panel took down', () => {
+  it('rebuilds the vpu instead of charting alone', async () => {
+    // A closed panel still has a cache_key: the table stays built, only the arrays are dropped.
+    useDataStreamStore.setState({ vpu: 'VPU_16', cache_key: 'cfe_nom_d_short_range_00_VPU_16_t' });
+    useVPUStore.setState({ times: [] });
+    getFeatureProperties.mockResolvedValue([{ id: 'cat-7', vpuid: '16' }]);
+
+    await selectIndexedFeature(['cat-7']);
+    // The rebuild is behind a dynamic import, so it lands a couple of microtasks later.
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(loadVpu).toHaveBeenCalled();
+    expect(loadTimeseries).not.toHaveBeenCalled();
+  });
+
+  it('waits for a first load rather than starting a second', async () => {
+    useDataStreamStore.setState({ vpu: 'VPU_16', cache_key: 'cfe_nom_d_short_range_00_VPU_16_t' });
+    useVPUStore.setState({ times: [] });
+    vpuLoadInFlight.mockReturnValue(true);
+    getFeatureProperties.mockResolvedValue([{ id: 'cat-7', vpuid: '16' }]);
+
+    await selectIndexedFeature(['cat-7']);
+
+    expect(loadVpu).not.toHaveBeenCalled();
+  });
+
+  it('does not rebuild from a key that still names the previous vpu', async () => {
+    useDataStreamStore.setState({ vpu: 'VPU_16', cache_key: 'cfe_nom_d_short_range_00_VPU_09_t' });
+    useVPUStore.setState({ times: [] });
+    getFeatureProperties.mockResolvedValue([{ id: 'cat-7', vpuid: '16' }]);
+
+    await selectIndexedFeature(['cat-7']);
+
+    expect(loadVpu).not.toHaveBeenCalled();
+  });
+
+  it('charts without rebuilding while the animation is on screen', async () => {
+    useDataStreamStore.setState({ vpu: 'VPU_16', cache_key: 'cfe_nom_d_short_range_00_VPU_16_t' });
+    useVPUStore.setState({ times: [1, 2, 3] });
+    getFeatureProperties.mockResolvedValue([{ id: 'cat-7', vpuid: '16' }]);
+
+    await selectIndexedFeature(['cat-7']);
+
+    expect(loadTimeseries).toHaveBeenCalledWith({ featureId: 'cat-7' });
+    expect(loadVpu).not.toHaveBeenCalled();
+  });
 });

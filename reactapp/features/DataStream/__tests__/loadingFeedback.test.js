@@ -281,6 +281,22 @@ describe('suppressing redundant loads', () => {
     expect(queryData.getTimeseries).toHaveBeenCalledTimes(2);
   });
 
+  /**
+   * The suppression is not silent -- it takes the click's message down.
+   *
+   * selectMapFeature writes "Loading cat-x" the instant the press lands, before it knows whether
+   * anything needs fetching. When the answer is no, this is the only path that can retire that
+   * message, and nothing else on the way out writes loadingText.
+   */
+  it('takes down the message the click put up', async () => {
+    await load({ featureId: 'wb-404' });
+    useTimeSeriesStore.setState({ loadingText: 'Loading wb-404' });
+
+    await load({ featureId: 'wb-404' });
+
+    expect(useTimeSeriesStore.getState().loadingText).toBe('');
+  });
+
   it('still records the selection when the load is suppressed', async () => {
     await load({ featureId: 'wb-404' });
     useTimeSeriesStore.setState({ feature_id: null });

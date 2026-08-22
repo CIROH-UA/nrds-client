@@ -9,7 +9,11 @@
  * They are shared because the animated layer is about to follow the same curve, and a second
  * copy of three numbers in another file is how the two would drift apart.
  */
-import { FLOWPATHS_WIDTH_STOPS, widthAtZoom } from 'features/DataStream/lib/layers';
+import {
+  FLOWPATHS_WIDTH_STOPS,
+  animationIsOnMap,
+  widthAtZoom,
+} from 'features/DataStream/lib/flowpaths';
 
 describe('widthAtZoom', () => {
   it('returns each published stop exactly', () => {
@@ -50,5 +54,33 @@ describe('widthAtZoom', () => {
   it('publishes the stops in the shape maplibre wants', () => {
     // MapLayers spreads this straight into a paint spec, so the array is the contract.
     expect(FLOWPATHS_WIDTH_STOPS).toEqual([[2, 0.6], [7, 1], [10, 2]]);
+  });
+});
+
+/**
+ * Whether the animation is on the map.
+ *
+ * The slider docks on this and playback stops on it, and the two had already drifted: the slider
+ * was keyed on the vpu and sat over a dead clock after the panel closed, while playback ignored
+ * the layer toggle and resumed by itself when the reaches came back. Both ask this now.
+ */
+describe('animationIsOnMap', () => {
+  it('is on the map with a clock and a visible layer', () => {
+    expect(animationIsOnMap({ times: [1, 2], flowpathsVisible: true })).toBe(true);
+  });
+
+  it('is not on the map once the clock is emptied', () => {
+    // What closing the panel does: resetVPU drops the arrays and leaves the vpu selected.
+    expect(animationIsOnMap({ times: [], flowpathsVisible: true })).toBe(false);
+  });
+
+  it('is not on the map with the layer hidden', () => {
+    expect(animationIsOnMap({ times: [1, 2], flowpathsVisible: false })).toBe(false);
+  });
+
+  it('answers false rather than undefined before anything is loaded', () => {
+    // The slider renders this straight into JSX, where a stray undefined leaks into the DOM.
+    expect(animationIsOnMap({})).toBe(false);
+    expect(animationIsOnMap({ times: undefined, flowpathsVisible: undefined })).toBe(false);
   });
 });

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 
 import { useLayersStore, useVPUStore } from 'features/DataStream/store/Layers';
+import { animationIsOnMap } from 'features/DataStream/lib/flowpaths';
 
 /**
  * How many steps the time cursor may take.
@@ -36,15 +37,7 @@ const useTimeSeriesStore = create(
       loadingText: '' ,
       // Whose data `series` holds, as vpu|variable|feature; null means nothing is loaded.
       last_loaded_key: null,
-      /**
-       * The request a load last answered, whether or not it found anything.
-       *
-       * Separate from last_loaded_key, which means "this series is charted" and is what the
-       * already-charted short circuit reads. The chart needs the other question: has an answer
-       * arrived at all. One key answered both until an empty result stopped being recorded as
-       * charted, and then the chart read as still loading for ever after a load that completed
-       * and found nothing.
-       */
+      // The request a load last answered, found anything or not; the empty state needs that.
       last_answered_key: null,
       // What went wrong last, as {kind, ...}, so failure is readable without parsing prose.
       last_error: null,
@@ -67,8 +60,7 @@ const useTimeSeriesStore = create(
 
           // No fingerprint guard: two features can share endpoints and differ in between.
 
-          // Bounded by the animation when there is one, like every other mutator here: a short
-          // series must not rewind the clock the map is running on.
+          // Bounded by the animation, like every other mutator of this index.
           const maxIdx = Math.max(0, stepCount(nextSeries) - 1);
           if (s.currentTimeIndex > maxIdx) {
             return { series: nextSeries, currentTimeIndex: maxIdx };
@@ -183,9 +175,11 @@ const useTimeSeriesStore = create(
  */
 const stopPlaybackWithNothingToPlay = () => {
   if (!useTimeSeriesStore.getState().isPlaying) return;
-  const hasClock = useVPUStore.getState().times.length > 0;
-  const onScreen = useLayersStore.getState().flowpaths.visible;
-  if (!hasClock || !onScreen) useTimeSeriesStore.setState({ isPlaying: false });
+  const onMap = animationIsOnMap({
+    times: useVPUStore.getState().times,
+    flowpathsVisible: useLayersStore.getState().flowpaths.visible,
+  });
+  if (!onMap) useTimeSeriesStore.setState({ isPlaying: false });
 };
 
 useVPUStore.subscribe((s) => s.times, stopPlaybackWithNothingToPlay);

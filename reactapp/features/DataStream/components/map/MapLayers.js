@@ -4,8 +4,8 @@ import { Layer } from 'react-map-gl/maplibre';
 import {
   FLOWPATHS_LAYER_ID,
   FLOWPATHS_HIGHLIGHT_LAYER_ID,
-  FLOWPATHS_WIDTH_STOPS,
 } from 'features/DataStream/lib/layers';
+import { FLOWPATHS_WIDTH_STOPS } from 'features/DataStream/lib/flowpaths';
 import { numericPartOf } from 'features/DataStream/lib/utils';
 
 /**

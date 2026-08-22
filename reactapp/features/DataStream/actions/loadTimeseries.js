@@ -27,6 +27,13 @@ const series = createSequence();
  * Kept out of the store so that importing the store does not drag in duckdb and arrow: every
  * component reading a timeseries value would otherwise pull the whole query layer with it.
  *
+ * Clearing the message on the already-charted path is unconditional, and safe to be. Read on its
+ * own it looks like it could blank an indicator belonging to a load still running -- changing the
+ * variable, for instance, updates the store's variable only after its load resolves, so a click
+ * arriving in that window builds its key from the old variable. It cannot: every real load opens
+ * with reset_series, which nulls last_loaded_key, so while one is in flight there is nothing here
+ * for a later call to match. Reaching this branch is itself the proof that nothing is loading.
+ *
  * A missing table is rebuilt rather than queried. Deleting a cached file drops its duckdb
  * table, and nothing else in the app knew that had happened, so a click came straight here and
  * queried a table that was gone. That surfaced as a raw "Table with name ... does not exist"
@@ -40,9 +47,7 @@ export async function loadTimeseries({ featureId, variable, vpuGeneration } = {}
   const state = store.getState();
   const targetId = featureId ?? store.getState().feature_id;
   if (!targetId) return;
-  // The answer on record goes with it. An answer belongs to the feature it answered, and the
-  // chart reads it to decide whether to say this one has nothing: leaving it set meant a feature
-  // whose predecessor came back empty was declared empty too, before it had been asked about.
+  // The answer on record goes with it: an answer belongs to the feature it answered.
   if (targetId !== state.feature_id) {
     store.setState({ feature_id: targetId, last_answered_key: null });
   }
@@ -55,10 +60,7 @@ export async function loadTimeseries({ featureId, variable, vpuGeneration } = {}
   const requestedVariable = variable || state.variable || variables[0];
   const requestKey = `${cacheKey}|${requestedVariable}|${targetId}`;
 
-  // Ahead of the already-charted check on purpose; see the note above on a dropped table.
-  // Guarded on its own, because beginLoading has not been called yet and so the finally below
-  // is not the thing that has to run: asking duckdb a question can fail, and this ran outside
-  // every catch, so a worker that never started made a click do nothing observable at all.
+  // Ahead of the already-charted check, and guarded on its own: beginLoading has not run yet.
   if (vpuGeneration === undefined) {
     try {
       if (!(await checkForTable(cacheKey))) {
@@ -92,8 +94,7 @@ export async function loadTimeseries({ featureId, variable, vpuGeneration } = {}
   try {
     store.getState().reset_series();
     beginLoading();
-    // Names what is loading. "Loading feature properties..." was the vpu loader's message,
-    // reused here, so a catchment click reported something it was not doing.
+    // Names what is loading; this used to reuse the vpu loader's message.
     store.setState({ loadingText: `Loading ${targetId}`, last_error: null });
 
     const rows = await getTimeseries(id, cacheKey, requestedVariable);
@@ -105,16 +106,10 @@ export async function loadTimeseries({ featureId, variable, vpuGeneration } = {}
       xaxis: '',
       title: makeTitle(forecast, targetId),
     });
-    // Say when a load found nothing; the chart's empty state cannot distinguish that.
-    //
-    // Recorded as loaded only when something was actually charted. Recording an empty result
-    // made the already-charted check above match on the next ask, so clicking the same catchment
-    // again did nothing whatsoever: no query, no message, no change. One query is a cheap price
-    // for a second ask being answered, and it is the only way this recovers if the data arrives.
+    // Recorded as loaded only when something was charted, so asking again is always answered.
     store.setState({
       last_loaded_key: points.length ? requestKey : null,
-      // Recorded either way: this is the answer arriving, which is a different fact from
-      // something being charted, and the chart's empty state depends on telling them apart.
+      // Recorded either way: an answer arriving is a different fact from something charted.
       last_answered_key: requestKey,
       loadingText: points.length ? '' : `No ${requestedVariable} data for ${targetId}`,
       last_error: null,

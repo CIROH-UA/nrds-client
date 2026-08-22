@@ -2,9 +2,9 @@ import {
   FLOWPATHS_MIN_ZOOM,
   getValueAtTimeFlat,
   normalizeValue,
-  widthAtZoom,
   writeColorInto,
 } from '../../lib/layers';
+import { widthAtZoom } from '../../lib/flowpaths';
 
 // Stands in for the frame index while the layer is hidden. deck.gl gates drawing on `visible`
 // but not attribute updates, so with a live index it would keep recomputing colour and width
@@ -80,10 +80,7 @@ export function flowPathLayerProps({
       // The same curve the colour uses, so a reach cannot read wide and cool at once.
       return FACTOR_MIN + normalizeValue(v, bounds) * FACTOR_RANGE;
     },
-    // The zoom curve rides here rather than inside getWidth on purpose: widthScale is a uniform,
-    // so moving the view rescales what is already drawn, while a zoom inside getWidth would be
-    // an update trigger and rebuild the width attribute for every reach on every frame of a
-    // pinch. It is also why no zoom appears in updateTriggers below.
+    // A uniform, so the view rescales what is drawn; hence no zoom in updateTriggers.
     widthScale: widthAtZoom(zoom),
     widthUnits: 'pixels',
     widthMinPixels: MIN_PIXELS,

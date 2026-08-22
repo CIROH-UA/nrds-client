@@ -5,13 +5,7 @@ import { useVPUStore } from "features/DataStream/store/Layers";
 import "./TimeSlider.css";
 
 export const TimeSlider = React.memo(() => {
-  /**
-   * The animation's clock, not the chart's.
-   *
-   * series is the selected feature's timeseries, so it is empty until something is selected --
-   * which left this control reporting no steps while an animation was loaded and running. times
-   * is what the map animates over, and it exists as soon as a vpu is loaded.
-   */
+  // The animation's clock, not the chart's: series is empty until a feature is selected.
   const times = useVPUStore((s) => s.times);
   const currentTimeIndex = useTimeSeriesStore((s) => s.currentTimeIndex);
   const setCurrentTimeIndex = useTimeSeriesStore((s) => s.setCurrentTimeIndex);

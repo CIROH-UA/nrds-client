@@ -16,6 +16,8 @@ import {
   computeBounds,
 } from '../../lib/layers';
 import { useMapTheme } from '../../lib/mapTheme';
+import { createPointerCursor } from '../../lib/mapCursor';
+import { animationIsOnMap } from '../../lib/flowpaths';
 import {
   DIVIDES_MIN_ZOOM,
   FLOWPATHS_LAYER_ID,
@@ -75,15 +77,7 @@ const FlowPathsOverlay = React.memo(function FlowPathsOverlay({
 }) {
   const currentTimeIndex = useTimeSeriesStore((s) => s.currentTimeIndex);
 
-  /**
-   * The live zoom, subscribed to here rather than passed down.
-   *
-   * The animated width follows the static flowpaths' zoom curve, so it has to move with the
-   * view, and maplibre only reports zoomend to the map component above -- which would leave the
-   * animation frozen at its pre-gesture width for the whole of a pinch while the network under
-   * it rescaled continuously. Reading it here keeps the per-frame re-render inside this
-   * component, which is the same reason the frame index is read here and not above.
-   */
+  // Zoom read here, not passed down, so only this component re-renders as it changes.
   const { current: mapRef } = useMap();
   const [zoom, setZoom] = useState(() => mapRef?.getZoom?.() ?? 0);
 
@@ -154,16 +148,12 @@ const MainMap = () => {
     }))
   );
 
-  /**
-   * Whether the time slider is on the map.
-   *
-   * It goes with the animation it drives. Keyed on the vpu at first, which left it docked over a
-   * dead clock after the panel's close button: that calls resetVPU, which empties the animation
-   * arrays, while the selected vpu stays exactly where it was. A transport control for an
-   * animation that is no longer on the map is worse than no control.
-   */
+  // The slider goes with the animation it drives; see animationIsOnMap in lib/flowpaths.js.
   const animationTimes = useVPUStore((s) => s.times);
-  const sliderDocked = isFlowPathsVisible && animationTimes.length > 0;
+  const sliderDocked = animationIsOnMap({
+    times: animationTimes,
+    flowpathsVisible: isFlowPathsVisible,
+  });
 
   const { set_hovered_feature, selectedMapFeature, hovered_feature } = useFeatureStore(
     useShallow((s) => ({
@@ -185,8 +175,7 @@ const MainMap = () => {
   );
 
 
-  // Read live, so the basemap and every layer colour follow the theme instead of whatever the
-  // tokens happened to resolve to while the module graph was still evaluating.
+  // Read live: tokens resolve late, so a module-load snapshot got the wrong theme.
   const mapTheme = useMapTheme();
 
   const mapRef = useRef(null);
@@ -229,14 +218,7 @@ const MainMap = () => {
 
 
 
-  /**
-   * The layers a click acts on, and so the ones that get the pointer cursor.
-   *
-   * Catchments only. A reach is reached by clicking the catchment it runs through, which then
-   * highlights it -- see useFlowPathsHighlightLayer. Flowpaths were briefly clickable in their
-   * own right; that needed the index to name the vpu, since the archive drops vpuid, and
-   * selecting the catchment gets to the same place without the lookup.
-   */
+  // Catchments only; a reach is reached by clicking the catchment it runs through.
   const clickableLayers = useMemo(
     () => clickableLayerIds({ isCatchmentsVisible }),
     [isCatchmentsVisible]
@@ -253,49 +235,13 @@ const MainMap = () => {
     }
   }, []);
 
-  /**
-   * How many clickable layers the pointer is currently inside.
-   *
-   * Counted rather than a boolean, following beginLoading/endLoading in actions/loadState.js.
-   * maplibre fires mouseenter and mouseleave per layer, so leaving one is not leaving them all:
-   * with catchments and flowpaths both registered, a reach's mouseleave cleared the cursor while
-   * the reader was still well inside the catchment, and since flowpaths thread through every
-   * catchment the pointer spent most of its time reset to grab. Only one layer is registered
-   * today, so this cannot bite -- but the whole point of clickableLayerIds is that the list can
-   * grow, and it would come straight back.
-   */
-  const insideClickable = useRef(0);
+  // One owner for the pointer cursor, shared with deck.gl; see lib/mapCursor.js.
+  const pointerCursor = useRef(null);
+  if (!pointerCursor.current) pointerCursor.current = createPointerCursor();
 
-  /**
-   * What the cursor should be, answered for deck.gl rather than written behind its back.
-   *
-   * The overlay is interleaved, so deck renders into maplibre's own canvas and its
-   * _updateCursor writes container.style.cursor on every pointer update, from a getCursor that
-   * defaults to grabbing-or-grab. Setting the canvas cursor ourselves was therefore undone on
-   * the very next mouse move, which is why the pointer never appeared over a catchment however
-   * the listeners were registered. Answering deck's own question instead means the two cannot
-   * disagree. The direct writes below stay for immediacy; deck now agrees with them.
-   */
-  const getCursor = useCallback(
-    ({ isDragging }) => {
-      if (isDragging) return 'grabbing';
-      return insideClickable.current > 0 ? 'pointer' : 'grab';
-    },
-    []
-  );
-
-  const setPointerCursor = useCallback((e) => {
-    insideClickable.current += 1;
-    const canvas = e?.target?.getCanvas?.();
-    if (canvas?.style) canvas.style.cursor = "pointer";
-  }, []);
-
-  const resetPointerCursor = useCallback((e) => {
-    insideClickable.current = Math.max(0, insideClickable.current - 1);
-    if (insideClickable.current > 0) return;
-    const canvas = e?.target?.getCanvas?.();
-    if (canvas?.style) canvas.style.cursor = "";
-  }, []);
+  const getCursor = useCallback((info) => pointerCursor.current.cursorFor(info), []);
+  const setPointerCursor = useCallback((e) => pointerCursor.current.enter(e), []);
+  const resetPointerCursor = useCallback((e) => pointerCursor.current.leave(e), []);
 
   const removeHoverListeners = useCallback((map, layers) => {
     if (!isMapUsable(map)) return;
@@ -305,13 +251,7 @@ const MainMap = () => {
     });
   }, [isMapUsable, setPointerCursor, resetPointerCursor]);
 
-  /**
-   * Once the map exists, say so.
-   *
-   * setMapReady is what the cursor effect below waits on. A ref cannot do that job: mutating
-   * .current is invisible to React's dependency diffing, so an effect watching mapRef would run
-   * once at whatever moment it happened to hold and never again.
-   */
+  // State, not a ref: the cursor effect below has to re-run when the map arrives.
   const handleMapLoad = useCallback((event) => {
     const map = event.target;
     if (!isMapUsable(map)) return;
@@ -323,19 +263,13 @@ const MainMap = () => {
     setMapReady(true);
   }, [isMapUsable]);
 
-  /**
-   * Keep the pointer cursor on whatever is currently clickable.
-   *
-   * Registered here rather than in the load handler because the set changes: turning catchments
-   * off used to leave their listeners attached and turning them back on added a second pair.
-   * Re-running on the list means the cleanup removes exactly what this run added.
-   */
+  // Re-registered whenever the clickable set changes, so the cleanup removes exactly this run's.
   useEffect(() => {
     const map = hoverMapRef.current;
     if (!mapReady || !isMapUsable(map)) return undefined;
 
     removeHoverListeners(map, clickableLayers);
-    insideClickable.current = 0;
+    pointerCursor.current.reset(map);
     clickableLayers.forEach((layer) => {
       map.on("mouseenter", layer, setPointerCursor);
       map.on("mouseleave", layer, resetPointerCursor);
@@ -343,14 +277,7 @@ const MainMap = () => {
     return () => removeHoverListeners(map, clickableLayers);
   }, [mapReady, clickableLayers, isMapUsable, removeHoverListeners, setPointerCursor, resetPointerCursor]);
 
-  /**
-   * The layers hovering may report, which is only the ones currently on the map.
-   *
-   * This was a fixed list of all four. Turning a layer off removes it from the style, and
-   * maplibre's queryRenderedFeatures refuses the whole call when any named layer is missing: it
-   * fires an error and returns an empty array. So switching catchments off stopped hovering
-   * from reporting anything at all, flowpaths included, because `divides` was still on the list.
-   */
+  // Only layers on the map: queryRenderedFeatures refuses the whole call if one is missing.
   const hoverableLayerIds = useMemo(() => {
     const ids = [];
     if (isCatchmentsVisible) ids.push('divides');
@@ -359,23 +286,13 @@ const MainMap = () => {
     return ids;
   }, [isCatchmentsVisible, isFlowPathsVisible, isConusGaugesVisible]);
 
-  /**
-   * What is under the pointer, asked of the live map with a few pixels of tolerance.
-   *
-   * Not event.features. react-map-gl builds that by querying a clone of the transform at the
-   * exact pointer pixel, and a flowpath renders two pixels wide: measured at a pixel where the
-   * live map reported a flowpath, react-map-gl's own query returned only the catchment beneath
-   * it, and with catchments hidden it returned nothing at all. A small box also makes a thin
-   * line a target a person can hit rather than one they have to land on exactly.
-   */
+  // Asked of the live map with tolerance; event.features queries one pixel and misses reaches.
   const featuresUnder = useCallback((point) => {
-    // The same lookup the rest of this component uses, rather than event.target, whose shape is
-    // react-map-gl's business and which does not have to be the maplibre map.
+    // react-map-gl's event.target need not be the maplibre map; this lookup always is.
     const map = mapRef.current?.getMap?.() ?? mapRef.current;
     if (!map?.getLayer || !point) return [];
     const ids = hoverableLayerIds.filter((id) => map.getLayer(id));
-    // An empty list would query the whole style, and one missing layer makes maplibre refuse
-    // the call outright and return nothing.
+    // An empty list would query the whole style rather than nothing.
     if (!ids.length) return [];
     const box = [
       [point.x - HOVER_TOLERANCE_PX, point.y - HOVER_TOLERANCE_PX],
@@ -459,16 +376,14 @@ const MainMap = () => {
     reorderLayers(map);
   }, [isCatchmentsVisible, isFlowPathsVisible, isConusGaugesVisible]);
 
-  // The vpu outlines belong to the basemap style, so this reaches into it rather than mounting
-  // a Layer. handleMapLoad reapplies it, since changing theme reloads the style from scratch.
+  // The vpu outlines live in the basemap style, so this reaches in rather than mounting a Layer.
   useEffect(() => {
     const map = mapRef.current?.getMap?.() ?? mapRef.current;
     setVpuVisibility(map, isVpuVisible);
   }, [isVpuVisible]);
 
  
-  // Paths belong to the vpu whose values they are drawn from: featureIndex points into that
-  // vpu's flat array, so carrying them over would colour one dataset with another's numbers.
+  // Dropped per vpu: featureIndex points into that vpu's flat array and nothing else's.
   useEffect(() => {
     pathsByIdRef.current = createPathStore();
     pathDataRef.current = EMPTY_PATHS;
@@ -491,19 +406,10 @@ const MainMap = () => {
         raf = null;
         if (!isFlowPathsVisible) return;
 
-        // Handed over whole. This used to pre-filter on properties.id, which duplicated the id
-        // resolution addPaths already does and only half of it: merged.pmtiles put the id in
-        // properties as wb-2862525, upstream_index puts it on the feature itself and has no
-        // properties.id at all, so the filter dropped every feature and nothing was ever
-        // collected. One place decides what a feature's id is.
+        // Handed over whole: addPaths alone decides what a feature's id is.
         const feats = map.queryRenderedFeatures({ layers: [FLOWPATHS_LAYER_ID] });
 
-        // Kept, not replaced. This used to hold only what the viewport was rendering, so
-        // moving away from a reach dropped it and zooming below the tileset's flowpath minzoom
-        // dropped everything, which is why playback over a wide view drew nothing at all.
-        // Accumulating means the geometry survives the view that produced it, and deck.gl has
-        // no zoom limit of its own, so it keeps drawing at any scale.
-        // Tagged with the zoom it was read at, so a closer look replaces a coarser capture.
+        // Accumulated and zoom-tagged: geometry outlives its view, a closer look replaces it.
         const added = addPaths(pathsByIdRef.current, feats, featureIdToIndex, map.getZoom());
         if (!added) return;
 
@@ -551,8 +457,7 @@ const MainMap = () => {
   const layersToQuery = clickableLayers;
 
 
-  // A popup describing a layer that is no longer shown has to go. Toggling catchments off left
-  // the last catchment's popup on screen, still attached to a layer the reader had just hidden.
+  // A popup outliving the layer it describes has to go.
   useEffect(() => {
     if (useFeatureStore.getState().hovered_feature !== null) set_hovered_feature(null);
   }, [hoverableLayerIds, set_hovered_feature]);
@@ -567,8 +472,7 @@ const MainMap = () => {
       layers: layersToQuery,
     });
     if (!features || !features.length) {
-      // Nothing to hit rather than a missed aim: no catchment geometry exists below this zoom,
-      // so the map looks identical and every click is silently ignored.
+      // Nothing to hit rather than a missed aim: no catchment geometry exists below this zoom.
       if (map.getZoom() < DIVIDES_MIN_ZOOM) {
         useTimeSeriesStore.setState({
           loadingText: `Zoom in past ${DIVIDES_MIN_ZOOM} to select a catchment`,
@@ -591,10 +495,7 @@ const MainMap = () => {
       mapStyle={mapTheme.styleUrl}
       onClick={handleMapClick}
       onLoad={handleMapLoad}
-      // No interactiveLayerIds: react-map-gl uses it to build event.features, which means a
-      // second queryRenderedFeatures on every pointer move, and onHover ignores that in favour
-      // of its own box query. The pointer cursor comes from the mouseenter/mouseleave listeners
-      // registered in handleMapLoad, not from this prop.
+      // No interactiveLayerIds: it would add a second query per pointer move that onHover ignores.
       onMouseMove={onHover}
       onZoomEnd={(e) => setZoom(e.viewState.zoom)}
     >

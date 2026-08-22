@@ -59,42 +59,6 @@ export const setVpuVisibility = (map, visible) => {
 };
 
 /**
- * The zoom curve the flowpaths are drawn on.
- *
- * Published as data because two layers follow it and they are specified in different systems:
- * maplibre interpolates these stops itself for the static line, and the animated deck.gl layer
- * has to work the same value out in JS. Copying three numbers into the second file is exactly
- * how the two would come to disagree.
- *
- * The ramp stays modest at low zoom on purpose: every reach across CONUS at once is a lot of
- * ink, and colour is what should carry the value there.
- */
-export const FLOWPATHS_WIDTH_STOPS = Object.freeze(
-  [[2, 0.6], [7, 1], [10, 2]].map((pair) => Object.freeze(pair))
-);
-
-/**
- * The width a stop curve gives at one zoom, matching how maplibre reads the same array.
- *
- * Linear between neighbouring stops, which is maplibre's legacy zoom function with its default
- * base of 1, and clamped outside the range rather than extrapolated -- extrapolating below the
- * first stop heads towards zero and then negative. An unreadable zoom answers the first stop
- * rather than NaN, because a NaN width draws nothing at all and does it silently.
- */
-export const widthAtZoom = (zoom, stops = FLOWPATHS_WIDTH_STOPS) => {
-  if (!Number.isFinite(zoom)) return stops[0][1];
-  if (zoom <= stops[0][0]) return stops[0][1];
-
-  const last = stops[stops.length - 1];
-  if (zoom >= last[0]) return last[1];
-
-  const i = stops.findIndex(([z]) => z > zoom);
-  const [z0, w0] = stops[i - 1];
-  const [z1, w1] = stops[i];
-  return w0 + ((zoom - z0) / (z1 - z0)) * (w1 - w0);
-};
-
-/**
  * The layers a click acts on, given what is currently shown.
  *
  * One list, because there were two describing the same set: a frozen pair that set the cursor
