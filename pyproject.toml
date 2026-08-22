@@ -80,7 +80,10 @@ include = ["tethysapp*"]
 [tool.setuptools.package-data]
 # Scoped to public/data on purpose: a bare "*.parquet" would sweep any stray parquet
 # anywhere under tethysapp into the wheel.
-"*" = ["*.js", "*.png", "*.gif", "*.jpg", "*.html", "*.css", "*.json", "*.svg", "public/data/*.parquet"]
+# Fonts are here because webpack emits them next to the images and this list is what
+# survives packaging: without *.woff2 the build succeeded, the stylesheet asked for a
+# font that was never installed, and the browser fell back silently.
+"*" = ["*.js", "*.png", "*.gif", "*.jpg", "*.html", "*.css", "*.json", "*.svg", "*.woff2", "*.woff", "public/data/*.parquet"]
 
 [tool.setuptools_scm]
 # can be empty if no extra settings are needed, presence enables setuptools-scm
