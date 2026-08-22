@@ -26,6 +26,7 @@ const { loadTimeseries } = require('features/DataStream/actions/loadTimeseries')
 const { resetLoadState, vpuLoadInFlight } = require('features/DataStream/actions/loadState');
 const useTimeSeriesStore = require('features/DataStream/store/Timeseries').default;
 const useDataStreamStore = require('features/DataStream/store/Datastream').default;
+const { useVPUStore } = require('features/DataStream/store/Layers');
 
 const initial = {
   ts: useTimeSeriesStore.getState(),
@@ -85,6 +86,8 @@ describe('the callers that do not await it', () => {
     const loadTs = require('features/DataStream/actions/loadTimeseries');
     const boom = jest.spyOn(loadTs, 'loadTimeseries').mockRejectedValue(new Error('escaped'));
     useDataStreamStore.setState({ vpu: 'VPU_01' });
+    // With an animation loaded the click charts, which is the path whose rejection is under test.
+    useVPUStore.setState({ times: [1, 2, 3] });
 
     selectMapFeature({
       geometry: { type: 'Point', coordinates: [-96, 40] },

@@ -2,7 +2,7 @@ import { getCentroid } from 'features/DataStream/lib/layers';
 import { layerIdToFeatureType } from 'features/DataStream/lib/utils';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
-import { useFeatureStore } from 'features/DataStream/store/Layers';
+import { useFeatureStore, useVPUStore } from 'features/DataStream/store/Layers';
 import { loadTimeseries } from 'features/DataStream/actions/loadTimeseries';
 
 /**
@@ -59,10 +59,24 @@ export function selectMapFeature(feature, layerId) {
   // Only for a feature we could name: loadTimeseries falls back to the store's feature_id, so
   // passing nothing re-charted the previous selection as though it had been clicked again.
   if (featureId != null && vpuName === vpu) {
+    /**
+     * Charting alone is not enough when the animation has been taken down.
+     *
+     * Closing the panel calls resetVPU, which empties the animation arrays and clears the
+     * selected variable but leaves the duckdb table built. A click then found that table and
+     * charted straight from it, so the reader got a plot with no variable selected, no animated
+     * reaches and no slider. A vpu load over an existing table skips the download and rebuilds
+     * exactly what is missing -- the ids, the variables, the animation -- and charts at the end
+     * of it, which is the state a click should leave behind.
+     */
+    const animationGone = useVPUStore.getState().times.length === 0;
+    const restore = animationGone
+      ? () => import('features/DataStream/actions/loadVpu').then((m) => m.loadVpu())
+      : () => loadTimeseries({ featureId });
     // Not awaited: a click returns immediately and the load reports itself. The catch is the
     // backstop for anything that escapes its own reporting, so it cannot become an unhandled
     // rejection that leaves the click looking ignored.
-    loadTimeseries({ featureId }).catch((err) => {
+    restore().catch((err) => {
       console.error('Could not chart', featureId, err);
     });
   }

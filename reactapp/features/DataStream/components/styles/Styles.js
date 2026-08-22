@@ -405,8 +405,8 @@ export const TimeSliderDock = styled.div`
   transform: translateX(-50%);
   bottom: 28px;
   z-index: 1000;
-  width: min(520px, calc(100vw - 32px));
-  padding: 4px 14px 10px;
+  width: min(560px, calc(100vw - 32px));
+  padding: 6px 10px;
   border: 1px solid var(--panel-border-color);
   border-radius: var(--radius-md);
   background-color: var(--map-panel-bg);

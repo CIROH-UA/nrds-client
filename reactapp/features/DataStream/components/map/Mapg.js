@@ -147,24 +147,23 @@ const MainMap = () => {
   const {
     conus_pmtiles,
     flowpaths_pmtiles,
-    vpu,
   } = useDataStreamStore(
     useShallow((s) => ({
       conus_pmtiles: s.community_pmtiles,
       flowpaths_pmtiles: s.flowpaths_pmtiles,
-      vpu: s.vpu,
     }))
   );
 
   /**
    * Whether the time slider is on the map.
    *
-   * Once a vpu has been chosen, and for as long as flowpaths are on. Not keyed on the clock
-   * itself: a dead transport control on the opening view is clutter, and one that vanishes every
-   * time a later load empties the clock reads as breakage. Between those, the slider stays put
-   * and disables itself, which is what it already did in the panel.
+   * It goes with the animation it drives. Keyed on the vpu at first, which left it docked over a
+   * dead clock after the panel's close button: that calls resetVPU, which empties the animation
+   * arrays, while the selected vpu stays exactly where it was. A transport control for an
+   * animation that is no longer on the map is worse than no control.
    */
-  const sliderDocked = isFlowPathsVisible && Boolean(vpu);
+  const animationTimes = useVPUStore((s) => s.times);
+  const sliderDocked = isFlowPathsVisible && animationTimes.length > 0;
 
   const { set_hovered_feature, selectedMapFeature, hovered_feature } = useFeatureStore(
     useShallow((s) => ({

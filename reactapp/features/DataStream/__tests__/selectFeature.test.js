@@ -5,17 +5,20 @@
  */
 import useDataStreamStore from 'features/DataStream/store/Datastream';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
-import { useFeatureStore } from 'features/DataStream/store/Layers';
+import { useFeatureStore, useVPUStore } from 'features/DataStream/store/Layers';
 
+jest.mock('features/DataStream/actions/loadVpu', () => ({ loadVpu: jest.fn() }));
 jest.mock('features/DataStream/actions/loadTimeseries', () => ({ loadTimeseries: jest.fn() }));
 
 const { loadTimeseries } = require('features/DataStream/actions/loadTimeseries');
+const { loadVpu } = require('features/DataStream/actions/loadVpu');
 const { selectMapFeature } = require('features/DataStream/actions/selectFeature');
 
 const initial = {
   ds: useDataStreamStore.getState(),
   ts: useTimeSeriesStore.getState(),
   fs: useFeatureStore.getState(),
+  vpu: useVPUStore.getState(),
 };
 
 const divide = (overrides = {}) => ({
@@ -28,6 +31,7 @@ beforeEach(() => {
   useDataStreamStore.setState(initial.ds, true);
   useTimeSeriesStore.setState(initial.ts, true);
   useFeatureStore.setState(initial.fs, true);
+  useVPUStore.setState(initial.vpu, true);
   loadTimeseries.mockResolvedValue(undefined);
 });
 
@@ -60,10 +64,31 @@ describe('selectMapFeature', () => {
 
   it('charts it when it belongs to the loaded vpu', () => {
     useDataStreamStore.setState({ vpu: 'VPU_01' });
+    // A loaded vpu has an animation behind it; without one the click rebuilds instead of
+    // charting, which is what a click after the panel's close button has to do.
+    useVPUStore.setState({ times: [1, 2, 3] });
 
     selectMapFeature(divide(), 'divides');
 
     expect(loadTimeseries).toHaveBeenCalledWith({ featureId: 'cat-42' });
+  });
+
+  /**
+   * Closing the panel calls resetVPU, which empties the animation arrays and the selected
+   * variable while leaving the duckdb table built. A click then found that table and charted
+   * straight from it, leaving a plot with no variable selected, no animated reaches and no
+   * slider. A vpu load over an existing table skips the download and rebuilds all three.
+   */
+  it('rebuilds the view when the animation has been closed away', async () => {
+    useDataStreamStore.setState({ vpu: 'VPU_01' });
+    useVPUStore.setState({ times: [] });
+
+    selectMapFeature(divide(), 'divides');
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(loadTimeseries).not.toHaveBeenCalled();
+    expect(loadVpu).toHaveBeenCalled();
   });
 
   it('only switches vpu when the feature belongs to another one', () => {

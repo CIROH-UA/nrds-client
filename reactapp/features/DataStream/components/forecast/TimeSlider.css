@@ -57,8 +57,7 @@
 
 /* Scoped to this panel. These were bare element selectors, so they styled every range input in
    the app, including any added later by something unrelated. */
-.time-control input[type='range'],
-.speed-control input[type='range'] {
+.dock-row input[type='range'] {
   width: 100%;
   height: 6px;
   -webkit-appearance: none;
@@ -68,14 +67,12 @@
   outline: none;
 }
 
-.time-control input[type='range']:focus-visible,
-.speed-control input[type='range']:focus-visible {
+.dock-row input[type='range']:focus-visible {
   outline: 2px solid var(--nav-pill-active-bg);
   outline-offset: 2px;
 }
 
-.time-control input[type='range']::-webkit-slider-thumb,
-.speed-control input[type='range']::-webkit-slider-thumb {
+.dock-row input[type='range']::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: var(--space-md);
   height: var(--space-md);
@@ -84,8 +81,7 @@
   cursor: pointer;
 }
 
-.time-control input[type='range']::-moz-range-thumb,
-.speed-control input[type='range']::-moz-range-thumb {
+.dock-row input[type='range']::-moz-range-thumb {
   width: var(--space-md);
   height: var(--space-md);
   background: var(--nav-pill-active-bg);
@@ -94,8 +90,7 @@
   cursor: pointer;
 }
 
-.time-control input[type='range']::-moz-range-track,
-.speed-control input[type='range']::-moz-range-track {
+.dock-row input[type='range']::-moz-range-track {
   height: 6px;
   background: var(--panel-border-color);
   border-radius: var(--radius-sm);
@@ -178,4 +173,62 @@
   color: var(--map-panel-text);
   min-width: 40px;
   text-align: right;
+}
+
+/* One row on the map, rather than the stacked panel this was when it lived in the sidebar.
+ *
+ * Stacked, it was a title, a readout, a track, a row of transport buttons and a speed slider --
+ * around 200px tall over the map it drives. Everything is on a single line now and the speed
+ * slider is a select, which is the widest thing here for the least said.
+ *
+ * The buttons stay at 44px. An audit set them there as a touch target and the comment above
+ * says so; the height saved by shrinking them is not worth undoing that, and the row is bounded
+ * by them rather than by anything else.
+ */
+.time-dock {
+  container-type: inline-size;
+}
+
+.dock-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.dock-row input[type='range'] {
+  flex: 1 1 auto;
+  min-width: 60px;
+}
+
+.dock-row .time-value {
+  flex: 0 0 auto;
+  min-width: 52px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.speed-select {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 var(--space-xs);
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-sm);
+  background: var(--map-panel-bg);
+  color: var(--map-panel-text);
+  font-size: var(--text-xs);
+}
+
+.speed-select:focus-visible {
+  outline: 2px solid var(--nav-pill-active-bg);
+  outline-offset: 2px;
+}
+
+.speed-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* The transport buttons are the row's height; nothing else needs a top margin here. */
+.time-dock .play-btn {
+  flex: 0 0 auto;
 }
