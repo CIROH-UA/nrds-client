@@ -271,6 +271,28 @@ describe('initialS3Data', () => {
     expect(global.fetch.mock.calls.length).toBe(callsAfterFirst);
   });
 
+  /**
+   * Load time and model-change time build the same list; they must also pick the same date out
+   * of it. Load used to take the second entry, which meant the second-oldest back when the list
+   * arrived oldest-first and quietly became "yesterday" once it was reversed, while the
+   * model-change path took the newest all along.
+   */
+  it('defaults to the newest date, the one a model change would pick', async () => {
+    global.fetch = respondWith(['ngen.20260101', 'ngen.20260102', 'ngen.20260103']);
+    const { initialS3Data } = loadModule();
+
+    const result = await initialS3Data('16');
+    const newest = result.dates[0].value;
+
+    expect(newest).toBe('ngen.20260103');
+    // Every listing under the date level was built from the date the app will have selected.
+    const listedUnderADate = global.fetch.mock.calls
+      .map(([url]) => requestedPrefix(url))
+      .filter((prefix) => /ngen\.\d{8}\/./.test(prefix));
+    expect(listedUnderADate.length).toBeGreaterThan(0);
+    listedUnderADate.forEach((prefix) => expect(prefix).toContain(newest));
+  });
+
   it('does not remember an incomplete listing', async () => {
     global.fetch = jest.fn(async (url) => ({
       ok: true,

@@ -60,7 +60,7 @@ export function InitialS3Loader() {
           setInitialData({
             models: _models, dates, forecasts, cycles, outputFiles, prefix: '',
           });
-          const defaultDate = (dates[1] ?? dates[0])?.value;
+          const defaultDate = dates[0]?.value;
           set_model(_models[0]?.value);
           set_forecast(forecasts[0]?.value);
           set_cycle(cycles[0]?.value);
@@ -70,7 +70,7 @@ export function InitialS3Loader() {
           return;
         }
 
-        const defaultDate = (dates[1] ?? dates[0])?.value;
+        const defaultDate = dates[0]?.value;
         const cacheKey = getCacheKey(
           _models[0]?.value,
           defaultDate,

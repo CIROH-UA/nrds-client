@@ -359,10 +359,12 @@ const loadBaseOptions = async ({ signal }) => {
   if (dates.length === 0){
     return {models, dates: [], forecasts: [], cycles: []};
   }
-  // Falling back to dates[0], because the readability filter can return a single date -- the day
-  // a model crossed from NetCDF to parquet is exactly that -- and dates[1] would then put the
-  // string "undefined" in the URL and empty every control below this one.
-  const defaultDate = (dates[1] ?? dates[0])?.value;
+  // The newest, which is what the model-change path in dataMenu has always picked. This one
+  // used to take dates[1]: harmless back when the list was every date a model had and arrived
+  // oldest-first, where it meant the second-oldest and nobody noticed, but once the list became
+  // newest-first it quietly meant "yesterday" -- in a forecast tool, and disagreeing with the
+  // other path about the same list.
+  const defaultDate = dates[0]?.value;
   const forecasts = (await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${defaultDate}/`, { signal })).reverse();
   if (forecasts.length === 0){
     return {models, dates, forecasts: [], cycles: []};
@@ -390,7 +392,10 @@ export const initialS3Data = async(vpu, { signal } = {}) => {
   if (!vpu) {
     return {models, dates, forecasts, cycles, ensembles:[], outputFiles: []};
   }
-  const outputFiles = await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${(dates[1] ?? dates[0])?.value}/${forecasts[0]?.value}/${cycles[0]?.value}/${vpu}/ngen-run/outputs/troute/`, { signal });
+  // The same date loadBaseOptions listed the forecasts and cycles under, and the one the
+  // loader selects: these four have to describe one selection or the output listing is for a
+  // combination nothing else on screen is showing.
+  const outputFiles = await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${dates[0]?.value}/${forecasts[0]?.value}/${cycles[0]?.value}/${vpu}/ngen-run/outputs/troute/`, { signal });
   return {models, dates, forecasts, cycles, ensembles:[], outputFiles};
 }
 
