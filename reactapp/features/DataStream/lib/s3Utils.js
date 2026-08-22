@@ -148,6 +148,35 @@ async function dateHasParquet(model, date, { signal } = {}) {
 }
 
 /**
+ * The models worth offering: the ones with at least one run this app can read.
+ *
+ * Checking the newest run is enough. A model switched output format once and never switched
+ * back, so if its most recent run is unreadable then every older one is too -- which is the case
+ * for a model that stopped publishing before the pipeline moved to parquet. Leaving it in the
+ * control offers a whole branch of the interface that dead-ends on an empty date list.
+ *
+ * A model that never published a dated run goes too. Unsure keeps it, on the same reasoning as
+ * the dates: a model that turns out empty costs a click, one wrongly hidden is silent. If that
+ * left nothing at all the list is returned untouched, since an empty model control is worse than
+ * an imperfect one.
+ */
+export async function modelsWithReadableOutputs(models, { signal } = {}) {
+  const checked = await Promise.all(
+    models.map(async (model) => {
+      const dates = await getOptionsFromURL(
+        `outputs/${model.value}/v2.2_hydrofabric/`, { signal }
+      );
+      if (dates.length === 0) return null;
+      // The listing is oldest first, so the newest run is the last entry.
+      const readable = await dateHasParquet(model.value, dates[dates.length - 1].value, { signal });
+      return readable === false ? null : model;
+    })
+  );
+  const kept = checked.filter(Boolean);
+  return kept.length ? kept : models;
+}
+
+/**
  * The dates worth offering: the ones whose outputs this app can actually read.
  *
  * The pipeline moved from NetCDF to parquet once, per model, and never moved back -- checked
@@ -220,7 +249,15 @@ const loadBaseOptions = async ({ signal }) => {
   if (_models.length === 0){
     return {models: [], dates: [], forecasts: [], cycles: []};
   }
-  const models = _models.filter(m => m.value !== 'test');
+  // Only the models with something readable in them. Without this a model that stopped
+  // publishing before the format changed stays in the control and dead-ends on an empty date
+  // list, which reads as a broken app rather than as an archived model.
+  const models = await modelsWithReadableOutputs(
+    _models.filter((m) => m.value !== 'test'), { signal }
+  );
+  if (models.length === 0){
+    return {models: [], dates: [], forecasts: [], cycles: []};
+  }
   // Newest first, and stated here rather than left to whoever reads the list: S3 answers in
   // lexicographic order, which for ngen.YYYYMMDD is oldest first, and a reader opening this
   // control wants the most recent run at the top. Copied before reversing, since reverse mutates.

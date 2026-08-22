@@ -59,9 +59,12 @@ describe('initialS3Data', () => {
 
     const result = await initialS3Data('16');
 
-    // Five listings, plus the two date probes: with both ends readable the whole list is kept
-    // and the binary search never runs.
-    expect(global.fetch).toHaveBeenCalledTimes(7);
+    // Five listings, plus the probing. One date listing and one probe per model to decide which
+    // models are offerable at all (two models here, so four), then two probes on the chosen
+    // model's date list -- with both ends readable the whole list is kept and the binary search
+    // never runs. Counted rather than waved at, because all of it is paid once and a vpu change
+    // must pay none of it.
+    expect(global.fetch).toHaveBeenCalledTimes(11);
     expect(result.models.map((m) => m.value)).toEqual(['aa', 'bb']);
     expect(result.outputFiles.map((f) => f.value)).toEqual(['troute_output.parquet']);
   });
@@ -80,6 +83,30 @@ describe('initialS3Data', () => {
     // The reused listings are still reported to the caller.
     expect(result.models.map((m) => m.value)).toEqual(['aa', 'bb']);
     expect(result.cycles.length).toBe(2);
+  });
+
+  it('drops a model whose newest run is unreadable, keeping the others', async () => {
+    // A model that stopped publishing before the format changed dead-ends on an empty date list,
+    // which reads as a broken app rather than as an archived model. Checking the newest run is
+    // enough: the format only ever changed forwards. Note this needs a readable model alongside
+    // it -- if nothing at all were readable the list would be returned untouched, on the grounds
+    // that an empty model control is worse than an imperfect one.
+    global.fetch = jest.fn(async (url) => {
+      const prefix = requestedPrefix(url);
+      const ok = (body) => ({ ok: true, status: 200, statusText: 'OK', text: async () => body });
+      if (prefix === 'outputs/') return ok(directoryXml(prefix, ['live', 'retired']));
+      if (prefix.includes('troute')) return ok(fileXml(prefix, ['troute_output.parquet']));
+      if (isDateProbe(url)) {
+        const ext = prefix.includes('/retired/') ? 'nc' : 'parquet';
+        return ok(fileXml(prefix, [`f/c/VPU_16/ngen-run/outputs/troute/troute_output.${ext}`]));
+      }
+      return ok(directoryXml(prefix, ['ngen.20260101', 'ngen.20260102']));
+    });
+    const { initialS3Data } = loadModule();
+
+    const result = await initialS3Data('16');
+
+    expect(result.models.map((m) => m.value)).toEqual(['live']);
   });
 
   it('offers dates newest first', async () => {
