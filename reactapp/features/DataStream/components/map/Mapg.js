@@ -19,6 +19,7 @@ import { useMapTheme } from '../../lib/mapTheme';
 import {
   DIVIDES_MIN_ZOOM,
   FLOWPATHS_LAYER_ID,
+  clickableLayerIds,
   FLOWPATHS_MIN_ZOOM,
   addPaths,
   createPathStore,
@@ -159,6 +160,7 @@ const MainMap = () => {
 
   const [pathTick, setPathTick] = useState(0);
   const [zoom, setZoom] = useState(INITIAL_VIEW.zoom);
+  const [mapReady, setMapReady] = useState(false);
 
   // One computation for both the layer and its legend: they must describe the same ramp.
   const colorBounds = useMemo(
@@ -191,7 +193,17 @@ const MainMap = () => {
 
 
 
-  const hoverLayers = useMemo(() => ["divides"], []);
+  /**
+   * The layers a click acts on, and so the ones that get the pointer cursor.
+   *
+   * Flowpaths join this list in the commit that routes clicks for them; adding them here first
+   * would put a pointer on something the click still ignores.
+   */
+  const clickableLayers = useMemo(
+    () => clickableLayerIds({ isCatchmentsVisible }),
+    [isCatchmentsVisible]
+  );
+
 
   const isMapUsable = useCallback((map) => {
     if (!map || typeof map.on !== "function" || typeof map.off !== "function") return false;
@@ -213,42 +225,46 @@ const MainMap = () => {
     if (canvas?.style) canvas.style.cursor = "";
   }, []);
 
-  const removeHoverListeners = useCallback((map) => {
+  const removeHoverListeners = useCallback((map, layers) => {
     if (!isMapUsable(map)) return;
-    hoverLayers.forEach((layer) => {
+    layers.forEach((layer) => {
       map.off("mouseenter", layer, setPointerCursor);
       map.off("mouseleave", layer, resetPointerCursor);
     });
-  }, [hoverLayers, isMapUsable, setPointerCursor, resetPointerCursor]);
+  }, [isMapUsable, setPointerCursor, resetPointerCursor]);
 
   const handleMapLoad = useCallback((event) => {
     const map = event.target;
     if (!isMapUsable(map)) return;
 
-    if (hoverMapRef.current && hoverMapRef.current !== map) {
-      removeHoverListeners(hoverMapRef.current);
-    }
-
-    // De-dupe in case onLoad fires multiple times for the same map instance.
-    removeHoverListeners(map);
-    hoverLayers.forEach((layer) => {
-      map.on("mouseenter", layer, setPointerCursor);
-      map.on("mouseleave", layer, resetPointerCursor);
-    });
     hoverMapRef.current = map;
-
     hideStyleFlowpaths(map);
     setVpuVisibility(map, useLayersStore.getState().vpu.visible);
     reorderLayers(map);
+    // Announces the map to the cursor effect below. A ref cannot do this job: mutating .current
+    // is invisible to React's dependency diffing, so an effect watching mapRef would run once at
+    // whatever moment it happened to hold and never again.
+    setMapReady(true);
+  }, [isMapUsable]);
 
-  }, [hoverLayers, isMapUsable, removeHoverListeners, resetPointerCursor, setPointerCursor]);
-
+  /**
+   * Keep the pointer cursor on whatever is currently clickable.
+   *
+   * Registered here rather than in the load handler because the set changes: turning catchments
+   * off used to leave their listeners attached and turning them back on added a second pair.
+   * Re-running on the list means the cleanup removes exactly what this run added.
+   */
   useEffect(() => {
-    return () => {
-      removeHoverListeners(hoverMapRef.current);
-      hoverMapRef.current = null;
-    };
-  }, [removeHoverListeners]);
+    const map = hoverMapRef.current;
+    if (!mapReady || !isMapUsable(map)) return undefined;
+
+    removeHoverListeners(map, clickableLayers);
+    clickableLayers.forEach((layer) => {
+      map.on("mouseenter", layer, setPointerCursor);
+      map.on("mouseleave", layer, resetPointerCursor);
+    });
+    return () => removeHoverListeners(map, clickableLayers);
+  }, [mapReady, clickableLayers, isMapUsable, removeHoverListeners, setPointerCursor, resetPointerCursor]);
 
   /**
    * The layers hovering may report, which is only the ones currently on the map.
@@ -454,11 +470,8 @@ const MainMap = () => {
   }, [selectedMapFeature]);
 
 
-  const layersToQuery = useMemo(() => {
-    const layers = [];
-    if (isCatchmentsVisible) layers.push('divides');
-    return layers;
-  }, [isCatchmentsVisible]);
+  // The same list the cursor uses, so what invites a click and what answers one cannot drift.
+  const layersToQuery = clickableLayers;
 
 
   // A popup describing a layer that is no longer shown has to go. Toggling catchments off left

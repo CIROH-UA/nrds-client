@@ -58,6 +58,28 @@ export const setVpuVisibility = (map, visible) => {
   map.setLayoutProperty(STYLE_VPU_LAYER_ID, 'visibility', visible ? 'visible' : 'none');
 };
 
+/**
+ * The layers a click acts on, given what is currently shown.
+ *
+ * One list, because there were two describing the same set: a frozen pair that set the cursor
+ * and a visibility-tracked pair that answered the click. Only the second followed a toggle, so
+ * turning catchments off and on left the pointer behind, and any layer added to one would have
+ * been missed by the other.
+ *
+ * Deliberately narrower than the hoverable set. Gauges produce a hover popup and cannot be
+ * selected -- a gauge has no timeseries in this app -- so a pointer over one would promise a
+ * click that does nothing. Keeping the two questions apart is what stops that.
+ */
+export const clickableLayerIds = ({
+  isCatchmentsVisible = false,
+  isFlowPathsVisible = false,
+} = {}) => {
+  const ids = [];
+  if (isCatchmentsVisible) ids.push('divides');
+  if (isFlowPathsVisible) ids.push(FLOWPATHS_LAYER_ID);
+  return ids;
+};
+
 /** Hide the basemap style's own flowpaths, so it neither double-draws nor answers queries. */
 export const hideStyleFlowpaths = (map) => {
   if (!map?.getLayer?.(STYLE_FLOWPATHS_LAYER_ID)) return;

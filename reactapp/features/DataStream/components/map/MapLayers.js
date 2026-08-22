@@ -71,9 +71,11 @@ export function useCatchmentLayers({
  * deck.gl animation draw over a wide view: its geometry is read back out of this layer with
  * queryRenderedFeatures, so wherever this renders, the animation can follow.
  *
- * Nothing clicks or hovers flowpaths, so the properties this archive drops (vpuid, divide_id,
- * lengthkm) cost nothing. Its numeric MVT feature ids match the value array through
- * buildFeatureIdToIndex, which registers both the bare id and the wb- form.
+ * Hovering reads this layer, and the archive is stripped: it carries divide_id, toid, order,
+ * upstream_id and num_upstreams, and drops vpuid and lengthkm. divide_id is a bare number here,
+ * which is what the highlight filter below matches on. The missing vpuid is the reason a click
+ * cannot name the vpu from the tile alone. Its numeric MVT feature ids match the value array
+ * through buildFeatureIdToIndex, which registers both the bare id and the wb- form.
  *
  * The ramps stay modest at low zoom: every available reach across CONUS at once is a lot of
  * ink, and the animation's own colour is what should carry there.
