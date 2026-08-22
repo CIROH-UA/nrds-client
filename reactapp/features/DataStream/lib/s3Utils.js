@@ -169,23 +169,36 @@ const datedRunsNewestFirst = async (model, { signal } = {}) => {
 /**
  * The models worth offering: the ones with at least one run this app can read.
  *
- * Checking the newest run is enough. A model switched output format once and never switched
- * back, so if its most recent run is unreadable then every older one is too -- which is the case
- * for a model that stopped publishing before the pipeline moved to parquet. Leaving it in the
- * control offers a whole branch of the interface that dead-ends on an empty date list.
+ * A model switched output format once and never switched back, so an old model whose recent runs
+ * are all unreadable has nothing readable anywhere -- that is lstm, which stopped publishing
+ * before the pipeline moved to parquet. Leaving it in the control offers a whole branch of the
+ * interface that dead-ends on an empty date list.
+ *
+ * Several recent runs rather than only the newest, because publishing is not atomic. A model's
+ * ngen.<today> prefix appears in S3 as soon as its first key lands and its troute output arrives
+ * later, so for part of every day the newest run of a perfectly healthy model reads as
+ * unreadable. Judging on that one run alone would drop the model from the control each morning
+ * and restore it each afternoon. One failed run at the troute step would do the same until the
+ * next day. Looking a few runs back costs nothing for the models that are kept -- their first
+ * probe answers -- and only the ones on their way out pay the extra two.
  *
  * A model that never published a dated run goes too. Unsure keeps it, on the same reasoning as
  * the dates: a model that turns out empty costs a click, one wrongly hidden is silent. If that
  * left nothing at all the list is returned untouched, since an empty model control is worse than
  * an imperfect one.
  */
+const RECENT_RUNS_CHECKED = 3;
+
 async function modelsWithReadableOutputs(models, { signal } = {}) {
   const checked = await Promise.all(
     models.map(async (model) => {
       const runs = await datedRunsNewestFirst(model.value, { signal });
       if (runs.length === 0) return null;
-      const readable = await dateHasParquet(model.value, runs[0].value, { signal });
-      return readable === false ? null : model;
+      for (const run of runs.slice(0, RECENT_RUNS_CHECKED)) {
+        // Anything but a definite no keeps the model, so an unanswerable probe stops the search.
+        if (await dateHasParquet(model.value, run.value, { signal }) !== false) return model;
+      }
+      return null;
     })
   );
   const kept = checked.filter(Boolean);
@@ -283,17 +296,20 @@ const loadBaseOptions = async ({ signal }) => {
   if (models.length === 0){
     return {models: [], dates: [], forecasts: [], cycles: []};
   }
-  // Newest first and readable only, both by way of the shared helper so the model-change path
-  // in dataMenu builds an identically shaped list.
+  // Shared with the model-change path so both build an identically shaped list.
   const dates = await readableDatesNewestFirst(models[0]?.value, { signal });
   if (dates.length === 0){
     return {models, dates: [], forecasts: [], cycles: []};
   }
-  const forecasts = (await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${dates[1]?.value}/`, { signal })).reverse();
+  // Falling back to dates[0], because the readability filter can return a single date -- the day
+  // a model crossed from NetCDF to parquet is exactly that -- and dates[1] would then put the
+  // string "undefined" in the URL and empty every control below this one.
+  const defaultDate = (dates[1] ?? dates[0])?.value;
+  const forecasts = (await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${defaultDate}/`, { signal })).reverse();
   if (forecasts.length === 0){
     return {models, dates, forecasts: [], cycles: []};
   }
-  const cycles = await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${dates[1]?.value}/${forecasts[0]?.value}/`, { signal });
+  const cycles = await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${defaultDate}/${forecasts[0]?.value}/`, { signal });
   return {models, dates, forecasts, cycles};
 }
 
@@ -316,7 +332,7 @@ export const initialS3Data = async(vpu, { signal } = {}) => {
   if (!vpu) {
     return {models, dates, forecasts, cycles, ensembles:[], outputFiles: []};
   }
-  const outputFiles = await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${dates[1]?.value}/${forecasts[0]?.value}/${cycles[0]?.value}/${vpu}/ngen-run/outputs/troute/`, { signal });
+  const outputFiles = await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${(dates[1] ?? dates[0])?.value}/${forecasts[0]?.value}/${cycles[0]?.value}/${vpu}/ngen-run/outputs/troute/`, { signal });
   return {models, dates, forecasts, cycles, ensembles:[], outputFiles};
 }
 

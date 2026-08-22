@@ -91,12 +91,13 @@ describe('initialS3Data', () => {
     expect(result.cycles.length).toBe(2);
   });
 
-  it('drops a model whose newest run is unreadable, keeping the others', async () => {
-    // A model that stopped publishing before the format changed dead-ends on an empty date list,
-    // which reads as a broken app rather than as an archived model. Checking the newest run is
-    // enough: the format only ever changed forwards. Note this needs a readable model alongside
-    // it -- if nothing at all were readable the list would be returned untouched, on the grounds
-    // that an empty model control is worse than an imperfect one.
+  /**
+   * A model that stopped publishing before the format changed dead-ends on an empty date list,
+   * which reads as a broken app rather than as an archived model. This needs a readable model
+   * alongside it: if nothing at all were readable the list would come back untouched, on the
+   * grounds that an empty model control is worse than an imperfect one.
+   */
+  it('drops a model whose recent runs are all unreadable, keeping the others', async () => {
     global.fetch = jest.fn(async (url) => {
       const prefix = requestedPrefix(url);
       const ok = (body) => ({ ok: true, status: 200, statusText: 'OK', text: async () => body });
@@ -113,6 +114,37 @@ describe('initialS3Data', () => {
     const result = await initialS3Data('16');
 
     expect(result.models.map((m) => m.value)).toEqual(['live']);
+  });
+
+  /**
+   * Publishing is not atomic: a model's newest prefix appears in S3 before its troute output
+   * does, so for part of every day the newest run of a healthy model reads as unreadable. One
+   * failed run at the troute step looks identical. Judging on that run alone dropped the model
+   * from the control until the next good run landed. As with the sibling case above, this needs
+   * a genuinely dead model alongside it -- were nothing readable the list would come back
+   * untouched and the assertion would pass against the very bug it is meant to catch.
+   */
+  it('keeps a model whose newest run has not finished publishing', async () => {
+    global.fetch = jest.fn(async (url) => {
+      const prefix = requestedPrefix(url);
+      const ok = (body) => ({ ok: true, status: 200, statusText: 'OK', text: async () => body });
+      if (prefix === 'outputs/') return ok(directoryXml(prefix, ['publishing', 'retired']));
+      if (prefix.includes('troute')) return ok(fileXml(prefix, ['troute_output.parquet']));
+      if (isDateProbe(url)) {
+        // publishing/ has today's prefix up but no troute output in it yet; retired/ has none anywhere.
+        const empty = prefix.includes('/retired/') || prefix.includes('ngen.20260103');
+        return ok(fileXml(prefix, empty ? [] : ['f/c/VPU_16/ngen-run/outputs/troute/o.parquet']));
+      }
+      const children = isDateListing(url)
+        ? ['ngen.20260101', 'ngen.20260102', 'ngen.20260103']
+        : ['aa', 'bb'];
+      return ok(directoryXml(prefix, children));
+    });
+    const { initialS3Data } = loadModule();
+
+    const result = await initialS3Data('16');
+
+    expect(result.models.map((m) => m.value)).toEqual(['publishing']);
   });
 
   it('offers dates newest first', async () => {

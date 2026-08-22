@@ -60,18 +60,20 @@ export function InitialS3Loader() {
           setInitialData({
             models: _models, dates, forecasts, cycles, outputFiles, prefix: '',
           });
+          const defaultDate = (dates[1] ?? dates[0])?.value;
           set_model(_models[0]?.value);
           set_forecast(forecasts[0]?.value);
           set_cycle(cycles[0]?.value);
-          set_date(dates[1]?.value);
+          set_date(defaultDate);
           set_ensemble(ensembles[0]?.value || null);
           abandonSelectionWithNoOutput();
           return;
         }
 
+        const defaultDate = (dates[1] ?? dates[0])?.value;
         const cacheKey = getCacheKey(
           _models[0]?.value,
-          dates[1]?.value,
+          defaultDate,
           forecasts[0]?.value,
           cycles[0]?.value,
           ensembles[0]?.value || null,
@@ -83,13 +85,13 @@ export function InitialS3Loader() {
         set_forecast(forecasts[0]?.value);
         set_cycle(cycles[0]?.value);
         set_outputFile(outputFiles[0]?.value);
-        set_date(dates[1]?.value);
+        set_date(defaultDate);
         set_ensemble(ensembles[0]?.value || null);
         set_cache_key(cacheKey);
 
         const _prefix = makePrefix(
           _models[0]?.value,
-          dates[1]?.value,
+          defaultDate,
           forecasts[0]?.value,
           cycles[0]?.value,
           ensembles[0]?.value || null,
