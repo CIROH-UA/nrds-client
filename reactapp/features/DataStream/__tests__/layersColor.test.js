@@ -11,7 +11,8 @@
  * ramp is ordered, that a small value is visibly off the bottom, and that a typical reach lands
  * somewhere in the middle. Endpoints stay pinned, since those are the ramp's definition.
  */
-import { writeColorInto, computeBounds, normalizeValue } from 'features/DataStream/lib/layers';
+import { computeBounds, normalizeValue } from 'features/DataStream/lib/layers';
+import { writeColorInto } from 'features/DataStream/lib/valueRamp';
 
 const B = { min: 0, max: 50 };
 const color = (value, bounds = B) => writeColorInto(value, bounds, [0, 0, 0, 0]);

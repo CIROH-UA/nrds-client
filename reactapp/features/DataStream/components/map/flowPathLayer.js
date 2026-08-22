@@ -2,8 +2,8 @@ import {
   FLOWPATHS_MIN_ZOOM,
   getValueAtTimeFlat,
   normalizeValue,
-  writeColorInto,
 } from '../../lib/layers';
+import { writeColorInto } from '../../lib/valueRamp';
 import { widthAtZoom } from '../../lib/flowpaths';
 
 // Stands in for the frame index while the layer is hidden. deck.gl gates drawing on `visible`

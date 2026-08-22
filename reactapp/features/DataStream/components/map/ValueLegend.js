@@ -1,7 +1,8 @@
 import PropTypes from 'prop-types';
 import { useMemo } from 'react';
 
-import { COLOR_SCALE, valueAtRampPosition } from 'features/DataStream/lib/layers';
+import { valueAtRampPosition } from 'features/DataStream/lib/layers';
+import { COLOR_SCALE } from 'features/DataStream/lib/valueRamp';
 import { getVariableUnits } from 'features/DataStream/lib/data';
 import { formatMeasurement } from 'features/DataStream/lib/utils';
 import { LegendBox, LegendBar, LegendScale, LegendTitle } from '../styles/Styles';
