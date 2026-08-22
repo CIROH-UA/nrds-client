@@ -201,6 +201,38 @@ describe('initialS3Data', () => {
     expect(result.dates.map((d) => d.value)).toEqual(['ngen.20260102', 'ngen.20260101']);
   });
 
+  /**
+   * Going back to a model already looked at is ordinary, and the answer costs a listing plus
+   * two to eleven probes. Held for the life of the page, like the base listings above.
+   */
+  it('does not re-probe a model whose dates it has already read', async () => {
+    global.fetch = respondWith();
+    const { readableDatesNewestFirst } = loadModule();
+
+    const first = await readableDatesNewestFirst('aa');
+    const callsAfterFirst = global.fetch.mock.calls.length;
+    const second = await readableDatesNewestFirst('aa');
+
+    expect(global.fetch).toHaveBeenCalledTimes(callsAfterFirst);
+    expect(second).toBe(first);
+  });
+
+  it('does not remember an empty answer for a model', async () => {
+    // Usually a failed or aborted listing rather than a model with genuinely no dates, and
+    // remembering it would make one bad moment last the rest of the session.
+    global.fetch = jest.fn(async (url) => ({
+      ok: true, status: 200, statusText: 'OK',
+      text: async () => directoryXml(requestedPrefix(url), []),
+    }));
+    const { readableDatesNewestFirst } = loadModule();
+
+    expect(await readableDatesNewestFirst('aa')).toEqual([]);
+    const callsAfterFirst = global.fetch.mock.calls.length;
+    await readableDatesNewestFirst('aa');
+
+    expect(global.fetch.mock.calls.length).toBeGreaterThan(callsAfterFirst);
+  });
+
   it('does not remember an incomplete listing', async () => {
     global.fetch = jest.fn(async (url) => ({
       ok: true,

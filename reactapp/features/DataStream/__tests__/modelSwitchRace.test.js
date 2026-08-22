@@ -43,15 +43,24 @@ const { DataMenuControls } = require('features/DataStream/components/forecast/da
 
 const prefixOf = (url) => decodeURIComponent(new URL(url).searchParams.get('prefix'));
 
-// Distinct dated runs per model, so the store's date list says which chain wrote last.
-const DATES = { slow: ['ngen.20260101'], fast: ['ngen.20260202'] };
+// Fresh model names per test. s3Utils remembers a model's date list for the life of the page,
+// so reusing a name would hand the next test a warm cache and no chain to race against.
+let run = 0;
+let SLOW;
+let FAST;
+let DATES;
 
 let releaseSlow;
 
 beforeEach(() => {
+  run += 1;
+  SLOW = `slow${run}`;
+  FAST = `fast${run}`;
+  // Distinct dated runs per model, so the store's date list says which chain wrote last.
+  DATES = { [SLOW]: ['ngen.20260101'], [FAST]: ['ngen.20260202'] };
   releaseSlow = null;
   useS3DataStreamBucketStore.setState({
-    models: [{ value: 'slow', label: 'slow' }, { value: 'fast', label: 'fast' }],
+    models: [{ value: SLOW, label: SLOW }, { value: FAST, label: FAST }],
     dates: [], forecasts: [], cycles: [], ensembles: [], outputFiles: [],
   });
 
@@ -70,7 +79,7 @@ beforeEach(() => {
       return xml(children.map((c) => `<CommonPrefixes><Prefix>${prefix}${c}/</Prefix></CommonPrefixes>`).join(''));
     };
     // Only the slow model's first request waits; the rest of its chain runs normally afterwards.
-    if (model === 'slow' && !releaseSlow) {
+    if (model === SLOW && !releaseSlow) {
       return new Promise((resolve) => { releaseSlow = () => resolve(body()); });
     }
     return Promise.resolve(body());
@@ -81,10 +90,10 @@ it('lets the second model switch win when the first is still in flight', async (
   render(<DataMenuControls />);
 
   await act(async () => {
-    screen.getByTestId('select-model-slow').click();
+    screen.getByTestId(`select-model-${SLOW}`).click();
   });
   await act(async () => {
-    screen.getByTestId('select-model-fast').click();
+    screen.getByTestId(`select-model-${FAST}`).click();
   });
   await act(async () => {
     releaseSlow();
@@ -104,7 +113,7 @@ it('drops a chain left behind by a vpu change', async () => {
   render(<DataMenuControls />);
 
   await act(async () => {
-    screen.getByTestId('select-model-slow').click();
+    screen.getByTestId(`select-model-${SLOW}`).click();
   });
   act(() => {
     useDataStreamStore.getState().set_vpu('VPU_02');
@@ -128,7 +137,7 @@ it('shows the controls working while a chain runs, and refuses Update until it e
   render(<DataMenuControls />);
 
   await act(async () => {
-    screen.getByTestId('select-model-slow').click();
+    screen.getByTestId(`select-model-${SLOW}`).click();
   });
 
   expect(screen.getByTestId('select-model-loading')).toHaveAttribute('data-loading', 'true');

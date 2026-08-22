@@ -257,9 +257,28 @@ async function datesWithReadableOutputs(model, dates, { signal } = {}) {
  * the list changing shape when the user does nothing but switch models. That is what happened
  * to the ordering and the readability filter, so both now live behind this one call.
  */
-export async function readableDatesNewestFirst(model, { signal } = {}) {
-  const runs = await datedRunsNewestFirst(model, { signal });
-  return datesWithReadableOutputs(model, runs, { signal });
+// Held for the life of the page, like cachedBaseOptions above and for the same reason: this
+// answer costs a listing plus two to eleven probes, and going back to a model already looked at
+// is an ordinary thing to do. Holding the promise rather than the value also means two callers
+// asking at once share one round trip. A reload picks up newly published dates.
+const datesByModel = new Map();
+
+export function readableDatesNewestFirst(model, { signal } = {}) {
+  const remembered = datesByModel.get(model);
+  if (remembered) return remembered;
+
+  const pending = (async () => {
+    const runs = await datedRunsNewestFirst(model, { signal });
+    return datesWithReadableOutputs(model, runs, { signal });
+  })();
+  datesByModel.set(model, pending);
+  // An empty answer is usually a failed or aborted listing rather than a model with no dates,
+  // and remembering it would make one bad moment permanent. Same rule as cachedBaseOptions.
+  pending.then(
+    (dates) => { if (!dates.length) datesByModel.delete(model); },
+    () => datesByModel.delete(model)
+  );
+  return pending;
 }
 
 export const makePrefix = (model, avail_date,ngen_forecast,ngen_cycle, ngen_ensemble, ngen_vpu, outputFile) => {
