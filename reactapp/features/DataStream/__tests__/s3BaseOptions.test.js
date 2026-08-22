@@ -223,9 +223,41 @@ describe('initialS3Data', () => {
     expect(second).toBe(first);
   });
 
-  it('does not remember an empty answer for a model', async () => {
-    // Usually a failed or aborted listing rather than a model with genuinely no dates, and
-    // remembering it would make one bad moment last the rest of the session.
+  /**
+   * A listing that failed and a listing that came back empty used to be the same value, so a
+   * network blip while reading a model's runs took that model out of the interface for the rest
+   * of the session -- silently, and exactly the failure this filter exists to prevent. The
+   * listing now says which of the two happened, and only the second is grounds for dropping.
+   */
+  it('keeps a model whose run listing could not be read, and does not remember the failure', async () => {
+    let listings = 0;
+    global.fetch = jest.fn(async (url) => {
+      const prefix = requestedPrefix(url);
+      const ok = (body) => ({ ok: true, status: 200, statusText: 'OK', text: async () => body });
+      if (prefix === 'outputs/') return ok(directoryXml(prefix, ['aa', 'bb']));
+      if (prefix.includes('troute')) return ok(fileXml(prefix, ['troute_output.parquet']));
+      if (isDateProbe(url)) {
+        return ok(fileXml(prefix, ['f/c/VPU_16/ngen-run/outputs/troute/o.parquet']));
+      }
+      if (isDateListing(url) && prefix.includes('/aa/')) {
+        listings += 1;
+        // Fails the first time only, so the retry can be seen to happen.
+        if (listings === 1) return { ok: false, status: 503, statusText: 'Slow Down', text: async () => '' };
+      }
+      return ok(directoryXml(prefix, ['ngen.20260101', 'ngen.20260102']));
+    });
+    const { initialS3Data, readableDatesNewestFirst } = loadModule();
+
+    const result = await initialS3Data('16');
+
+    expect(result.models.map((m) => m.value)).toEqual(['aa', 'bb']);
+    // Not remembered, so the model recovers on its own rather than staying broken all session.
+    expect((await readableDatesNewestFirst('aa')).map((d) => d.value))
+      .toEqual(['ngen.20260102', 'ngen.20260101']);
+  });
+
+  it('remembers a model that genuinely has no dated runs', async () => {
+    // The bucket answered, and the answer was "nothing here". That is a fact, not a bad moment.
     global.fetch = jest.fn(async (url) => ({
       ok: true, status: 200, statusText: 'OK',
       text: async () => directoryXml(requestedPrefix(url), []),
@@ -236,7 +268,7 @@ describe('initialS3Data', () => {
     const callsAfterFirst = global.fetch.mock.calls.length;
     await readableDatesNewestFirst('aa');
 
-    expect(global.fetch.mock.calls.length).toBeGreaterThan(callsAfterFirst);
+    expect(global.fetch.mock.calls.length).toBe(callsAfterFirst);
   });
 
   it('does not remember an incomplete listing', async () => {

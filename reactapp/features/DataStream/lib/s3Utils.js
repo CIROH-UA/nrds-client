@@ -200,9 +200,24 @@ const DATED_RUN = /^ngen\.\d{8}$/;
 
 const datedRunsNewestFirst = (model, { signal } = {}) =>
   held(runsByModel, model, async () => {
-    const listed = await getOptionsFromURL(`outputs/${model}/v2.2_hydrofabric/`, { signal });
-    return listed.filter((d) => DATED_RUN.test(d.value)).reverse();
-  }, (runs) => runs.length);
+    const url = `outputs/${model}/v2.2_hydrofabric/`;
+    try {
+      const { childNames } = await listPublicS3Directories(url, { signal });
+      const runs = childNames.filter((name) => DATED_RUN.test(name))
+        .map((name) => ({ value: name, label: name }))
+        .sort(byValue)
+        .reverse();
+      return { runs, answered: true };
+    } catch {
+      // Distinguished from an empty listing on purpose. getOptionsFromURL, which every control
+      // below this one uses, turns any failure into an empty list -- fine for filling a
+      // dropdown, where an empty control is visible and a reload fixes it, but not for deciding
+      // whether a model exists at all. A network blip while listing a model's runs used to drop
+      // that model from the interface for the rest of the session, silently, which is the very
+      // failure this filter was written to prevent.
+      return { runs: [], answered: false };
+    }
+  }, ({ answered }) => answered);
 
 /**
  * The models worth offering: the ones with at least one run this app can read.
@@ -230,7 +245,10 @@ const RECENT_RUNS_CHECKED = 3;
 async function modelsWithReadableOutputs(models, { signal } = {}) {
   const checked = await Promise.all(
     models.map(async (model) => {
-      const runs = await datedRunsNewestFirst(model.value, { signal });
+      const { runs, answered } = await datedRunsNewestFirst(model.value, { signal });
+      // Could not look is not the same as looked and found nothing, and only the second is a
+      // reason to take a model away.
+      if (!answered) return model;
       if (runs.length === 0) return null;
       for (const run of runs.slice(0, RECENT_RUNS_CHECKED)) {
         // Anything but a definite no keeps the model, so an unanswerable probe stops the search.
@@ -297,7 +315,7 @@ async function datesWithReadableOutputs(model, dates, { signal } = {}) {
  */
 export function readableDatesNewestFirst(model, { signal } = {}) {
   return held(datesByModel, model, async () => {
-    const runs = await datedRunsNewestFirst(model, { signal });
+    const { runs } = await datedRunsNewestFirst(model, { signal });
     return datesWithReadableOutputs(model, runs, { signal });
   }, (dates) => dates.length);
 }
