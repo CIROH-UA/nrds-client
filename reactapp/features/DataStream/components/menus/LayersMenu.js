@@ -17,8 +17,27 @@ import { LayersContainer, LayerButton } from '../styles/Styles';
  * ``inline`` drops the absolute positioning so the control can sit in the header rather than
  * floating over the map. The panel it opens stays absolutely positioned either way.
  */
+/**
+ * Open unless the screen is too small to spare the room.
+ *
+ * The panel is what says which layers exist and lets them be switched, and leaving it shut hid
+ * the catchments toggle -- which is also the layer a click acts on, so the map could look inert
+ * for a reason nothing on screen explained. It is 250px pinned to the right of the map, which is
+ * most of a phone, so small screens still start closed.
+ *
+ * Read once, at mount, rather than subscribed to: this decides an initial state, and after that
+ * the panel is the reader's to open and close. Resizing should not reopen something they shut.
+ */
+const shouldStartOpen = () => {
+  try {
+    return window.matchMedia?.('(min-width: 769px)')?.matches ?? true;
+  } catch {
+    return true;
+  }
+};
+
 export const LayersMenu = ({ inline = false }) => {
-  const [open, setIsOpen] = useState(false);
+  const [open, setIsOpen] = useState(shouldStartOpen);
   const toggle = useCallback(() => setIsOpen((o) => !o), []);
   const buttonStyle = inline
     ? { position: 'static', top: 'auto', right: 'auto', marginTop: 0 }

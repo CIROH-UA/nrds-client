@@ -134,6 +134,25 @@ const positionsOf = (geometry) => {
   }
 };
 
+/**
+ * Where a selected feature sits, as [lon, lat], or null when it cannot be placed.
+ *
+ * The selection is assembled from two sources that name these differently: a map click flattens
+ * the geometry's centroid into latitude/longitude, and the hydrofabric index supplies lat/lon.
+ * Anything that wants to move the map to the selection has to read both.
+ *
+ * ?? rather than ||, so a feature on the equator or the prime meridian keeps its real
+ * coordinate instead of falling through to the other spelling. And a feature that cannot be
+ * placed returns null rather than a pair of undefineds, because flying to those lands the map
+ * at 0,0 in the Gulf of Guinea with nothing on screen to explain why.
+ */
+export const selectionLngLat = (feature) => {
+  const lat = feature?.lat ?? feature?.latitude;
+  const lon = feature?.lon ?? feature?.longitude;
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  return [lon, lat];
+};
+
 /** The mean of a geometry's outline positions, or nulls when it has none to average. */
 export const getCentroid = (feature) => {
   const positions = positionsOf(feature?.geometry).filter(isPosition);

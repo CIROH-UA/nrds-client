@@ -465,6 +465,46 @@ export const MapHint = styled(MapSurface).attrs({ as: 'button' })`
  * layer panel opens at the top right. Raised clear of the attribution bar. Small on purpose: it
  * explains one ramp, and the map is the thing being read.
  */
+/**
+ * Return to the selected catchment.
+ *
+ * Bottom left, which is the only free corner: the layer panel and its button take the top right,
+ * the legend the bottom right, and the slider and the zoom hint the bottom centre.
+ *
+ * A control rather than a readout, so it takes the higher elevation -- it is the same kind of
+ * thing as the slider, and the reader has to be able to tell it apart from the legend beside it.
+ */
+export const RecentreButton = styled(MapSurface).attrs({ as: 'button', $control: true })`
+  left: 10px;
+  bottom: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 var(--space-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--button-primary-hover-bg);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--nav-pill-active-bg);
+    outline-offset: 2px;
+  }
+
+  /* The label goes when there is no room for it; the icon and the accessible name stay. */
+  @media (max-width: 768px) {
+    span {
+      display: none;
+    }
+  }
+`;
+
 export const LegendBox = styled(MapSurface)`
   right: 10px;
   bottom: 42px;

@@ -6,6 +6,7 @@ import { MapboxOverlay } from "@deck.gl/mapbox";
 import { PathLayer } from "@deck.gl/layers";
 import Map, { Source, useControl, useMap } from 'react-map-gl/maplibre';
 import { Protocol } from 'pmtiles';
+import { IoLocateOutline } from 'react-icons/io5';
 import useTimeSeriesStore from '../../store/Timeseries';
 import useDataStreamStore from '../../store/Datastream';
 import { useVPUStore } from '../../store/VPU';
@@ -18,6 +19,7 @@ import {
 import { useMapTheme } from '../../lib/mapTheme';
 import { createPointerCursor } from '../../lib/mapCursor';
 import { animationIsOnMap, quantiseZoom } from '../../lib/flowpaths';
+import { selectionLngLat } from '../../lib/layers';
 import {
   DIVIDES_MIN_ZOOM,
   FLOWPATHS_LAYER_ID,
@@ -40,9 +42,11 @@ import {
   useFlowPathsHighlightLayer,
   useConusGaugesLayer,
 } from './MapLayers';
-import { MapHint, TimeSliderDock } from '../styles/Styles';
+import { MapHint, RecentreButton, TimeSliderDock } from '../styles/Styles';
 
 const INITIAL_VIEW = { longitude: -96, latitude: 40, zoom: 4 };
+// Where a selection is shown from. The catchment fill only reaches full opacity at zoom 11.
+const SELECTION_ZOOM = 11;
 
 // Half-width of the hover hit box. A flowpath renders two pixels wide, so an exact-pixel query
 // is a target most people cannot hit, and one react-map-gl's own query missed outright.
@@ -206,19 +210,32 @@ const MainMap = () => {
     collectedPaths: pathDataRef.current.length,
   });
 
+  const selectionAt = useMemo(() => selectionLngLat(selectedMapFeature), [selectedMapFeature]);
+
   const zoomToFlowpaths = useCallback(() => {
     const map = mapRef.current?.getMap?.() ?? mapRef.current;
     if (!map) return;
 
     // Toward the selection when there is one, since the data's location is the question.
-    const lat = selectedMapFeature?.lat ?? selectedMapFeature?.latitude;
-    const lon = selectedMapFeature?.lon ?? selectedMapFeature?.longitude;
-    if (Number.isFinite(lat) && Number.isFinite(lon)) {
-      map.flyTo({ center: [lon, lat], zoom: FLOWPATHS_MIN_ZOOM + 1, essential: true });
+    if (selectionAt) {
+      map.flyTo({ center: selectionAt, zoom: FLOWPATHS_MIN_ZOOM + 1, essential: true });
       return;
     }
     map.easeTo({ zoom: FLOWPATHS_MIN_ZOOM + 1, essential: true });
-  }, [selectedMapFeature]);
+  }, [selectionAt, mapRef]);
+
+  /**
+   * Put the selected catchment back on screen.
+   *
+   * SELECTION_ZOOM rather than the current one: the catchment fill only reaches full opacity at
+   * zoom 11, so returning at whatever zoom the reader had drifted to could centre them on a
+   * highlight they still cannot see.
+   */
+  const flyToSelection = useCallback(() => {
+    const map = mapRef.current?.getMap?.() ?? mapRef.current;
+    if (!map || !selectionAt) return;
+    map.flyTo({ center: selectionAt, zoom: SELECTION_ZOOM, essential: true });
+  }, [selectionAt, mapRef]);
 
 
 
@@ -434,27 +451,10 @@ const MainMap = () => {
   }, [featureIdToIndex, isFlowPathsVisible]);
 
 
+  // Selecting something moves the map to it; the button below does the same thing on demand.
   useEffect(() => {
-    if (!selectedMapFeature) return;
-
-    const map =
-      mapRef.current && mapRef.current.getMap
-        ? mapRef.current.getMap()
-        : mapRef.current;
-
-    if (!map) return;
-
-    // ?? not ||, so a feature on the equator or the prime meridian keeps its real coordinate.
-    const lat = selectedMapFeature.lat ?? selectedMapFeature.latitude;
-    const lon = selectedMapFeature.lon ?? selectedMapFeature.longitude;
-    // Without this a geometry we cannot place flies the map to 0,0, off the coast of Africa.
-    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
-    map.flyTo({
-      center: [lon, lat],
-      zoom: 11,
-      essential: true,
-    });
-  }, [selectedMapFeature]);
+    flyToSelection();
+  }, [flyToSelection]);
 
 
   // The same list the cursor uses, so what invites a click and what answers one cannot drift.
@@ -540,6 +540,17 @@ const MainMap = () => {
         variable={variable}
         visible={isFlowPathsVisible && Boolean(colorBounds) && (timesArr?.length || 0) > 0}
       />
+      {selectionAt && (
+        <RecentreButton
+          type="button"
+          onClick={flyToSelection}
+          aria-label="Show the selected catchment"
+          title="Show the selected catchment"
+        >
+          <IoLocateOutline size={18} aria-hidden="true" />
+          <span>Selected</span>
+        </RecentreButton>
+      )}
       <CustomPopUp hovered_feature={hovered_feature} enabledHovering={enabledHovering} />
       {belowFlowpathZoom && (
         <MapHint type="button" $raised={sliderDocked} onClick={zoomToFlowpaths}>

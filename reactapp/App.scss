@@ -137,11 +137,19 @@ $theme-colors: (
      #fd00fd -- a pure magenta picked to be unmissable rather than designed, and the only place
      that colour appeared anywhere. Both are the same teal as the focus ring and the active nav
      pill; the fill is the same hue at low alpha so a selected catchment reads as filled rather
-     than obscured. */
-  --map-divides-highlight-fill: oklch(0.520 0.090 175 / 0.28);
-  --map-divides-highlight-outline: oklch(0.520 0.090 175 / 0.95);
+     than obscured.
 
-  --map-flowpaths-color: #0b0e10;
+     Written as rgba, not oklch. These are handed to maplibre as paint values, and its colour
+     parser is CSS Color 3 only -- oklch() returns undefined and the layer draws nothing at all.
+     That is oklch(0.520 0.090 175) to three decimals. */
+  --map-divides-highlight-fill: rgba(27, 122, 102, 0.28);
+  --map-divides-highlight-outline: rgba(27, 122, 102, 0.95);
+
+  /* The static network, in the interface's own hue rather than near-black. #0b0e10 read as ink
+     on paper rather than as water, and at 12:1 it was the loudest thing on the map -- louder
+     than the animation it sits under. This is quieter (4.8:1) and less chromatic than any stop
+     on the ramp, so a reach drawn in it cannot be mistaken for one carrying a value. */
+  --map-flowpaths-color: #445465;
 
 
   --map-gauges-color: #616569;
@@ -260,11 +268,14 @@ $theme-colors: (
     --map-style-url: #{'https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/styles/dark-style.json'};
     --map-divides-outline-color: rgba(238, 51, 119, 0.5);
     /* Lightened for the dark basemap; the same hue, so the selection reads as one thing across
-       both themes. */
-    --map-divides-highlight-fill: oklch(0.700 0.110 175 / 0.30);
-    --map-divides-highlight-outline: oklch(0.700 0.110 175 / 0.95);
+       both themes. oklch(0.700 0.110 175), in a notation maplibre parses. */
+    --map-divides-highlight-fill: rgba(66, 181, 154, 0.30);
+    --map-divides-highlight-outline: rgba(66, 181, 154, 0.95);
 
-    --map-flowpaths-color: #0077bb;
+    /* Paul Tol's #0077bb measured 2.48:1 against this basemap's own fills -- below the 3:1 the
+       rest of the map holds to. Same idea, lifted into the family hue and far enough off the
+       background to read. */
+    --map-flowpaths-color: #76889b;
 
     --map-gauges-color: #c4c9cd;
 

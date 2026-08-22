@@ -135,7 +135,10 @@ describe('the selection highlight', () => {
   });
 
   it('fills without obscuring, so the catchment underneath still reads', () => {
-    const fill = scss.match(/--map-divides-highlight-fill:\s*oklch\([^)]*\/\s*([\d.]+)\s*\)/);
-    expect(Number(fill[1])).toBeLessThanOrEqual(0.35);
+    // rgba rather than oklch: maplibre's parser is CSS Color 3 and returns undefined for the
+    // latter, which is how this fill silently stopped drawing once. See mapColorTokens.test.js.
+    const fills = [...scss.matchAll(/--map-divides-highlight-fill:\s*rgba\([^)]*,\s*([\d.]+)\s*\)/g)];
+    expect(fills).toHaveLength(2);
+    fills.forEach(([, alpha]) => expect(Number(alpha)).toBeLessThanOrEqual(0.35));
   });
 });
