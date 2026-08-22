@@ -148,6 +148,25 @@ async function dateHasParquet(model, date, { signal } = {}) {
 }
 
 /**
+ * A model's dated runs, newest first.
+ *
+ * Filtered to ngen.YYYYMMDD before anything else, because a model's directory can hold children
+ * that are not runs at all -- routing_only carries test and retro-test -- and those sort after
+ * every real date, which is exactly where the newest run is looked for. Unfiltered, the newest
+ * run of routing_only is `test`, it holds no parquet, and the model is dropped from the control
+ * on the strength of a directory nobody meant to publish.
+ *
+ * Reversed rather than sorted descending: S3 answers in lexicographic order, which for this
+ * name shape is oldest first. filter returns a new array, so reversing it mutates nothing shared.
+ */
+const DATED_RUN = /^ngen\.\d{8}$/;
+
+const datedRunsNewestFirst = async (model, { signal } = {}) => {
+  const listed = await getOptionsFromURL(`outputs/${model}/v2.2_hydrofabric/`, { signal });
+  return listed.filter((d) => DATED_RUN.test(d.value)).reverse();
+};
+
+/**
  * The models worth offering: the ones with at least one run this app can read.
  *
  * Checking the newest run is enough. A model switched output format once and never switched
@@ -163,12 +182,9 @@ async function dateHasParquet(model, date, { signal } = {}) {
 export async function modelsWithReadableOutputs(models, { signal } = {}) {
   const checked = await Promise.all(
     models.map(async (model) => {
-      const dates = await getOptionsFromURL(
-        `outputs/${model.value}/v2.2_hydrofabric/`, { signal }
-      );
-      if (dates.length === 0) return null;
-      // The listing is oldest first, so the newest run is the last entry.
-      const readable = await dateHasParquet(model.value, dates[dates.length - 1].value, { signal });
+      const runs = await datedRunsNewestFirst(model.value, { signal });
+      if (runs.length === 0) return null;
+      const readable = await dateHasParquet(model.value, runs[0].value, { signal });
       return readable === false ? null : model;
     })
   );
@@ -219,6 +235,20 @@ export async function datesWithReadableOutputs(model, dates, { signal } = {}) {
   return dates.slice(0, hi);
 }
 
+/**
+ * The dates to offer for a model: its dated runs, newest first, minus the ones with nothing
+ * readable in them.
+ *
+ * Exported because the date list is built twice -- once for the model chosen at load, and again
+ * every time the model control changes -- and a rule applied to only one of those shows up as
+ * the list changing shape when the user does nothing but switch models. That is what happened
+ * to the ordering and the readability filter, so both now live behind this one call.
+ */
+export async function readableDatesNewestFirst(model, { signal } = {}) {
+  const runs = await datedRunsNewestFirst(model, { signal });
+  return datesWithReadableOutputs(model, runs, { signal });
+}
+
 export const makePrefix = (model, avail_date,ngen_forecast,ngen_cycle, ngen_ensemble, ngen_vpu, outputFile) => {
     let prefix_path = `outputs/${model}/v2.2_hydrofabric/${avail_date}/${ngen_forecast}/${ngen_cycle}`
     let ensemble_path = ngen_ensemble ? `${ngen_ensemble}/` : '';
@@ -258,16 +288,9 @@ const loadBaseOptions = async ({ signal }) => {
   if (models.length === 0){
     return {models: [], dates: [], forecasts: [], cycles: []};
   }
-  // Newest first, and stated here rather than left to whoever reads the list: S3 answers in
-  // lexicographic order, which for ngen.YYYYMMDD is oldest first, and a reader opening this
-  // control wants the most recent run at the top. Copied before reversing, since reverse mutates.
-  const published = [...await getOptionsFromURL(
-    `outputs/${models[0]?.value}/v2.2_hydrofabric/`, { signal }
-  )].reverse();
-  // Only the dates whose outputs are readable. Before the pipeline moved to parquet every run was
-  // NetCDF, which this app no longer converts, so those dates could be selected and then had
-  // nothing to show.
-  const dates = await datesWithReadableOutputs(models[0]?.value, published, { signal });
+  // Newest first and readable only, both by way of the shared helper so the model-change path
+  // in dataMenu builds an identically shaped list.
+  const dates = await readableDatesNewestFirst(models[0]?.value, { signal });
   if (dates.length === 0){
     return {models, dates: [], forecasts: [], cycles: []};
   }

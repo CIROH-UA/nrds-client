@@ -3,7 +3,7 @@ import React, { Fragment, useMemo } from 'react';
 import { abandonSelectionWithNoOutput } from 'features/DataStream/actions/noOutputFile';
 import { XButton, Row, IconLabel, Notice } from '../styles/Styles';
 import SelectComponent from '../SelectComponent';
-import { getOptionsFromURL, makePrefix } from 'features/DataStream/lib/s3Utils';
+import { getOptionsFromURL, readableDatesNewestFirst, makePrefix } from 'features/DataStream/lib/s3Utils';
 import { getCacheKey } from 'features/DataStream/lib/utils';
 import { loadVpu } from 'features/DataStream/actions/loadVpu';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
@@ -167,7 +167,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
 
     set_model(opt.value);
 
-    const datesOptions = await getOptionsFromURL(`outputs/${opt.value}/v2.2_hydrofabric/`);
+    const datesOptions = await readableDatesNewestFirst(opt.value);
     const nextDate = datesOptions[0]?.value ?? '';
     setAvailableDatesList(datesOptions);
     set_date(nextDate);

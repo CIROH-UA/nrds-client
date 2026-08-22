@@ -21,13 +21,17 @@ const fileXml = (prefix, keys) => `<?xml version="1.0"?>
   .map((k) => `<Contents><Key>${prefix}${k}</Key></Contents>`)
   .join('')}</ListBucketResult>`;
 
-// Two children at every level, because the date list is read at index 1.
+// Two children at every level, because the date list is read at index 1. Dated names at the
+// date level and plain ones elsewhere, matching the bucket: the app now decides what counts as
+// a run by the ngen.YYYYMMDD shape, so a mock answering `aa` there would not exercise the rule.
 // A date prefix is listed without a delimiter when probing for readable outputs, so it has to
 // answer with keys rather than child directories -- the real bucket holds both.
 const isDateProbe = (url) =>
-  !new URL(url).searchParams.has('delimiter') && /ngen\.|\/(aa|bb)\/$/.test(requestedPrefix(url));
+  !new URL(url).searchParams.has('delimiter') && /ngen\.|\/(aa|bb|test)\/$/.test(requestedPrefix(url));
 
-const respondWith = (children = ['aa', 'bb'], { readable = true } = {}) =>
+const isDateListing = (url) => requestedPrefix(url).endsWith('v2.2_hydrofabric/');
+
+const respondWith = (dates = ['ngen.20260101', 'ngen.20260102'], { readable = true } = {}) =>
   jest.fn(async (url) => {
     const prefix = requestedPrefix(url);
     let body;
@@ -37,8 +41,10 @@ const respondWith = (children = ['aa', 'bb'], { readable = true } = {}) =>
       body = fileXml(prefix, [
         `f/c/VPU_16/ngen-run/outputs/troute/troute_output.${readable ? 'parquet' : 'nc'}`,
       ]);
+    } else if (isDateListing(url)) {
+      body = directoryXml(prefix, dates);
     } else {
-      body = directoryXml(prefix, children);
+      body = directoryXml(prefix, ['aa', 'bb']);
     }
     return { ok: true, status: 200, statusText: 'OK', text: async () => body };
   });
@@ -119,6 +125,20 @@ describe('initialS3Data', () => {
     expect(result.dates.map((d) => d.value)).toEqual(['ngen.20260820', 'ngen.20260101']);
   });
 
+  it('ignores a child of the model directory that is not a dated run', async () => {
+    // routing_only carries `test` and `retro-test` alongside its runs, and those sort after every
+    // real date -- exactly where the newest run is looked for. Taken as the newest run, `test`
+    // holds no parquet, so the model was dropped from the control on the strength of a directory
+    // nobody meant to publish, and it would have led the date list had it survived.
+    global.fetch = respondWith(['ngen.20260101', 'ngen.20260102', 'test']);
+    const { initialS3Data } = loadModule();
+
+    const result = await initialS3Data('16');
+
+    expect(result.models.map((m) => m.value)).toEqual(['aa', 'bb']);
+    expect(result.dates.map((d) => d.value)).toEqual(['ngen.20260102', 'ngen.20260101']);
+  });
+
   it('offers no dates for a model whose runs are all unreadable', async () => {
     // A model that stopped publishing before the pipeline moved to parquet. Every date would open
     // onto an empty output list, so inviting the click helps nobody.
@@ -139,13 +159,14 @@ describe('initialS3Data', () => {
         return { ok: true, status: 200, statusText: 'OK', text: async () => fileXml(prefix, ['x.parquet']) };
       }
       if (isDateProbe(url)) return { ok: false, status: 500, statusText: 'Server Error', text: async () => '' };
-      return { ok: true, status: 200, statusText: 'OK', text: async () => directoryXml(prefix, ['aa', 'bb']) };
+      const children = isDateListing(url) ? ['ngen.20260101', 'ngen.20260102'] : ['aa', 'bb'];
+      return { ok: true, status: 200, statusText: 'OK', text: async () => directoryXml(prefix, children) };
     });
     const { initialS3Data } = loadModule();
 
     const result = await initialS3Data('16');
 
-    expect(result.dates.map((d) => d.value)).toEqual(['bb', 'aa']);
+    expect(result.dates.map((d) => d.value)).toEqual(['ngen.20260102', 'ngen.20260101']);
   });
 
   it('does not remember an incomplete listing', async () => {
