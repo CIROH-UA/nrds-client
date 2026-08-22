@@ -3,6 +3,11 @@
  * re-runs on every vpu change, so it used to refetch all five listings each time. These
  * tests hold it to one request per subsequent vpu, and check that an incomplete listing is
  * not remembered.
+ *
+ * The first call also probes dates for readable outputs, which costs listings of its own. Those
+ * are counted here on purpose: the whole point of caching the base is that a vpu change pays
+ * none of it, and a probe that leaked into every call would be the most expensive regression
+ * this file could miss.
  */
 const requestedPrefix = (url) => decodeURIComponent(new URL(url).searchParams.get('prefix'));
 
@@ -17,12 +22,24 @@ const fileXml = (prefix, keys) => `<?xml version="1.0"?>
   .join('')}</ListBucketResult>`;
 
 // Two children at every level, because the date list is read at index 1.
-const respondWith = (children = ['aa', 'bb']) =>
+// A date prefix is listed without a delimiter when probing for readable outputs, so it has to
+// answer with keys rather than child directories -- the real bucket holds both.
+const isDateProbe = (url) =>
+  !new URL(url).searchParams.has('delimiter') && /ngen\.|\/(aa|bb)\/$/.test(requestedPrefix(url));
+
+const respondWith = (children = ['aa', 'bb'], { readable = true } = {}) =>
   jest.fn(async (url) => {
     const prefix = requestedPrefix(url);
-    const body = prefix.includes('troute')
-      ? fileXml(prefix, ['troute_output.parquet'])
-      : directoryXml(prefix, children);
+    let body;
+    if (prefix.includes('troute')) {
+      body = fileXml(prefix, ['troute_output.parquet']);
+    } else if (isDateProbe(url)) {
+      body = fileXml(prefix, [
+        `f/c/VPU_16/ngen-run/outputs/troute/troute_output.${readable ? 'parquet' : 'nc'}`,
+      ]);
+    } else {
+      body = directoryXml(prefix, children);
+    }
     return { ok: true, status: 200, statusText: 'OK', text: async () => body };
   });
 
@@ -42,7 +59,9 @@ describe('initialS3Data', () => {
 
     const result = await initialS3Data('16');
 
-    expect(global.fetch).toHaveBeenCalledTimes(5);
+    // Five listings, plus the two date probes: with both ends readable the whole list is kept
+    // and the binary search never runs.
+    expect(global.fetch).toHaveBeenCalledTimes(7);
     expect(result.models.map((m) => m.value)).toEqual(['aa', 'bb']);
     expect(result.outputFiles.map((f) => f.value)).toEqual(['troute_output.parquet']);
   });
@@ -61,6 +80,45 @@ describe('initialS3Data', () => {
     // The reused listings are still reported to the caller.
     expect(result.models.map((m) => m.value)).toEqual(['aa', 'bb']);
     expect(result.cycles.length).toBe(2);
+  });
+
+  it('offers dates newest first', async () => {
+    global.fetch = respondWith(['ngen.20260101', 'ngen.20260820']);
+    const { initialS3Data } = loadModule();
+
+    const result = await initialS3Data('16');
+
+    // S3 answers oldest first, and a reader opening this control wants the latest run at the top.
+    expect(result.dates.map((d) => d.value)).toEqual(['ngen.20260820', 'ngen.20260101']);
+  });
+
+  it('offers no dates for a model whose runs are all unreadable', async () => {
+    // A model that stopped publishing before the pipeline moved to parquet. Every date would open
+    // onto an empty output list, so inviting the click helps nobody.
+    global.fetch = respondWith(['ngen.20260101', 'ngen.20260102'], { readable: false });
+    const { initialS3Data } = loadModule();
+
+    const result = await initialS3Data('16');
+
+    expect(result.dates).toEqual([]);
+  });
+
+  it('keeps every date when a probe cannot answer', async () => {
+    // Offering a date that turns out empty costs one click. Hiding one that would have worked is
+    // silent, so an unreadable probe leaves the list alone.
+    global.fetch = jest.fn(async (url) => {
+      const prefix = requestedPrefix(url);
+      if (prefix.includes('troute')) {
+        return { ok: true, status: 200, statusText: 'OK', text: async () => fileXml(prefix, ['x.parquet']) };
+      }
+      if (isDateProbe(url)) return { ok: false, status: 500, statusText: 'Server Error', text: async () => '' };
+      return { ok: true, status: 200, statusText: 'OK', text: async () => directoryXml(prefix, ['aa', 'bb']) };
+    });
+    const { initialS3Data } = loadModule();
+
+    const result = await initialS3Data('16');
+
+    expect(result.dates.map((d) => d.value)).toEqual(['bb', 'aa']);
   });
 
   it('does not remember an incomplete listing', async () => {

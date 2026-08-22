@@ -96,6 +96,100 @@ export async function getOptionsFromURL(url, { signal } = {}) {
 
 }
 
+/**
+ * Whether a dated run published an output this app can read.
+ *
+ * Pages the whole date prefix looking for the first key under an outputs/troute directory, and
+ * answers on what it finds there. Deliberately makes no assumption about the path in between:
+ * the layout is not uniform -- some runs carry an ensemble level between cycle and vpu, some
+ * carry benchmark vpus with no routing output -- and every shape a fixed descent fails to
+ * anticipate would come back as a confident "no parquet" for a date it never actually looked at.
+ *
+ * Almost every date answers on the first page. The cap exists for the few older runs whose
+ * troute keys sort past several thousand other keys; hitting it returns null, because giving up
+ * is not the same as looking and finding nothing.
+ *
+ * A run with no routing output at all answers false, which is the same as one holding only
+ * NetCDF: there is nothing for this app to show either way.
+ */
+const PROBE_PAGE_LIMIT = 6;
+
+async function dateHasParquet(model, date, { signal } = {}) {
+  const bucket = "ciroh-community-ngen-datastream";
+  const prefix = `outputs/${model}/v2.2_hydrofabric/${date}/`;
+  let token = null;
+
+  try {
+    for (let page = 0; page < PROBE_PAGE_LIMIT; page += 1) {
+      let url =
+        `https://${bucket}.s3.us-east-1.amazonaws.com/` +
+        `?list-type=2&prefix=${encodeURIComponent(prefix)}&max-keys=1000`;
+      if (token) url += `&continuation-token=${encodeURIComponent(token)}`;
+
+      const resp = await fetch(url, { signal });
+      if (!resp.ok) return null;
+      const doc = new DOMParser().parseFromString(await resp.text(), "application/xml");
+      const keys = [...doc.getElementsByTagName("Contents")]
+        .map((node) => node.getElementsByTagName("Key")[0]?.textContent ?? "");
+
+      const troute = keys.filter((k) => k.includes("/outputs/troute/"));
+      if (troute.length) return troute.some((k) => k.endsWith(".parquet"));
+
+      const truncated =
+        doc.getElementsByTagName("IsTruncated")[0]?.textContent === "true";
+      if (!truncated) return false;
+      token = doc.getElementsByTagName("NextContinuationToken")[0]?.textContent;
+      if (!token) return false;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The dates worth offering: the ones whose outputs this app can actually read.
+ *
+ * The pipeline moved from NetCDF to parquet once, per model, and never moved back -- checked
+ * across the full range of cfe_nom, which steps cleanly from one format to the other with no
+ * islands either side. So the answer is a boundary rather than a per-date fact, and a binary
+ * search finds it in about nine probes instead of one per date, which for cfe_nom would be 386.
+ *
+ * Given newest-first input the shape is TTTT...FFFF and this returns the leading run of T. Every
+ * way of being unsure returns the list untouched: an inconclusive probe at either end, or a
+ * boundary that stops holding partway through. Offering a date that turns out empty costs one
+ * click and lands in the existing no-output state; hiding one that would have worked is silent,
+ * so the doubt is spent in that direction.
+ *
+ * A model with nothing readable at either end is the exception, and returns nothing. That is a
+ * model like lstm, which stopped publishing before the format changed: every one of its dates
+ * would open onto an empty output list, and inviting that click helps nobody.
+ */
+export async function datesWithReadableOutputs(model, dates, { signal } = {}) {
+  if (dates.length === 0) return dates;
+
+  const has = (i) => dateHasParquet(model, dates[i].value, { signal });
+
+  const newest = await has(0);
+  if (newest === null) return dates;
+
+  const oldest = await has(dates.length - 1);
+  if (oldest === null) return dates;
+  if (oldest === true) return dates;
+  if (newest === false) return [];
+
+  // Invariant: lo is readable, hi is not; the boundary lies between them.
+  let lo = 0;
+  let hi = dates.length - 1;
+  while (hi - lo > 1) {
+    const mid = Math.floor((lo + hi) / 2);
+    const answer = await has(mid);
+    if (answer === null) return dates;
+    if (answer) lo = mid; else hi = mid;
+  }
+  return dates.slice(0, hi);
+}
+
 export const makePrefix = (model, avail_date,ngen_forecast,ngen_cycle, ngen_ensemble, ngen_vpu, outputFile) => {
     let prefix_path = `outputs/${model}/v2.2_hydrofabric/${avail_date}/${ngen_forecast}/${ngen_cycle}`
     let ensemble_path = ngen_ensemble ? `${ngen_ensemble}/` : '';
@@ -127,7 +221,16 @@ const loadBaseOptions = async ({ signal }) => {
     return {models: [], dates: [], forecasts: [], cycles: []};
   }
   const models = _models.filter(m => m.value !== 'test');
-  const dates = (await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/`, { signal })).reverse();
+  // Newest first, and stated here rather than left to whoever reads the list: S3 answers in
+  // lexicographic order, which for ngen.YYYYMMDD is oldest first, and a reader opening this
+  // control wants the most recent run at the top. Copied before reversing, since reverse mutates.
+  const published = [...await getOptionsFromURL(
+    `outputs/${models[0]?.value}/v2.2_hydrofabric/`, { signal }
+  )].reverse();
+  // Only the dates whose outputs are readable. Before the pipeline moved to parquet every run was
+  // NetCDF, which this app no longer converts, so those dates could be selected and then had
+  // nothing to show.
+  const dates = await datesWithReadableOutputs(models[0]?.value, published, { signal });
   if (dates.length === 0){
     return {models, dates: [], forecasts: [], cycles: []};
   }
