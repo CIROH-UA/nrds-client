@@ -399,45 +399,54 @@ export const SButton = styled(Button)`
  * the map interaction underneath itself. touch-action is set because maplibre claims drag
  * gestures on its container, and without it the thumb is not reliably draggable on a touchscreen.
  */
-export const TimeSliderDock = styled.div`
+/**
+ * Anything that floats over the map.
+ *
+ * The legend, the zoom hint and the time slider each carried their own copy of this: the same
+ * border, the same background, the same radius and the same box-shadow, written out three times.
+ * Three copies of one card is why they read as interchangeable, and it is also why the shadow
+ * was wrong everywhere at once -- pure black at 25%, invisible against the dark panel and heavy
+ * against the light one.
+ *
+ * Elevation is a prop rather than part of the recipe, because these are not equally important.
+ * The slider is the control the reader operates; the legend and the hint only report.
+ */
+const MapSurface = styled.div`
   position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: 28px;
   z-index: 1000;
-  width: min(560px, calc(100vw - 32px));
-  padding: 6px 10px;
   border: 1px solid var(--panel-border-color);
   border-radius: var(--radius-md);
   background-color: var(--map-panel-bg);
   color: var(--map-panel-text);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  box-shadow: var(${(p) => (p.$control ? '--elevation-map-control' : '--elevation-map-readout')});
+`;
+
+export const TimeSliderDock = styled(MapSurface).attrs({ $control: true })`
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 28px;
+  width: min(560px, calc(100vw - 32px));
+  padding: 6px 10px;
   pointer-events: auto;
   touch-action: manipulation;
 `;
 
-export const MapHint = styled.button`
-  position: absolute;
+export const MapHint = styled(MapSurface).attrs({ as: 'button' })`
   left: 50%;
   transform: translateX(-50%);
   /* Above the time slider when it is docked, in its usual place when it is not. */
   bottom: ${(p) => (p.$raised ? '150px' : '28px')};
-  z-index: 1000;
   display: flex;
   align-items: center;
   gap: 8px;
   min-height: 44px;
   max-width: min(420px, calc(100vw - 32px));
   padding: 8px 18px;
-  border: 1px solid var(--panel-border-color);
   border-radius: var(--radius-pill);
-  background-color: var(--map-panel-bg);
-  color: var(--map-panel-text);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   text-align: left;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 
   &:hover {
     background-color: var(--button-primary-hover-bg);
@@ -456,18 +465,11 @@ export const MapHint = styled.button`
  * layer panel opens at the top right. Raised clear of the attribution bar. Small on purpose: it
  * explains one ramp, and the map is the thing being read.
  */
-export const LegendBox = styled.div`
-  position: absolute;
+export const LegendBox = styled(MapSurface)`
   right: 10px;
   bottom: 42px;
-  z-index: 1000;
   width: 190px;
   padding: 8px 10px;
-  border: 1px solid var(--panel-border-color);
-  border-radius: var(--radius-md);
-  background-color: var(--map-panel-bg);
-  color: var(--map-panel-text);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   pointer-events: none;
 
   /* Narrower on a phone, not absent. This used to be display:none, which left the animation
@@ -479,12 +481,13 @@ export const LegendBox = styled.div`
   }
 `;
 
+/* A label, not a heading. Uppercase with tracking at weight 650 is the house style of every
+   generated dashboard, and it made a passive caption shout louder than the controls beside it. */
 export const LegendTitle = styled.div`
   margin-bottom: 6px;
   font-size: var(--text-xs);
-  font-weight: var(--weight-strong);
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
+  font-weight: var(--weight-medium);
+  color: var(--panel-text-muted);
 `;
 
 export const LegendBar = styled.div`
