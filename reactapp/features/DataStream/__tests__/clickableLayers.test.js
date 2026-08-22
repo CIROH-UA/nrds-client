@@ -20,6 +20,13 @@ describe('clickableLayerIds', () => {
     expect(clickableLayerIds({})).toEqual([]);
   });
 
+  it('offers the flowpaths when they are shown', () => {
+    // Their clicks resolve through the index, since the archive drops vpuid.
+    expect(clickableLayerIds({ isFlowPathsVisible: true })).toEqual(['flowpaths-line']);
+    expect(clickableLayerIds({ isCatchmentsVisible: true, isFlowPathsVisible: true }))
+      .toEqual(['divides', 'flowpaths-line']);
+  });
+
   it('leaves gauges out even when they are shown', () => {
     // The case that stops a later tidy-up merging this with the hoverable list. A gauge has no
     // timeseries here, so a pointer over one would promise something the click cannot deliver.

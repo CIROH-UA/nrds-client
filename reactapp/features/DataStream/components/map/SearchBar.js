@@ -10,12 +10,12 @@ import {
   SearchInput,
   SearchNotice,
 } from '../styles/Styles';
-import { loadIndexData, getFeatureProperties } from 'features/DataStream/lib/queryData';
+import { loadIndexData } from 'features/DataStream/lib/queryData';
 import { cacheFailureReason, searchCandidates } from 'features/DataStream/lib/utils';
-import { loadTimeseries } from 'features/DataStream/actions/loadTimeseries';
+import { selectIndexedFeature } from 'features/DataStream/actions/selectIndexedFeature';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
-import { useFeatureStore } from 'features/DataStream/store/Layers';
+
 
 /**
  * Find a feature by id and select it.
@@ -44,21 +44,16 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
   const {
     hydrofabric_index_url,
     hydrofabric_index_fallback,
-    vpu,
-    set_vpu,
     indexStatus,
     setIndexStatus,
   } = useDataStreamStore(
     useShallow((s) => ({
       hydrofabric_index_url: s.hydrofabric_index,
       hydrofabric_index_fallback: s.hydrofabric_index_fallback,
-      vpu: s.vpu,
-      set_vpu: s.set_vpu,
       indexStatus: s.index_status,
       setIndexStatus: s.set_index_status,
     }))
   );
-  const set_selected_feature = useFeatureStore((s) => s.set_selected_feature);
 
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
@@ -94,11 +89,8 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
     setNotFound(false);
     try {
       // A bare number is looked up as the catchment first, then its flowpath.
-      const features = await getFeatureProperties({
-        cacheKey: 'index_data_table',
-        feature_id: searchCandidates(id),
-      });
-      if (!features.length) {
+      const matchedId = await selectIndexedFeature(searchCandidates(id));
+      if (!matchedId) {
         setNotFound(true);
         // Through the store, not the placeholder; see the note above.
         useTimeSeriesStore.setState({
@@ -107,21 +99,7 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
         });
         return;
       }
-      const feature = features[0];
       useTimeSeriesStore.setState({ loadingText: '', last_error: null });
-      // The id the index actually holds, not the one typed: searching "2884494" selects
-      // cat-2884494, and everything downstream keys off that.
-      const matchedId = feature.id ?? id;
-      set_selected_feature({ _id: matchedId, ...feature });
-
-      const vpuName = `VPU_${feature.vpuid}`;
-      // Same rule as a map click: chart it here only if its vpu is the one already loaded.
-      if (vpuName === vpu) {
-        loadTimeseries({ featureId: matchedId }).catch((err) => {
-          console.error('Could not chart', matchedId, err);
-        });
-      }
-      set_vpu(vpuName);
     } catch (err) {
       console.error('Search failed for', id, err);
       useTimeSeriesStore.setState({
@@ -131,7 +109,7 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
     } finally {
       setSearching(false);
     }
-  }, [query, indexStatus, searching, vpu, set_vpu, set_selected_feature]);
+  }, [query, indexStatus, searching]);
 
   if (indexStatus === 'failed') {
     return (

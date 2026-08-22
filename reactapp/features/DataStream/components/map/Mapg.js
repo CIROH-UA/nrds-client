@@ -29,6 +29,7 @@ import {
 import { flowPathLayerProps, shouldPromptZoom } from './flowPathLayer';
 import { ValueLegend } from './ValueLegend';
 import { selectMapFeature } from '../../actions/selectFeature';
+import { selectIndexedFeature } from '../../actions/selectIndexedFeature';
 import { hoveredFeatureOf, pickHoverFeature } from '../../actions/hoverFeature';
 
 import {
@@ -193,15 +194,10 @@ const MainMap = () => {
 
 
 
-  /**
-   * The layers a click acts on, and so the ones that get the pointer cursor.
-   *
-   * Flowpaths join this list in the commit that routes clicks for them; adding them here first
-   * would put a pointer on something the click still ignores.
-   */
+  /** The layers a click acts on, and so the ones that get the pointer cursor. */
   const clickableLayers = useMemo(
-    () => clickableLayerIds({ isCatchmentsVisible }),
-    [isCatchmentsVisible]
+    () => clickableLayerIds({ isCatchmentsVisible, isFlowPathsVisible }),
+    [isCatchmentsVisible, isFlowPathsVisible]
   );
 
 
@@ -501,7 +497,21 @@ const MainMap = () => {
       return;
     }
 
-    const [feature] = features;
+    // The same precedence hovering uses, so what the popup named is what the click selects.
+    // queryRenderedFeatures returns topmost first, and divides draw above flowpaths, so taking
+    // features[0] would make a reach unclickable wherever a catchment is shown.
+    const feature = pickHoverFeature(features) ?? features[0];
+
+    if (feature.layer.id === FLOWPATHS_LAYER_ID) {
+      // This archive carries divide_id and drops vpuid, so the tile can name the catchment but
+      // not where to load it from. The index knows both, and is the same lookup the search box
+      // makes -- see actions/selectIndexedFeature.
+      const divideId = feature.properties?.divide_id;
+      if (divideId == null) return;
+      await selectIndexedFeature([`cat-${divideId}`]);
+      return;
+    }
+
     selectMapFeature(feature, feature.layer.id);
   };
 
