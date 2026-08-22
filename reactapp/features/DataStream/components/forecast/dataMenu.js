@@ -6,6 +6,7 @@ import SelectComponent from '../SelectComponent';
 import { getOptionsFromURL, readableDatesNewestFirst, makePrefix } from 'features/DataStream/lib/s3Utils';
 import { getCacheKey } from 'features/DataStream/lib/utils';
 import { loadVpu } from 'features/DataStream/actions/loadVpu';
+import { beginSelection, isCurrentSelection } from 'features/DataStream/actions/selectionGeneration';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
 import useS3DataStreamBucketStore from 'features/DataStream/store/s3Store';
@@ -164,16 +165,19 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
   const handleChangeModel = useEvent(async (v) => {
     const opt = firstOpt(v);
     if (!opt) return;
+    const selection = beginSelection();
 
     set_model(opt.value);
 
     const datesOptions = await readableDatesNewestFirst(opt.value);
+    if (!isCurrentSelection(selection)) return;
     const nextDate = datesOptions[0]?.value ?? '';
     setAvailableDatesList(datesOptions);
     set_date(nextDate);
 
 
     const forecastOptions = await getOptionsFromURL(`outputs/${opt.value}/v2.2_hydrofabric/${nextDate}/`);
+    if (!isCurrentSelection(selection)) return;
     const nextForecast = forecastOptions[0]?.value ?? '';    
     setForecastOptions(forecastOptions);
     set_forecast(nextForecast);
@@ -181,6 +185,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
     const cycleOptions = await getOptionsFromURL(
       `outputs/${opt.value}/v2.2_hydrofabric/${nextDate}/${nextForecast}/`
     );
+    if (!isCurrentSelection(selection)) return;
     setAvailableCyclesList(cycleOptions);
 
     const nextCycle = cycleOptions[0]?.value ?? '';
@@ -190,6 +195,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
       const ensembleOptions = await getOptionsFromURL(
         `outputs/${opt.value}/v2.2_hydrofabric/${nextDate}/${nextForecast}/${nextCycle}/`
       );
+      if (!isCurrentSelection(selection)) return;
       setAvailableEnsembleList(ensembleOptions);
       const nextEns = ensembleOptions[0]?.value ?? '';
       set_ensemble(nextEns);
@@ -197,6 +203,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
       const outputFileOptions = await getOptionsFromURL(
         `outputs/${opt.value}/v2.2_hydrofabric/${nextDate}/${nextForecast}/${nextCycle}/${nextEns}/${vpu}/ngen-run/outputs/troute/`
       );
+      if (!isCurrentSelection(selection)) return;
       applyOutputFiles(outputFileOptions);
     } else {
       setAvailableEnsembleList([]);
@@ -205,6 +212,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
       const outputFileOptions = await getOptionsFromURL(
         `outputs/${opt.value}/v2.2_hydrofabric/${nextDate}/${nextForecast}/${nextCycle}/${vpu}/ngen-run/outputs/troute/`
       );
+      if (!isCurrentSelection(selection)) return;
       applyOutputFiles(outputFileOptions);
     }
 
@@ -213,10 +221,12 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
   const handleChangeDate = useEvent(async (v) => {
     const opt = firstOpt(v);
     if (!opt) return;
+    const selection = beginSelection();
 
     set_date(opt.value);
 
     const forecastOptions = await getOptionsFromURL(`outputs/${model}/v2.2_hydrofabric/${opt.value}/`);
+    if (!isCurrentSelection(selection)) return;
     const nextForecast = forecastOptions[0]?.value ?? '';    
     setForecastOptions(forecastOptions);
     set_forecast(nextForecast);
@@ -224,6 +234,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
     const cycleOptions = await getOptionsFromURL(
       `outputs/${model}/v2.2_hydrofabric/${opt.value}/${nextForecast}/`
     );
+    if (!isCurrentSelection(selection)) return;
     setAvailableCyclesList(cycleOptions);
 
     const nextCycle = cycleOptions[0]?.value ?? '';
@@ -233,6 +244,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
       const ensembleOptions = await getOptionsFromURL(
         `outputs/${model}/v2.2_hydrofabric/${opt.value}/${nextForecast}/${nextCycle}/`
       );
+      if (!isCurrentSelection(selection)) return;
       setAvailableEnsembleList(ensembleOptions);
       const nextEns = ensembleOptions[0]?.value ?? '';
       set_ensemble(nextEns);
@@ -240,6 +252,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
       const outputFileOptions = await getOptionsFromURL(
         `outputs/${model}/v2.2_hydrofabric/${opt.value}/${nextForecast}/${nextCycle}/${nextEns}/${vpu}/ngen-run/outputs/troute/`
       );
+      if (!isCurrentSelection(selection)) return;
       applyOutputFiles(outputFileOptions);
     } else {
       setAvailableEnsembleList([]);
@@ -248,6 +261,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
       const outputFileOptions = await getOptionsFromURL(
         `outputs/${model}/v2.2_hydrofabric/${opt.value}/${nextForecast}/${nextCycle}/${vpu}/ngen-run/outputs/troute/`
       );
+      if (!isCurrentSelection(selection)) return;
       applyOutputFiles(outputFileOptions);
     }
 
@@ -256,12 +270,14 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
   const handleChangeForecast = useEvent(async (v) => {
     const opt = firstOpt(v);
     if (!opt) return;
+    const selection = beginSelection();
 
     set_forecast(opt.value);
 
     const cycleOptions = await getOptionsFromURL(
       `outputs/${model}/v2.2_hydrofabric/${date}/${opt.value}/`
     );
+    if (!isCurrentSelection(selection)) return;
     setAvailableCyclesList(cycleOptions);
     const nextCycle = cycleOptions[0]?.value ?? '';
     set_cycle(nextCycle);
@@ -270,6 +286,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
       const ensembleOptions = await getOptionsFromURL(
         `outputs/${model}/v2.2_hydrofabric/${date}/${opt.value}/${nextCycle}/`
       );
+      if (!isCurrentSelection(selection)) return;
       setAvailableEnsembleList(ensembleOptions);
       const nextEns = ensembleOptions[0]?.value ?? '';
       set_ensemble(nextEns);
@@ -277,6 +294,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
       const outputFileOptions = await getOptionsFromURL(
         `outputs/${model}/v2.2_hydrofabric/${date}/${opt.value}/${nextCycle}/${nextEns}/${vpu}/ngen-run/outputs/troute/`
       );
+      if (!isCurrentSelection(selection)) return;
       applyOutputFiles(outputFileOptions);
     } else {
       setAvailableEnsembleList([]);
@@ -285,6 +303,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
       const outputFileOptions = await getOptionsFromURL(
         `outputs/${model}/v2.2_hydrofabric/${date}/${opt.value}/${nextCycle}/${vpu}/ngen-run/outputs/troute/`
       );
+      if (!isCurrentSelection(selection)) return;
       applyOutputFiles(outputFileOptions);
     }
   });
@@ -292,6 +311,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
   const handleChangeCycle = useEvent(async (v) => {
     const opt = firstOpt(v);
     if (!opt) return;
+    const selection = beginSelection();
 
     set_cycle(opt.value);
 
@@ -299,6 +319,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
       const ensembleOptions = await getOptionsFromURL(
         `outputs/${model}/v2.2_hydrofabric/${date}/${forecast}/${opt.value}/`
       );
+      if (!isCurrentSelection(selection)) return;
       setAvailableEnsembleList(ensembleOptions);
       const nextEns = ensembleOptions[0]?.value ?? '';
       set_ensemble(nextEns);
@@ -306,6 +327,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
       const outputFileOptions = await getOptionsFromURL(
         `outputs/${model}/v2.2_hydrofabric/${date}/${forecast}/${opt.value}/${nextEns}/${vpu}/ngen-run/outputs/troute/`
       );
+      if (!isCurrentSelection(selection)) return;
       applyOutputFiles(outputFileOptions);
     } else {
       setAvailableEnsembleList([]);
@@ -314,6 +336,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
       const outputFileOptions = await getOptionsFromURL(
         `outputs/${model}/v2.2_hydrofabric/${date}/${forecast}/${opt.value}/${vpu}/ngen-run/outputs/troute/`
       );
+      if (!isCurrentSelection(selection)) return;
       applyOutputFiles(outputFileOptions);
     }
   });
@@ -321,12 +344,14 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
   const handleChangeEnsemble = useEvent(async (v) => {
     const opt = firstOpt(v);
     if (!opt) return;
+    const selection = beginSelection();
 
     set_ensemble(opt.value);
 
     const outputFileOptions = await getOptionsFromURL(
       `outputs/${model}/v2.2_hydrofabric/${date}/${forecast}/${cycle}/${opt.value}/${vpu}/ngen-run/outputs/troute/`
     );
+    if (!isCurrentSelection(selection)) return;
     applyOutputFiles(outputFileOptions);
   });
 

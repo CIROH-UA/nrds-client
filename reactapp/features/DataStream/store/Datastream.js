@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { cancelVpuLoads } from 'features/DataStream/actions/loadState';
+import { cancelSelections } from 'features/DataStream/actions/selectionGeneration';
 import { useVPUStore } from 'features/DataStream/store/Layers';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import { getYesterdayDateString } from '../lib/utils';
@@ -20,6 +21,7 @@ import { getYesterdayDateString } from '../lib/utils';
  */
 function leaveCurrentVpu() {
   cancelVpuLoads();
+  cancelSelections();
   useTimeSeriesStore.setState({ isPlaying: false });
   useVPUStore.getState().resetVPU();
 }
