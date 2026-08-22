@@ -1,5 +1,5 @@
 // DataMenu.js
-import React, { Fragment, useMemo } from 'react';
+import React, { Fragment, useMemo, useRef, useState } from 'react';
 import { abandonSelectionWithNoOutput } from 'features/DataStream/actions/noOutputFile';
 import { XButton, Row, IconLabel, Notice } from '../styles/Styles';
 import SelectComponent from '../SelectComponent';
@@ -107,6 +107,31 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
     }))
   );
 
+  const chainsRunning = useRef(0);
+  const [selecting, setSelecting] = useState(false);
+
+  /**
+   * Run one selection chain: claim it, show the controls as working, and hand the chain its
+   * number so it can check before every write.
+   *
+   * Counted rather than a boolean, following beginLoading/endLoading in actions/loadState.js.
+   * A chain that has been superseded still runs to its finally, so a boolean set by whichever
+   * chain happens to end first would clear the spinner while another was still going -- and a
+   * chain cancelled by a vpu change would leave it stuck on forever, since no later chain
+   * arrives to clear it.
+   */
+  const runSelection = useEvent(async (chain) => {
+    const selection = beginSelection();
+    chainsRunning.current += 1;
+    setSelecting(true);
+    try {
+      await chain(selection);
+    } finally {
+      chainsRunning.current -= 1;
+      if (chainsRunning.current === 0) setSelecting(false);
+    }
+  });
+
   /**
    * Apply an output-file listing, and stop showing stale data when it is empty.
    *
@@ -165,194 +190,197 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
   const handleChangeModel = useEvent(async (v) => {
     const opt = firstOpt(v);
     if (!opt) return;
-    const selection = beginSelection();
 
     set_model(opt.value);
 
-    const datesOptions = await readableDatesNewestFirst(opt.value);
-    if (!isCurrentSelection(selection)) return;
-    const nextDate = datesOptions[0]?.value ?? '';
-    setAvailableDatesList(datesOptions);
-    set_date(nextDate);
+    await runSelection(async (selection) => {
+      const datesOptions = await readableDatesNewestFirst(opt.value);
+      if (!isCurrentSelection(selection)) return;
+      const nextDate = datesOptions[0]?.value ?? '';
+      setAvailableDatesList(datesOptions);
+      set_date(nextDate);
 
 
-    const forecastOptions = await getOptionsFromURL(`outputs/${opt.value}/v2.2_hydrofabric/${nextDate}/`);
-    if (!isCurrentSelection(selection)) return;
-    const nextForecast = forecastOptions[0]?.value ?? '';    
-    setForecastOptions(forecastOptions);
-    set_forecast(nextForecast);
+      const forecastOptions = await getOptionsFromURL(`outputs/${opt.value}/v2.2_hydrofabric/${nextDate}/`);
+      if (!isCurrentSelection(selection)) return;
+      const nextForecast = forecastOptions[0]?.value ?? '';    
+      setForecastOptions(forecastOptions);
+      set_forecast(nextForecast);
 
-    const cycleOptions = await getOptionsFromURL(
-      `outputs/${opt.value}/v2.2_hydrofabric/${nextDate}/${nextForecast}/`
-    );
-    if (!isCurrentSelection(selection)) return;
-    setAvailableCyclesList(cycleOptions);
-
-    const nextCycle = cycleOptions[0]?.value ?? '';
-    set_cycle(nextCycle);
-
-    if (nextForecast === 'medium_range') {
-      const ensembleOptions = await getOptionsFromURL(
-        `outputs/${opt.value}/v2.2_hydrofabric/${nextDate}/${nextForecast}/${nextCycle}/`
+      const cycleOptions = await getOptionsFromURL(
+        `outputs/${opt.value}/v2.2_hydrofabric/${nextDate}/${nextForecast}/`
       );
       if (!isCurrentSelection(selection)) return;
-      setAvailableEnsembleList(ensembleOptions);
-      const nextEns = ensembleOptions[0]?.value ?? '';
-      set_ensemble(nextEns);
+      setAvailableCyclesList(cycleOptions);
 
-      const outputFileOptions = await getOptionsFromURL(
-        `outputs/${opt.value}/v2.2_hydrofabric/${nextDate}/${nextForecast}/${nextCycle}/${nextEns}/${vpu}/ngen-run/outputs/troute/`
-      );
-      if (!isCurrentSelection(selection)) return;
-      applyOutputFiles(outputFileOptions);
-    } else {
-      setAvailableEnsembleList([]);
-      set_ensemble('');
+      const nextCycle = cycleOptions[0]?.value ?? '';
+      set_cycle(nextCycle);
 
-      const outputFileOptions = await getOptionsFromURL(
-        `outputs/${opt.value}/v2.2_hydrofabric/${nextDate}/${nextForecast}/${nextCycle}/${vpu}/ngen-run/outputs/troute/`
-      );
-      if (!isCurrentSelection(selection)) return;
-      applyOutputFiles(outputFileOptions);
-    }
+      if (nextForecast === 'medium_range') {
+        const ensembleOptions = await getOptionsFromURL(
+          `outputs/${opt.value}/v2.2_hydrofabric/${nextDate}/${nextForecast}/${nextCycle}/`
+        );
+        if (!isCurrentSelection(selection)) return;
+        setAvailableEnsembleList(ensembleOptions);
+        const nextEns = ensembleOptions[0]?.value ?? '';
+        set_ensemble(nextEns);
 
+        const outputFileOptions = await getOptionsFromURL(
+          `outputs/${opt.value}/v2.2_hydrofabric/${nextDate}/${nextForecast}/${nextCycle}/${nextEns}/${vpu}/ngen-run/outputs/troute/`
+        );
+        if (!isCurrentSelection(selection)) return;
+        applyOutputFiles(outputFileOptions);
+      } else {
+        setAvailableEnsembleList([]);
+        set_ensemble('');
+
+        const outputFileOptions = await getOptionsFromURL(
+          `outputs/${opt.value}/v2.2_hydrofabric/${nextDate}/${nextForecast}/${nextCycle}/${vpu}/ngen-run/outputs/troute/`
+        );
+        if (!isCurrentSelection(selection)) return;
+        applyOutputFiles(outputFileOptions);
+      }
+    });
   });
 
   const handleChangeDate = useEvent(async (v) => {
     const opt = firstOpt(v);
     if (!opt) return;
-    const selection = beginSelection();
 
     set_date(opt.value);
 
-    const forecastOptions = await getOptionsFromURL(`outputs/${model}/v2.2_hydrofabric/${opt.value}/`);
-    if (!isCurrentSelection(selection)) return;
-    const nextForecast = forecastOptions[0]?.value ?? '';    
-    setForecastOptions(forecastOptions);
-    set_forecast(nextForecast);
+    await runSelection(async (selection) => {
+      const forecastOptions = await getOptionsFromURL(`outputs/${model}/v2.2_hydrofabric/${opt.value}/`);
+      if (!isCurrentSelection(selection)) return;
+      const nextForecast = forecastOptions[0]?.value ?? '';    
+      setForecastOptions(forecastOptions);
+      set_forecast(nextForecast);
 
-    const cycleOptions = await getOptionsFromURL(
-      `outputs/${model}/v2.2_hydrofabric/${opt.value}/${nextForecast}/`
-    );
-    if (!isCurrentSelection(selection)) return;
-    setAvailableCyclesList(cycleOptions);
-
-    const nextCycle = cycleOptions[0]?.value ?? '';
-    set_cycle(nextCycle);
-
-    if (nextForecast === 'medium_range') {
-      const ensembleOptions = await getOptionsFromURL(
-        `outputs/${model}/v2.2_hydrofabric/${opt.value}/${nextForecast}/${nextCycle}/`
+      const cycleOptions = await getOptionsFromURL(
+        `outputs/${model}/v2.2_hydrofabric/${opt.value}/${nextForecast}/`
       );
       if (!isCurrentSelection(selection)) return;
-      setAvailableEnsembleList(ensembleOptions);
-      const nextEns = ensembleOptions[0]?.value ?? '';
-      set_ensemble(nextEns);
+      setAvailableCyclesList(cycleOptions);
 
-      const outputFileOptions = await getOptionsFromURL(
-        `outputs/${model}/v2.2_hydrofabric/${opt.value}/${nextForecast}/${nextCycle}/${nextEns}/${vpu}/ngen-run/outputs/troute/`
-      );
-      if (!isCurrentSelection(selection)) return;
-      applyOutputFiles(outputFileOptions);
-    } else {
-      setAvailableEnsembleList([]);
-      set_ensemble('');
+      const nextCycle = cycleOptions[0]?.value ?? '';
+      set_cycle(nextCycle);
 
-      const outputFileOptions = await getOptionsFromURL(
-        `outputs/${model}/v2.2_hydrofabric/${opt.value}/${nextForecast}/${nextCycle}/${vpu}/ngen-run/outputs/troute/`
-      );
-      if (!isCurrentSelection(selection)) return;
-      applyOutputFiles(outputFileOptions);
-    }
+      if (nextForecast === 'medium_range') {
+        const ensembleOptions = await getOptionsFromURL(
+          `outputs/${model}/v2.2_hydrofabric/${opt.value}/${nextForecast}/${nextCycle}/`
+        );
+        if (!isCurrentSelection(selection)) return;
+        setAvailableEnsembleList(ensembleOptions);
+        const nextEns = ensembleOptions[0]?.value ?? '';
+        set_ensemble(nextEns);
 
+        const outputFileOptions = await getOptionsFromURL(
+          `outputs/${model}/v2.2_hydrofabric/${opt.value}/${nextForecast}/${nextCycle}/${nextEns}/${vpu}/ngen-run/outputs/troute/`
+        );
+        if (!isCurrentSelection(selection)) return;
+        applyOutputFiles(outputFileOptions);
+      } else {
+        setAvailableEnsembleList([]);
+        set_ensemble('');
+
+        const outputFileOptions = await getOptionsFromURL(
+          `outputs/${model}/v2.2_hydrofabric/${opt.value}/${nextForecast}/${nextCycle}/${vpu}/ngen-run/outputs/troute/`
+        );
+        if (!isCurrentSelection(selection)) return;
+        applyOutputFiles(outputFileOptions);
+      }
+    });
   });
 
   const handleChangeForecast = useEvent(async (v) => {
     const opt = firstOpt(v);
     if (!opt) return;
-    const selection = beginSelection();
 
     set_forecast(opt.value);
 
-    const cycleOptions = await getOptionsFromURL(
-      `outputs/${model}/v2.2_hydrofabric/${date}/${opt.value}/`
-    );
-    if (!isCurrentSelection(selection)) return;
-    setAvailableCyclesList(cycleOptions);
-    const nextCycle = cycleOptions[0]?.value ?? '';
-    set_cycle(nextCycle);
-
-    if (opt.value === 'medium_range') {
-      const ensembleOptions = await getOptionsFromURL(
-        `outputs/${model}/v2.2_hydrofabric/${date}/${opt.value}/${nextCycle}/`
+    await runSelection(async (selection) => {
+      const cycleOptions = await getOptionsFromURL(
+        `outputs/${model}/v2.2_hydrofabric/${date}/${opt.value}/`
       );
       if (!isCurrentSelection(selection)) return;
-      setAvailableEnsembleList(ensembleOptions);
-      const nextEns = ensembleOptions[0]?.value ?? '';
-      set_ensemble(nextEns);
+      setAvailableCyclesList(cycleOptions);
+      const nextCycle = cycleOptions[0]?.value ?? '';
+      set_cycle(nextCycle);
 
-      const outputFileOptions = await getOptionsFromURL(
-        `outputs/${model}/v2.2_hydrofabric/${date}/${opt.value}/${nextCycle}/${nextEns}/${vpu}/ngen-run/outputs/troute/`
-      );
-      if (!isCurrentSelection(selection)) return;
-      applyOutputFiles(outputFileOptions);
-    } else {
-      setAvailableEnsembleList([]);
-      set_ensemble('');
+      if (opt.value === 'medium_range') {
+        const ensembleOptions = await getOptionsFromURL(
+          `outputs/${model}/v2.2_hydrofabric/${date}/${opt.value}/${nextCycle}/`
+        );
+        if (!isCurrentSelection(selection)) return;
+        setAvailableEnsembleList(ensembleOptions);
+        const nextEns = ensembleOptions[0]?.value ?? '';
+        set_ensemble(nextEns);
 
-      const outputFileOptions = await getOptionsFromURL(
-        `outputs/${model}/v2.2_hydrofabric/${date}/${opt.value}/${nextCycle}/${vpu}/ngen-run/outputs/troute/`
-      );
-      if (!isCurrentSelection(selection)) return;
-      applyOutputFiles(outputFileOptions);
-    }
+        const outputFileOptions = await getOptionsFromURL(
+          `outputs/${model}/v2.2_hydrofabric/${date}/${opt.value}/${nextCycle}/${nextEns}/${vpu}/ngen-run/outputs/troute/`
+        );
+        if (!isCurrentSelection(selection)) return;
+        applyOutputFiles(outputFileOptions);
+      } else {
+        setAvailableEnsembleList([]);
+        set_ensemble('');
+
+        const outputFileOptions = await getOptionsFromURL(
+          `outputs/${model}/v2.2_hydrofabric/${date}/${opt.value}/${nextCycle}/${vpu}/ngen-run/outputs/troute/`
+        );
+        if (!isCurrentSelection(selection)) return;
+        applyOutputFiles(outputFileOptions);
+      }
+    });
   });
 
   const handleChangeCycle = useEvent(async (v) => {
     const opt = firstOpt(v);
     if (!opt) return;
-    const selection = beginSelection();
 
     set_cycle(opt.value);
 
-    if (forecast === 'medium_range') {
-      const ensembleOptions = await getOptionsFromURL(
-        `outputs/${model}/v2.2_hydrofabric/${date}/${forecast}/${opt.value}/`
-      );
-      if (!isCurrentSelection(selection)) return;
-      setAvailableEnsembleList(ensembleOptions);
-      const nextEns = ensembleOptions[0]?.value ?? '';
-      set_ensemble(nextEns);
+    await runSelection(async (selection) => {
+      if (forecast === 'medium_range') {
+        const ensembleOptions = await getOptionsFromURL(
+          `outputs/${model}/v2.2_hydrofabric/${date}/${forecast}/${opt.value}/`
+        );
+        if (!isCurrentSelection(selection)) return;
+        setAvailableEnsembleList(ensembleOptions);
+        const nextEns = ensembleOptions[0]?.value ?? '';
+        set_ensemble(nextEns);
 
-      const outputFileOptions = await getOptionsFromURL(
-        `outputs/${model}/v2.2_hydrofabric/${date}/${forecast}/${opt.value}/${nextEns}/${vpu}/ngen-run/outputs/troute/`
-      );
-      if (!isCurrentSelection(selection)) return;
-      applyOutputFiles(outputFileOptions);
-    } else {
-      setAvailableEnsembleList([]);
-      set_ensemble('');
+        const outputFileOptions = await getOptionsFromURL(
+          `outputs/${model}/v2.2_hydrofabric/${date}/${forecast}/${opt.value}/${nextEns}/${vpu}/ngen-run/outputs/troute/`
+        );
+        if (!isCurrentSelection(selection)) return;
+        applyOutputFiles(outputFileOptions);
+      } else {
+        setAvailableEnsembleList([]);
+        set_ensemble('');
 
-      const outputFileOptions = await getOptionsFromURL(
-        `outputs/${model}/v2.2_hydrofabric/${date}/${forecast}/${opt.value}/${vpu}/ngen-run/outputs/troute/`
-      );
-      if (!isCurrentSelection(selection)) return;
-      applyOutputFiles(outputFileOptions);
-    }
+        const outputFileOptions = await getOptionsFromURL(
+          `outputs/${model}/v2.2_hydrofabric/${date}/${forecast}/${opt.value}/${vpu}/ngen-run/outputs/troute/`
+        );
+        if (!isCurrentSelection(selection)) return;
+        applyOutputFiles(outputFileOptions);
+      }
+    });
   });
 
   const handleChangeEnsemble = useEvent(async (v) => {
     const opt = firstOpt(v);
     if (!opt) return;
-    const selection = beginSelection();
 
     set_ensemble(opt.value);
 
-    const outputFileOptions = await getOptionsFromURL(
-      `outputs/${model}/v2.2_hydrofabric/${date}/${forecast}/${cycle}/${opt.value}/${vpu}/ngen-run/outputs/troute/`
-    );
-    if (!isCurrentSelection(selection)) return;
-    applyOutputFiles(outputFileOptions);
+    await runSelection(async (selection) => {
+      const outputFileOptions = await getOptionsFromURL(
+        `outputs/${model}/v2.2_hydrofabric/${date}/${forecast}/${cycle}/${opt.value}/${vpu}/ngen-run/outputs/troute/`
+      );
+      if (!isCurrentSelection(selection)) return;
+      applyOutputFiles(outputFileOptions);
+    });
   });
 
   const handleChangeOutputFile = useEvent((v) => {
@@ -519,6 +547,10 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
     handleChangeOutputFile,
   ]);
 
+  const selectionTitle = selecting
+    ? 'Still reading this selection'
+    : (outputFile ? 'Load this selection' : 'No output file to load');
+
   return (
     <Fragment>
       {rows.map((r) => (
@@ -529,6 +561,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
             optionsList={r.options}
             value={r.value}
             onChangeHandler={r.onChange}
+            isLoading={selecting}
           />
         </Row>
       ))}
@@ -543,8 +576,8 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
       <div style={{ marginTop: '10px' }}>
         <XButton
           onClick={handleVisulization}
-          disabled={!outputFile}
-          title={outputFile ? 'Load this selection' : 'No output file to load'}
+          disabled={selecting || !outputFile}
+          title={selectionTitle}
         >
           Update
         </XButton>

@@ -21,10 +21,10 @@ jest.mock('features/DataStream/actions/loadVpu', () => ({ loadVpu: jest.fn() }))
 jest.mock('features/DataStream/lib/duckdbClient', () => ({ terminateDatabase: jest.fn() }));
 /* eslint-disable react/prop-types -- a three-prop stand-in for react-select, not a component. */
 jest.mock('features/DataStream/components/SelectComponent', () => function SelectComponent({
-  inputId, optionsList, onChangeHandler,
+  inputId, optionsList, onChangeHandler, isLoading,
 }) {
   return (
-    <span>
+    <span data-testid={`${inputId}-loading`} data-loading={String(Boolean(isLoading))}>
       {(optionsList ?? []).map((option) => (
         <button
           type="button"
@@ -114,4 +114,29 @@ it('drops a chain left behind by a vpu change', async () => {
   });
 
   expect(useS3DataStreamBucketStore.getState().dates).toEqual([]);
+});
+
+/**
+ * The controls say they are working while a chain runs, and the Update button refuses.
+ *
+ * A chain is up to a dozen sequential requests. Without this the selects sit inert and the
+ * app reads as broken; worse, Update stayed pressable against a half-built selection -- a new
+ * model with the previous model's date still under it, which would have loaded and charted a
+ * combination the user never chose.
+ */
+it('shows the controls working while a chain runs, and refuses Update until it ends', async () => {
+  render(<DataMenuControls />);
+
+  await act(async () => {
+    screen.getByTestId('select-model-slow').click();
+  });
+
+  expect(screen.getByTestId('select-model-loading')).toHaveAttribute('data-loading', 'true');
+  expect(screen.getByRole('button', { name: /update/i })).toBeDisabled();
+
+  await act(async () => {
+    releaseSlow();
+  });
+
+  expect(screen.getByTestId('select-model-loading')).toHaveAttribute('data-loading', 'false');
 });

@@ -142,6 +142,7 @@ const SelectComponent = ({
   value,
   width = 150,
   inputId,
+  isLoading = false,
 }) => {
 
   const components = useMemo(() => ({ MenuList }), []);
@@ -164,6 +165,7 @@ const SelectComponent = ({
       options={optionsList}
       value={value}
       onChange={onChange}
+      isLoading={isLoading}
       menuPortalTarget={document.body}
       menuShouldScrollIntoView={false}
       menuPosition="fixed"
@@ -176,6 +178,7 @@ SelectComponent.propTypes = {
   onChangeHandler: PropTypes.func,
   value: PropTypes.any,
   width: PropTypes.number,
+  isLoading: PropTypes.bool,
   // The one this file was missing: the selects are addressed by it from outside.
   inputId: PropTypes.string,
 };
