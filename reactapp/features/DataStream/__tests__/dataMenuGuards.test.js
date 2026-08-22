@@ -10,7 +10,10 @@ import useDataStreamStore from 'features/DataStream/store/Datastream';
 import { useFeatureStore } from 'features/DataStream/store/Layers';
 
 jest.mock('features/DataStream/actions/loadVpu', () => ({ loadVpu: jest.fn() }));
-jest.mock('features/DataStream/lib/opfsCache', () => ({ getCacheKey: () => 'vpu-01' }));
+jest.mock('features/DataStream/lib/utils', () => ({
+  ...jest.requireActual('features/DataStream/lib/utils'),
+  getCacheKey: () => 'vpu-01',
+}));
 jest.mock('features/DataStream/lib/duckdbClient', () => ({ terminateDatabase: jest.fn() }));
 jest.mock('features/DataStream/lib/s3Utils', () => ({
   getOptionsFromURL: jest.fn(async () => []),

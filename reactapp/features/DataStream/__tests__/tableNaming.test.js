@@ -7,11 +7,6 @@
 jest.mock('features/DataStream/lib/duckdbClient', () => ({
   getConnection: jest.fn(), getDuckDB: jest.fn(),
 }));
-jest.mock('features/DataStream/lib/opfsCache', () => ({
-  statFromCache: jest.fn(), saveDataToCache: jest.fn(), createTableFromOPFS: jest.fn(),
-  getFilesFromCache: jest.fn(), clearCache: jest.fn(), formatBytes: (n) => `${n} B`,
-  tableNameForKey: (key) => String(key).replace(/\.(arrow|parquet)$/i, ''),
-}));
 
 const { getConnection } = require('features/DataStream/lib/duckdbClient');
 const queryData = require('features/DataStream/lib/queryData');

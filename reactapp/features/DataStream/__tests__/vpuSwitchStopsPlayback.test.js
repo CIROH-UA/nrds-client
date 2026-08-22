@@ -16,9 +16,6 @@ jest.mock('features/DataStream/lib/queryData', () => ({
   getVpuVariableFlat: jest.fn(),
 }));
 jest.mock('features/DataStream/actions/loadTimeseries', () => ({ loadTimeseries: jest.fn() }));
-jest.mock('features/DataStream/store/CacheTables', () => ({
-  useCacheTablesStore: { getState: () => ({ refresh: jest.fn().mockResolvedValue([]) }) },
-}));
 
 const useDataStreamStore = require('features/DataStream/store/Datastream').default;
 const useTimeSeriesStore = require('features/DataStream/store/Timeseries').default;

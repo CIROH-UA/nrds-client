@@ -17,7 +17,10 @@ import { useVPUStore, useFeatureStore } from 'features/DataStream/store/Layers';
 
 // These reach for duckdb-wasm and s3, neither of which runs in jsdom.
 jest.mock('features/DataStream/lib/duckdbClient', () => ({ terminateDatabase: jest.fn() }));
-jest.mock('features/DataStream/lib/opfsCache', () => ({ getCacheKey: () => 'vpu-01' }));
+jest.mock('features/DataStream/lib/utils', () => ({
+  ...jest.requireActual('features/DataStream/lib/utils'),
+  getCacheKey: () => 'vpu-01',
+}));
 jest.mock('features/DataStream/lib/s3Utils', () => ({
   initialS3Data: jest.fn(async () => ({})),
   makePrefix: () => 'prefix/',

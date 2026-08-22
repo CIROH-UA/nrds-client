@@ -173,9 +173,9 @@ describe('the search box', () => {
   });
 
   it.each([
-    ['SecurityError', /storage is blocked/i],
-    ['QuotaExceededError', /storage is full/i],
-    ['NoModificationAllowedError', /another tab/i],
+    ['TimeoutError', /download stopped/i],
+    ['NotParquetError', /not there/i],
+    ['DatabaseTimeoutError', /database is not responding/i],
   ])('names %s so the reader is not left guessing', async (name, shown) => {
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
     // Each of these has a different remedy, and the only place they used to appear was a

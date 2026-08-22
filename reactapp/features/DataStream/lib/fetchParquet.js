@@ -7,7 +7,7 @@ import axios from "axios";
  * 45 MiB, which at 1 Mbps is around six minutes of entirely healthy download. What is worth
  * failing on is a connection that opens and then stops delivering, so the timer resets on every
  * progress event and only silence trips it. This is the same rule saveArrowToCache already
- * applies to the NetCDF reply, and the reason opfsCache's own docstring calls a total deadline
+ * applied to a download, and the reason the cache layer's own docstring called a total deadline
  * wrong.
  *
  * axios rather than fetch, for three reasons that happen to align: it reports download progress,

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Route } from 'react-router-dom';
 
 import ErrorBoundary from 'features/Tethys/components/error/ErrorBoundary';
@@ -7,10 +8,16 @@ import 'App.scss';
 
 
 import DataStreamView from 'features/DataStream/views/DatastreamView';
+import { reclaimLegacyOpfsCache } from 'features/DataStream/lib/reclaimOpfs';
 
 
 function App() {
   const PATH_HOME = '/';
+
+  // Best effort and once per page: hands back the cache directory an older build left behind.
+  useEffect(() => {
+    void reclaimLegacyOpfsCache();
+  }, []);
 
   return (
     <>

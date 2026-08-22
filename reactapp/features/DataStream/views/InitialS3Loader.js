@@ -4,7 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
 import useS3DataStreamBucketStore from 'features/DataStream/store/s3Store';
 import { initialS3Data, makePrefix } from 'features/DataStream/lib/s3Utils';
-import { getCacheKey } from 'features/DataStream/lib/opfsCache';
+import { getCacheKey } from 'features/DataStream/lib/utils';
 import { loadVpu } from 'features/DataStream/actions/loadVpu';
 import { abandonSelectionWithNoOutput } from 'features/DataStream/actions/noOutputFile';
 

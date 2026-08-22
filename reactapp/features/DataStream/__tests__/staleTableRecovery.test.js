@@ -5,28 +5,22 @@
  *
  *   Catalog Error: Table with name cfe_nom_..._VPU_16_troute_output_... does not exist!
  *
- * and after that nothing loaded at all. Two things guard it: the series load rebuilds the vpu
- * when the table is missing, and the delete forgets the state that was derived from it.
+ * and after that nothing loaded at all. The guard that remains is the series load rebuilding the
+ * vpu when its table is missing. The other half of this file used to cover the cache delete
+ * forgetting what was derived from it; there is no cache to delete from now, and a table can
+ * still be absent -- a fresh tab, a superseded load -- so the rebuild is what still matters.
  */
 jest.mock('features/DataStream/lib/queryData', () => ({
   checkForTable: jest.fn(),
   getTimeseries: jest.fn(),
   dropAllVpuDataTables: jest.fn(),
 }));
-jest.mock('features/DataStream/lib/opfsCache', () => ({
-  deleteFileFromCache: jest.fn(),
-  clearCache: jest.fn(),
-  getFilesFromCache: jest.fn(),
-  tableNameForKey: (key) => String(key).replace(/\.(arrow|parquet)$/i, ''),
-}));
 jest.mock('features/DataStream/lib/duckdbClient', () => ({ terminateDatabase: jest.fn() }));
 jest.mock('features/DataStream/actions/loadVpu', () => ({ loadVpu: jest.fn() }));
 
 const queryData = require('features/DataStream/lib/queryData');
-const opfs = require('features/DataStream/lib/opfsCache');
 const { loadVpu } = require('features/DataStream/actions/loadVpu');
 const { loadTimeseries } = require('features/DataStream/actions/loadTimeseries');
-const { useCacheTablesStore } = require('features/DataStream/store/CacheTables');
 const useTimeSeriesStore = require('features/DataStream/store/Timeseries').default;
 const useDataStreamStore = require('features/DataStream/store/Datastream').default;
 const { useVPUStore } = require('features/DataStream/store/Layers');
@@ -42,16 +36,13 @@ beforeEach(() => {
   useTimeSeriesStore.setState(initial.ts, true);
   useDataStreamStore.setState(initial.ds, true);
   useVPUStore.setState(initial.vpu, true);
-  useCacheTablesStore.setState({ cacheTables: [{ id: KEY, name: KEY, size: '4.5 MB' }] });
-  opfs.getFilesFromCache.mockResolvedValue([]);
   useDataStreamStore.setState({ cache_key: KEY, variables: ['flow'] });
   useTimeSeriesStore.setState({ feature_id: 'cat-2884494', variable: 'flow' });
   queryData.getTimeseries.mockResolvedValue([{ time: '2022-08-01T00:00:00Z', flow: 1 }]);
   require('features/DataStream/lib/duckdbClient').terminateDatabase.mockResolvedValue(undefined);
-  opfs.deleteFileFromCache.mockResolvedValue(true);
 });
 
-describe('clicking a catchment after its cache was deleted', () => {
+describe('clicking a catchment whose table is not there', () => {
   test('rebuilds the vpu rather than querying a table that is gone', async () => {
     queryData.checkForTable.mockResolvedValue(false);
 
@@ -90,29 +81,3 @@ describe('clicking a catchment after its cache was deleted', () => {
   });
 });
 
-describe('clearing the cache forgets what was derived from it', () => {
-  test('drops the animation arrays and the charted key', async () => {
-    queryData.dropAllVpuDataTables.mockResolvedValue(undefined);
-    opfs.clearCache.mockResolvedValue(undefined);
-    useVPUStore.getState().setVarData('flow', Float32Array.from([1, 2, 3]));
-    useTimeSeriesStore.setState({ last_loaded_key: `${KEY}|flow|cat-2884494` });
-
-    await useCacheTablesStore.getState().clear();
-
-    expect(useVPUStore.getState().valuesByVar?.flow).toBeUndefined();
-    expect(useTimeSeriesStore.getState().last_loaded_key).toBeNull();
-    expect(useCacheTablesStore.getState().cacheTables).toEqual([]);
-  });
-
-  test('a click after clearing rebuilds rather than erroring', async () => {
-    queryData.dropAllVpuDataTables.mockResolvedValue(undefined);
-    opfs.clearCache.mockResolvedValue(undefined);
-    await useCacheTablesStore.getState().clear();
-
-    queryData.checkForTable.mockResolvedValue(false);
-    await loadTimeseries({ featureId: 'cat-2884494' });
-
-    expect(loadVpu).toHaveBeenCalledTimes(1);
-    expect(queryData.getTimeseries).not.toHaveBeenCalled();
-  });
-});

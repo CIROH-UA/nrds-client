@@ -21,7 +21,6 @@ import { MemoryRouter } from 'react-router-dom';
 jest.mock('features/DataStream/views/DatastreamView', () => function DataStreamView() {
   return <div data-testid="datastream-view" />;
 });
-jest.mock('features/Tethys/services/api/app', () => ({ getArrowPerVpu: jest.fn() }));
 // The shell is gated on these four; unmocked they are real xhr in jsdom and the app never
 // leaves its loading animation, which is all the inherited test ever asserted.
 jest.mock('features/Tethys/services/api/tethys', () => ({
@@ -83,13 +82,13 @@ describe('the app shell', () => {
     expect(await screen.findByText(/NRDS/i)).toBeInTheDocument();
   });
 
-  it('puts the cache control in the header', async () => {
+  it('has no cache control in the header, since there is no cache to clear', async () => {
     renderApp();
 
     await screen.findByTestId('datastream-view');
-    expect(
-      screen.getByRole('button', { name: /cached data/i })
-    ).toBeInTheDocument();
+    // The index comes from this app's own static files and vpu outputs are fetched into memory,
+    // so the button that used to clear OPFS would have had nothing to act on.
+    expect(screen.queryByRole('button', { name: /cached data/i })).not.toBeInTheDocument();
   });
 
   it('runs the header chain far enough to reach duckdb and report it missing', async () => {

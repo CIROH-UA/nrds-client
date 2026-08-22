@@ -4,7 +4,7 @@ import { abandonSelectionWithNoOutput } from 'features/DataStream/actions/noOutp
 import { XButton, Row, IconLabel, Notice } from '../styles/Styles';
 import SelectComponent from '../SelectComponent';
 import { getOptionsFromURL, makePrefix } from 'features/DataStream/lib/s3Utils';
-import { getCacheKey } from 'features/DataStream/lib/opfsCache';
+import { getCacheKey } from 'features/DataStream/lib/utils';
 import { loadVpu } from 'features/DataStream/actions/loadVpu';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import useDataStreamStore from 'features/DataStream/store/Datastream';

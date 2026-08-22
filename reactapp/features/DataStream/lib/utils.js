@@ -1,4 +1,4 @@
-import { isHandleHeld, isFileGone } from 'features/DataStream/lib/browserErrors';
+import { isMissing, isStalled } from 'features/DataStream/lib/fetchParquet';
 import { FEATURE_PROPERTIES } from "./data";
 
 function separateWords(word){
@@ -71,6 +71,38 @@ export const searchCandidates = (input) => {
   return [...ID_PREFIXES.map((prefix) => `${prefix}-${trimmed}`), trimmed];
 };
 
+/**
+ * A byte count a reader can take in at a glance.
+ *
+ * Lived in opfsCache while the cache reported what it had stored; it is a formatting helper with
+ * no storage concern, so it outlived that file.
+ */
+export function formatBytes(bytes, decimals = 2) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+/** The duckdb table a key names: the same key without its extension. */
+export const tableNameForKey = (key) => String(key).replace(/\.parquet$/i, "");
+
+/**
+ * One name for a selection, used as the duckdb table and as what the UI reports.
+ *
+ * Every separator a hydrofabric path can carry becomes an underscore, because the result is a
+ * SQL identifier. It no longer rewrites a .nc extension to .arrow: the app reads parquet, and
+ * a NetCDF output is filtered out of the listing before it can be selected.
+ */
+export function getCacheKey(model, date, forecast, cycle, ensemble, vpu, outputFile) {
+  const parts = ensemble
+    ? `${model}_${date}_${forecast}_${cycle}_${ensemble}_${vpu}`
+    : `${model}_${date}_${forecast}_${cycle}_${vpu}`;
+  return parts.replace(/\./g, '_').replace(/\//g, '_') + `_${outputFile}`;
+}
+
 /** The numeric part of a hydrofabric id, which is what the timeseries tables are keyed by. */
 export const numericPartOf = (id) => {
   const match = /(\d+)\s*$/.exec(String(id ?? ''));
@@ -140,20 +172,12 @@ export const formatPropertyValue = (value) => {
  * developer can have all of it.
  */
 export function cacheFailureReason(err) {
-  // Asked through the same predicates the cache decides with, so the two cannot drift apart.
-  if (isHandleHeld(err)) return 'another tab is using it';
-  if (isFileGone(err)) return 'the cache changed, reload';
+  // Asked through the same predicates the fetch decides with, so the two cannot drift apart.
+  if (isStalled(err)) return 'the download stopped';
+  if (isMissing(err)) return 'the file is not there';
 
   switch (err?.name) {
-    case 'SecurityError':
-    case 'NotAllowedError':
-      return 'storage is blocked';
-    case 'QuotaExceededError':
-      return 'storage is full';
-    case 'NoModificationAllowedError':
-      return 'another tab is using it';
     case 'TimeoutError':
-    case 'AbortError':
       return 'the download stopped';
     case 'DatabaseTimeoutError':
       return 'the database is not responding';

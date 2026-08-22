@@ -1,12 +1,6 @@
 // // nexusTimeseries.js
-import {
-  statFromCache,
-  saveDataToCache,
-  createTableFromOPFS,
-  formatBytes,
-  tableNameForKey,
-} from "./opfsCache";
-
+import { formatBytes, tableNameForKey } from "./utils";
+import { makeOutputUrl } from "./s3Utils";
 import { fetchParquetBuffer, isMissing } from "./fetchParquet";
 
 import { sqlIdent, sqlStr } from "./sql";
@@ -99,10 +93,35 @@ export async function getFeatureIDs(cacheKey) {
 const INDEX_CACHE_KEY = "index_data_table.parquet";
 
 /**
- * Where the index lives inside duckdb while its table is built. Not an OPFS path: the bytes are
+ * Where a parquet lives inside duckdb while its table is built. Not an OPFS path: the bytes are
  * registered from memory and dropped as soon as CREATE TABLE has copied the rows out.
  */
 const INDEX_DUCK_PATH = "nrds-index/index_data_table.parquet";
+const duckPathFor = (key) => `nrds-data/${key}`;
+
+/**
+ * Build a duckdb table from parquet bytes already in hand.
+ *
+ * CREATE TABLE AS materialises the rows, so the registration is dead weight the moment the
+ * statement returns, and it is dropped in a finally: a file that failed to parse would otherwise
+ * stay registered with no table to show for it. Registering also transfers the buffer to the
+ * worker, which detaches it, so nothing may read its length afterwards.
+ *
+ * Shared by the index and the vpu outputs because they now differ only in which bytes they hand
+ * over -- which is the whole of what replaced the OPFS layer.
+ */
+async function createTableFromBuffer({ conn, tableName, duckPath, bytes }) {
+  const { bindings } = conn;
+  try {
+    await bindings.registerFileBuffer(duckPath, bytes);
+    await conn.query(`
+      CREATE TABLE ${sqlIdent(tableName)} AS
+      SELECT * FROM read_parquet(${sqlStr(duckPath)});
+    `);
+  } finally {
+    await Promise.resolve(bindings.dropFile(duckPath)).catch(() => {});
+  }
+}
 
 /**
  * Build the id index table from the slim artifact this app serves.
@@ -170,19 +189,18 @@ async function buildIndexTable({ remoteUrl, fallbackUrl }) {
     buffer = await fetchParquetBuffer(fallbackUrl);
   }
 
-  const tableConn = await getConnection();
-  const bindings = tableConn.bindings;
-  // See the docstring: registering transfers the buffer, so its length has to be read first.
+  // Read before registering, which transfers the buffer and detaches it.
   const byteLength = buffer.byteLength;
+  const tableConn = await getConnection();
   try {
-    await bindings.registerFileBuffer(INDEX_DUCK_PATH, buffer);
-    await tableConn.query(`
-      CREATE TABLE ${sqlIdent(tableName)} AS
-      SELECT * FROM read_parquet(${sqlStr(INDEX_DUCK_PATH)});
-    `);
+    await createTableFromBuffer({
+      conn: tableConn,
+      tableName,
+      duckPath: INDEX_DUCK_PATH,
+      bytes: buffer,
+    });
     debugLog(`Created table "${tableName}" from ${byteLength} bytes`);
   } finally {
-    await Promise.resolve(bindings.dropFile(INDEX_DUCK_PATH)).catch(() => {});
     await tableConn.close();
   }
 }
@@ -246,24 +264,23 @@ export async function loadVpuData(
 ) {
   debugLog("loadVpuData called with cacheKey:", cacheKey, "prefix:", prefix);
 
-  let meta = await statFromCache(cacheKey);
-  let fileSize;
+  const bytes = await fetchParquetBuffer(makeOutputUrl(prefix));
+  // Read before registering, which transfers the buffer and detaches it.
+  const byteLength = bytes.byteLength;
 
-  if (!meta) {
-    fileSize = await saveDataToCache(cacheKey, prefix);
-    meta = await statFromCache(cacheKey);
-    if (!meta) throw new Error(`Saved to cache but can't stat file: ${cacheKey}`);
-  } else {
-    fileSize = formatBytes(meta.sizeBytes);
-  }
   const conn = await getConnection();
   try {
-    await createTableFromOPFS({ conn, key: cacheKey, safeName: meta.safeName });
+    await createTableFromBuffer({
+      conn,
+      tableName: tableNameForKey(cacheKey),
+      duckPath: duckPathFor(cacheKey),
+      bytes,
+    });
   } finally {
     void Promise.resolve(conn.close()).catch(() => {});
   }
 
-  return fileSize;
+  return formatBytes(byteLength);
 }
 
 /**

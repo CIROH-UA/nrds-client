@@ -16,17 +16,8 @@ jest.mock('features/DataStream/lib/fetchParquet', () => ({
   ...jest.requireActual('features/DataStream/lib/fetchParquet'),
   fetchParquetBuffer: jest.fn(),
 }));
-jest.mock('features/DataStream/lib/opfsCache', () => ({
-  statFromCache: jest.fn(),
-  saveDataToCache: jest.fn(),
-  createTableFromOPFS: jest.fn(),
-  formatBytes: jest.fn((n) => `${n} B`),
-  // Mirrors the real helper: the index table is named by the same rule as every other table.
-  tableNameForKey: (key) => String(key).replace(/\.(arrow|parquet)$/i, ''),
-}));
 jest.mock('features/DataStream/lib/duckdbClient', () => ({ getConnection: jest.fn() }));
 
-const opfs = require('features/DataStream/lib/opfsCache');
 const { fetchParquetBuffer } = require('features/DataStream/lib/fetchParquet');
 const { getConnection } = require('features/DataStream/lib/duckdbClient');
 const { loadIndexData } = require('features/DataStream/lib/queryData');
@@ -46,9 +37,6 @@ const connectionWhere = (tableExists) => ({
 });
 
 beforeEach(() => {
-  opfs.statFromCache.mockReset();
-  opfs.saveDataToCache.mockReset();
-  opfs.createTableFromOPFS.mockReset();
   fetchParquetBuffer.mockReset();
   getConnection.mockReset();
 });
@@ -103,16 +91,6 @@ describe('loadIndexData', () => {
     expect(fetchParquetBuffer).not.toHaveBeenCalled();
   });
 
-  it('touches no OPFS api at all', async () => {
-    getConnection.mockResolvedValue(connectionWhere(false));
-    fetchParquetBuffer.mockResolvedValue(BYTES);
-
-    await loadIndexData({ remoteUrl: STATIC_URL });
-
-    expect(opfs.statFromCache).not.toHaveBeenCalled();
-    expect(opfs.saveDataToCache).not.toHaveBeenCalled();
-    expect(opfs.createTableFromOPFS).not.toHaveBeenCalled();
-  });
 
   it('falls back to the upstream index when the static artifact is absent', async () => {
     getConnection.mockResolvedValue(connectionWhere(false));

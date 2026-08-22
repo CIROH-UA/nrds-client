@@ -42,7 +42,7 @@ let dbPromise = null;
  * The promise is cleared if it rejects. Caching a rejected one meant a single failed
  * initialisation -- a blocked worker url, a wasm fetch that lost the network -- was replayed to
  * every later caller, so nothing in the app could touch duckdb again until the page reloaded.
- * getCacheDir in opfsCache.js already does this; this is the same rule.
+ * The cache layer used to do the same thing before it was removed; this is that rule.
  */
 export function getDuckDB() {
   if (!dbPromise) {
@@ -62,10 +62,11 @@ export function getDuckDB() {
 
       await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
       
-      await db.open({
-        accessMode: duckdb.DuckDBAccessMode.READ_WRITE,
-        opfs: { fileHandling: "auto" },
-      });
+      // No opfs option: nothing this app registers comes from a file handle any more, and
+      // leaving the mode on would let a future registerFileHandle reopen the per-origin locking
+      // this change exists to retire. A main-thread assertion could not catch that -- duckdb's
+      // handling runs in a worker -- so it is closed off at the source instead.
+      await db.open({ accessMode: duckdb.DuckDBAccessMode.READ_WRITE });
 
       // Optional cleanup
       URL.revokeObjectURL(workerUrl);

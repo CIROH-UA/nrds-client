@@ -14,19 +14,9 @@ jest.mock('features/DataStream/lib/duckdbClient', () => ({
   getConnection: jest.fn(),
   getDuckDB: jest.fn(),
 }));
-jest.mock('features/DataStream/lib/opfsCache', () => ({
-  statFromCache: jest.fn(),
-  saveDataToCache: jest.fn(),
-  createTableFromOPFS: jest.fn(),
-  getFilesFromCache: jest.fn(),
-  clearCache: jest.fn(),
-  formatBytes: (n) => `${n} B`,
-  tableNameForKey: (key) => String(key).replace(/\.(arrow|parquet)$/i, ''),
-}));
 
 const { getConnection } = require('features/DataStream/lib/duckdbClient');
 const { checkForTable } = require('features/DataStream/lib/queryData');
-const { useCacheTablesStore } = require('features/DataStream/store/CacheTables');
 
 const KEY = 'cfe_nom_ngen_20260819_medium_range_00_VPU_16_troute_output_202608190100.parquet';
 const TABLE = KEY.replace('.parquet', '');
@@ -73,70 +63,6 @@ describe('checkForTable', () => {
     await expect(checkForTable(KEY)).resolves.toBe(false);
   });
 
-  test('an arrow key is stripped the same way', async () => {
-    const arrowKey = 'cfe_nom_ngen_20260819_short_range_00_VPU_01_troute_output.arrow';
-    const { conn } = connectionHolding(arrowKey.replace('.arrow', ''));
-    getConnection.mockResolvedValue(conn);
-
-    await expect(checkForTable(arrowKey)).resolves.toBe(true);
-  });
 });
 
-describe('what the store reports as cached', () => {
-  beforeEach(() => {
-    useCacheTablesStore.setState({ cacheTables: [] });
-  });
 
-  test('reflects the directory listing rather than a tally of loads', async () => {
-    const opfs = require('features/DataStream/lib/opfsCache');
-    opfs.getFilesFromCache.mockResolvedValue([{ id: KEY, name: 'vpu 16', size: '6.2 MB' }]);
-
-    // Three loads of the same file, which is what filled the old panel with identical rows.
-    await useCacheTablesStore.getState().refresh();
-    await useCacheTablesStore.getState().refresh();
-    await useCacheTablesStore.getState().refresh();
-
-    expect(useCacheTablesStore.getState().cacheTables).toHaveLength(1);
-  });
-
-  test('reports nothing cached when the listing is unavailable', async () => {
-    const opfs = require('features/DataStream/lib/opfsCache');
-    opfs.getFilesFromCache.mockResolvedValue(null);
-
-    await useCacheTablesStore.getState().refresh();
-
-    expect(useCacheTablesStore.getState().cacheTables).toEqual([]);
-  });
-});
-
-describe('what a repeat load actually costs', () => {
-  test('a cached file is stat-ed, never re-fetched from S3', async () => {
-    const opfs = require('features/DataStream/lib/opfsCache');
-    const { loadVpuData } = require('features/DataStream/lib/queryData');
-    const { conn } = connectionHolding(TABLE);
-    getConnection.mockResolvedValue(conn);
-    opfs.statFromCache.mockResolvedValue({ safeName: encodeURIComponent(KEY), sizeBytes: 6_500_000 });
-
-    const size = await loadVpuData(KEY, 'outputs/some/prefix/');
-
-    // The size in the panel comes from the cached file's own stat, so those rows were
-    // cache hits being re-reported, not downloads.
-    expect(opfs.saveDataToCache).not.toHaveBeenCalled();
-    expect(size).toBe('6500000 B');
-  });
-
-  test('downloads only when the file is genuinely absent', async () => {
-    const opfs = require('features/DataStream/lib/opfsCache');
-    const { loadVpuData } = require('features/DataStream/lib/queryData');
-    const { conn } = connectionHolding(TABLE);
-    getConnection.mockResolvedValue(conn);
-    opfs.statFromCache
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ safeName: encodeURIComponent(KEY), sizeBytes: 6_500_000 });
-    opfs.saveDataToCache.mockResolvedValue('6.2 MB');
-
-    await loadVpuData(KEY, 'outputs/some/prefix/');
-
-    expect(opfs.saveDataToCache).toHaveBeenCalledWith(KEY, 'outputs/some/prefix/');
-  });
-});

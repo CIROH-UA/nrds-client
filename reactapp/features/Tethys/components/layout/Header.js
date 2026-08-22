@@ -7,7 +7,6 @@ import { BsInfoCircle } from 'react-icons/bs';
 import { LinkContainer } from 'react-router-bootstrap';
 import SearchBar from 'features/DataStream/components/map/SearchBar';
 import LoadStatus from 'features/DataStream/components/status/LoadStatus';
-import ClearCacheButton from 'features/DataStream/components/cache/ClearCacheButton';
 import { LayersMenu } from 'features/DataStream/components/menus/LayersMenu';
 import { AppContext } from 'features/Tethys/context/context';
 import { CustomNavBar, CustomDiv, StyledButton } from 'features/Tethys/components/Styles';
@@ -39,7 +38,6 @@ const Header = ({onNavChange}) => {
               <LoadStatus/>
             </CustomDiv>
             <CustomDiv>
-              <ClearCacheButton/>
               <StyledButton
                 type="button"
                 onClick={() => setModalGeneralInfoShow(true)}

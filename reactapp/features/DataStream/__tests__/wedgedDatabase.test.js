@@ -17,9 +17,6 @@ jest.mock('features/DataStream/lib/queryData', () => ({
   getDistinctTimes: jest.fn(),
   getVpuVariableFlat: jest.fn(),
 }));
-jest.mock('features/DataStream/store/CacheTables', () => ({
-  useCacheTablesStore: { getState: () => ({ refresh: jest.fn().mockResolvedValue([]) }) },
-}));
 jest.mock('features/DataStream/lib/duckdbClient', () => ({ getConnection: jest.fn() }));
 jest.mock('features/DataStream/actions/loadVpu', () => ({ loadVpu: jest.fn() }));
 
