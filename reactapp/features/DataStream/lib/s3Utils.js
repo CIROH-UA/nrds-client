@@ -50,7 +50,7 @@ export async function listPublicS3Directories(prefix = "v2.2/", { signal } = {})
   return { fullPrefixes, childNames };
 }
 
-export async function listPublicS3Files(prefix = "v2.2/", { signal } = {}) {
+async function listPublicS3Files(prefix = "v2.2/", { signal } = {}) {
     const bucket = "ciroh-community-ngen-datastream";
     const url =
         `https://${bucket}.s3.us-east-1.amazonaws.com` +
@@ -179,7 +179,7 @@ const datedRunsNewestFirst = async (model, { signal } = {}) => {
  * left nothing at all the list is returned untouched, since an empty model control is worse than
  * an imperfect one.
  */
-export async function modelsWithReadableOutputs(models, { signal } = {}) {
+async function modelsWithReadableOutputs(models, { signal } = {}) {
   const checked = await Promise.all(
     models.map(async (model) => {
       const runs = await datedRunsNewestFirst(model.value, { signal });
@@ -210,7 +210,7 @@ export async function modelsWithReadableOutputs(models, { signal } = {}) {
  * model like lstm, which stopped publishing before the format changed: every one of its dates
  * would open onto an empty output list, and inviting that click helps nobody.
  */
-export async function datesWithReadableOutputs(model, dates, { signal } = {}) {
+async function datesWithReadableOutputs(model, dates, { signal } = {}) {
   if (dates.length === 0) return dates;
 
   const has = (i) => dateHasParquet(model, dates[i].value, { signal });
@@ -261,11 +261,6 @@ const DATASTREAM_BUCKET = 'https://ciroh-community-ngen-datastream.s3.us-east-1.
 /** The https url for an output key, which is what the browser fetches directly. */
 export const makeOutputUrl = (prefix) =>
   /^https?:\/\//i.test(prefix) ? prefix : `${DATASTREAM_BUCKET}/${prefix}`;
-
-export const makeGpkgUrl = (vpu) => {
-    const vpu_gpkg = `s3://ciroh-community-ngen-datastream/resources/v2.2_hydrofabric/geopackages/${vpu}/nextgen_${vpu}.gpkg`;
-    return vpu_gpkg;
-}
 
 // Only the outputFiles listing depends on the vpu, but the effect calling initialS3Data
 // re-runs whenever the vpu changes, so all five listings were refetched every time. This

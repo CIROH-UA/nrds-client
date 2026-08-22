@@ -521,26 +521,6 @@ export const StatusStrip = styled.div`
   }
 `;
 
-export const LoadingMessage = styled.div`
-  color: var(--muted-text);
-  padding: 10px;
-  border-radius: 5px;
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  font-weight: bold;
-  width: 100%;
-  text-align: center;
-  opacity: 0.8;
-  transition: opacity 0.3s ease;
-
-  &:hover {
-    opacity: 1;
-  }
-`;
-
 export const Row = styled.div`
   display: flex;
   flex-direction: row;
@@ -569,30 +549,6 @@ export const Title = styled.span`
   line-height: 1.4;
   margin: 0;
   align-items: center;
-`;
-
-export const ToggleButton = styled(Button)`
-  top: ${({ $top = 0 }) => `${$top}px`};
-  left: ${(props) => (props.$currentMenu ? '410px' : '20px')};
-  position: absolute;
-
-  margin-top: 10px;
-
-  transition: transform 0.3s ease;
-
-  background-color: var(--button-primary-bg);
-  border: none;
-  color: var(--button-primary-text);
-  border-radius: 5px;
-  padding: 3px 10px;
-  z-index: 1001;
-
-  &:hover {
-    background-color: var(--button-primary-hover-bg);
-    color: var(--button-primary-text);
-    border: none;
-    box-shadow: none;
-  }
 `;
 
 export const Switch = styled(Form.Switch)`

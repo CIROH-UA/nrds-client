@@ -312,18 +312,6 @@ export async function checkForTable(cacheKey) {
   }
 }
 
-export async function deleteTable(tableName){
-  const conn = await getConnection();
-  try {
-    await conn.query(`
-      DROP TABLE IF EXISTS "${tableName}"
-    `);
-    debugLog(`Table ${tableName} has been deleted.`);
-  } finally {
-    void Promise.resolve(conn.close()).catch(() => {});
-  }
-}
-
 export async function dropAllVpuDataTables() {
   const conn = await getConnection();
 

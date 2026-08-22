@@ -13,7 +13,7 @@ import { CustomNavBar, CustomDiv, StyledButton } from 'features/Tethys/component
 import { GeneralInfoModal } from 'features/DataStream/components/Modals';
 
 const Header = ({onNavChange}) => {
-  const {tethysApp, user} = useContext(AppContext);
+  const {tethysApp} = useContext(AppContext);
   const [ modalGeneralInfoShow, setModalGeneralInfoShow ] = useState(false);
   return (
     <>

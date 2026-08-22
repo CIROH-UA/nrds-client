@@ -47,10 +47,10 @@ const STYLE_FLOWPATHS_LAYER_ID = 'flowpaths';
  * zooms 0 to 6 by the style itself. Nothing in this app creates it, so its switch sets
  * visibility on the style's layer rather than mounting one of ours.
  */
-export const STYLE_VPU_LAYER_ID = 'vpu';
+const STYLE_VPU_LAYER_ID = 'vpu';
 
 /** The colour the basemap style draws vpu boundaries in, so the legend can match it. */
-export const VPU_BOUNDARY_COLOR = 'rgb(0, 153, 136)';
+const VPU_BOUNDARY_COLOR = 'rgb(0, 153, 136)';
 
 /** Show or hide the style's vpu boundaries. */
 export const setVpuVisibility = (map, visible) => {
@@ -150,30 +150,6 @@ export const symbologyColors = () => {
     gaugeFill: map.gauges,
     gaugeStroke: map.nexusStroke,
   };
-}
-
-export const getSymbology = (typeSymbol, colors) => {
-  switch (typeSymbol) {
-    case 'nexus':
-      return (
-        <NexusSymbol fill={colors.nexusFill} stroke={colors.nexusStroke} />
-      );
-    case 'catchments':
-      return (
-        <CatchmentSymbol
-          fill={colors.catchmentFill}
-          stroke={colors.catchmentStroke}
-        />
-      );
-    case 'flowpaths':
-      return <FlowPathSymbol stroke={colors.flowStroke} />;
-    case 'conus_gauges':
-      return (
-        <GaugeSymbol fill={colors.gaugeFill} stroke={colors.gaugeStroke} />
-      );
-    default:
-      return null;
-  }
 }
 
 // --- Small SVG legend symbols ----------------------------------
@@ -293,42 +269,6 @@ export const BasinSymbol = ({
       fill={fill}
       stroke={stroke}
       strokeWidth="1.5"
-    />
-  </svg>
-);
-
-export const DeleteDataIcon = (props) => (
-  <svg
-    width={24}
-    height={24}
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    aria-hidden="true"
-    {...props}
-  >
-    <rect x="6" y="4" width="12" height="2" rx="1" fill="currentColor" />
-    <rect x="7" y="6" width="10" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" />
-    <line x1="10" y1="8" x2="10" y2="16" stroke="currentColor" strokeWidth="1.2" />
-    <line x1="14" y1="8" x2="14" y2="16" stroke="currentColor" strokeWidth="1.2" />
-
-    <ellipse cx="18" cy="17" rx="3" ry="1.3" fill="currentColor" opacity="0.15" />
-    <ellipse cx="18" cy="17" rx="3" ry="1.3" stroke="currentColor" strokeWidth="1" />
-    <path
-      d="M15 17v2.2c0 .7 1.3 1.3 3 1.3s3-.6 3-1.3V17"
-      fill="currentColor"
-      opacity="0.05"
-    />
-    <path
-      d="M15 17v2.2c0 .7 1.3 1.3 3 1.3s3-.6 3-1.3V17"
-      stroke="currentColor"
-      strokeWidth="1"
-    />
-    <path
-      d="M15 18.1c0 .7 1.3 1.3 3 1.3s3-.6 3-1.3"
-      stroke="currentColor"
-      strokeWidth="0.8"
-      opacity="0.7"
     />
   </svg>
 );
@@ -707,7 +647,7 @@ export function addPaths(store, features, featureIdToIndex, zoom = 0) {
   return changed;
 }
 
-export function convertFeaturesToPaths(features, featureIdToIndex) {
+function convertFeaturesToPaths(features, featureIdToIndex) {
   const out = [];
 
   for (const f of features) {
