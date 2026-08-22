@@ -66,7 +66,7 @@ $theme-colors: (
   /* Header status strip. Values chosen against this theme's header background: the text
      reaches 14.1:1 normally and 5.8:1 when reporting a failure. $danger itself only makes
      4.5:1 on white, so failure text is a shade darker than it. */
-  --status-text: #212121;
+  --status-text: #1e2125;
   --status-bg: rgba(0, 0, 0, 0.06);
   --status-failed-text: #b42318;
   --status-failed-bg: rgba(214, 37, 24, 0.08);
@@ -74,13 +74,18 @@ $theme-colors: (
   
 
   --map-divides-outline-color: rgba(91, 44, 111, 0.5);
-  --map-divides-highlight-fill: rgba(5, 49, 243, 0.32);
-  --map-divides-highlight-outline: rgba(253, 0, 253, 0.7);
+  /* The app's accent, which is what ties the map to the rest of the interface. The outline was
+     #fd00fd -- a pure magenta picked to be unmissable rather than designed, and the only place
+     that colour appeared anywhere. Both are the same teal as the focus ring and the active nav
+     pill; the fill is the same hue at low alpha so a selected catchment reads as filled rather
+     than obscured. */
+  --map-divides-highlight-fill: oklch(0.520 0.090 175 / 0.28);
+  --map-divides-highlight-outline: oklch(0.520 0.090 175 / 0.95);
 
   --map-flowpaths-color: #0b0e10;
 
 
-  --map-gauges-color: #646464;
+  --map-gauges-color: #616569;
 
   
   // Shared by the gauge outline and the cursor legend symbol. Named for the nexus layer
@@ -105,7 +110,7 @@ $theme-colors: (
   /* extras used in components */
   --panel-background: oklch(0.985 0.006 249);
   --panel-border-color: oklch(0.645 0.008 249);   // 3.15:1 on --panel-background, 3.13:1 on --map-panel-bg
-  --muted-text: #212121;
+  --muted-text: #1e2125;
 
   --offcanvas-bg: oklch(0.985 0.006 249);
   --offcanvas-border-color: #dee2e6;
@@ -114,21 +119,23 @@ $theme-colors: (
   --popup-text-color: #212529;
 
   --map-panel-bg: #{$light};
-  --map-panel-text: #212121;
+  --map-panel-text: #1e2125;
 
   --select-control-bg: oklch(0.985 0.006 249);
-  --select-control-border: #cccccc;
+  --select-control-border: #c8cdd1;
   --select-text-color: oklch(0.160 0.006 249);
-  --select-placeholder-color: #666666;
+  --select-placeholder-color: #63676b;
   --select-menu-bg: oklch(0.985 0.006 249);
   --select-option-hover-bg: rgba(38,132,255,0.1);
   --select-option-selected-bg: var(--nav-pill-active-bg);   // was #2684ff, 3.44:1 under white
 
   --modal-bg: oklch(0.985 0.006 249);
-  --modal-text-color: #111827;
-  --modal-border-color: #e5e7eb;
+  --modal-text-color: #13191f;
+  --modal-border-color: #e4e7eb;
 
   --link-color: #0a6ccf;                              // 4.94:1 on the app background; #0b74de was 4.39:1
+  /* Not the accent: this is the muted grey used for secondary labels, and it has never been
+     $accent. Renaming it is a wider change than this pass; the comment is the fix for now. */
   --accent-text: #5f6368;
   --hover-text: #{$secondary};
 
@@ -140,22 +147,22 @@ $theme-colors: (
   /* error overlay / box */
   --error-overlay-bg: oklch(0.985 0.006 249);
   --error-box-bg: oklch(0.985 0.006 249);
-  --error-box-text-color: #111827;
+  --error-box-text-color: #13191f;
 
   /* nav pills active state */
   --nav-pill-active-bg: oklch(0.540 0.090 175);
   --nav-pill-active-text-color: oklch(0.985 0.006 249);
 
   /* line chart colors - light */
-  --chart-axis-label-color: #111827;
-  --chart-axis-stroke-color: #111827;
-  --chart-axis-tick-color: #111827;
-  --chart-axis-tick-text-color: #111827;
-  --chart-grid-color: #e5e7eb;
+  --chart-axis-label-color: #13191f;
+  --chart-axis-stroke-color: #13191f;
+  --chart-axis-tick-color: #13191f;
+  --chart-axis-tick-text-color: #13191f;
+  --chart-grid-color: #e4e7eb;
   --chart-tooltip-bg: rgba(255, 255, 255, 0.95);
-  --chart-tooltip-text: #111827;
+  --chart-tooltip-text: #13191f;
   --chart-tooltip-border-color: rgba(148, 163, 184, 0.6);
-  --chart-crosshair-color: #4b5563;
+  --chart-crosshair-color: #4e555c;
   --chart-glyph-stroke-color: oklch(0.985 0.006 249);
   --chart-empty-text-color: var(--panel-text-muted);
 
@@ -188,12 +195,14 @@ $theme-colors: (
     --hover-text: oklch(0.985 0.006 249);
     --map-style-url: #{'https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/styles/dark-style.json'};
     --map-divides-outline-color: rgba(238, 51, 119, 0.5);
-    --map-divides-highlight-fill: rgba(24, 21, 230, 0.32);
-    --map-divides-highlight-outline: rgba(192, 20, 207, 0.7);
+    /* Lightened for the dark basemap; the same hue, so the selection reads as one thing across
+       both themes. */
+    --map-divides-highlight-fill: oklch(0.700 0.110 175 / 0.30);
+    --map-divides-highlight-outline: oklch(0.700 0.110 175 / 0.95);
 
     --map-flowpaths-color: #0077bb;
 
-    --map-gauges-color: #c8c8c8;
+    --map-gauges-color: #c4c9cd;
 
     --map-cursor-symbol-fill: #2c3e50;
     --map-point-stroke-color: #e9ecef;
@@ -212,21 +221,21 @@ $theme-colors: (
     --button-primary-text-hover: oklch(0.985 0.006 249);
     --button-primary-text: #c4fff8;
     
-      --accent-text: #cdcdcd;
+      --accent-text: #c9ced2;
 
     --panel-background: #{$secondary};
     --panel-border-color: oklch(0.619 0.008 249);
     --muted-text: oklch(0.985 0.006 249);
 
     --offcanvas-bg: #2c3e50;
-    --offcanvas-border-color: #333333;
+    --offcanvas-border-color: #303437;
 
     --popup-bg: #2b333b;
     --popup-text-color: #f8f9fa;
 
     --modal-bg: #{$secondary};
     --modal-text-color: var(--text-color);
-    --modal-border-color: #374151;
+    --modal-border-color: #3b4148;
 
     --link-color: #bfdbfe;
     --map-panel-bg: #1f2933;
@@ -234,8 +243,8 @@ $theme-colors: (
 
     --select-control-bg: #2c3e50;
     --select-control-border: #4f5b67;
-    --select-text-color: #ecf0f1;
-    --select-placeholder-color: #b0bec5;
+    --select-text-color: #edeff2;
+    --select-placeholder-color: #b5bcc4;
     --select-menu-bg: #2c3e50;
     --select-option-hover-bg: #34495e;
     --select-option-selected-bg: var(--nav-pill-active-bg); // was #1abc9c, 2.30:1 under white
@@ -246,23 +255,23 @@ $theme-colors: (
 
     /* error overlay / box for dark mode */
     --error-overlay-bg: oklch(0.160 0.006 249);
-    --error-box-bg: #111827;
+    --error-box-bg: #13191f;
     --error-box-text-color: #f9fafb;
 
     /* nav pills active state */
     --nav-pill-active-bg: oklch(0.540 0.090 175);       // same brand color in dark mode
     --nav-pill-active-text-color: oklch(0.985 0.006 249);
 
-    --chart-axis-label-color: #e5e7eb;
-    --chart-axis-stroke-color: #d1d5db;
-    --chart-axis-tick-color: #9ca3af;
-    --chart-axis-tick-text-color: #e5e7eb;
-    --chart-grid-color: #4b5563;
+    --chart-axis-label-color: #e4e7eb;
+    --chart-axis-stroke-color: #d0d5db;
+    --chart-axis-tick-color: #9ca4ab;
+    --chart-axis-tick-text-color: #e4e7eb;
+    --chart-grid-color: #4e555c;
     --chart-tooltip-bg: rgba(31, 41, 55, 0.95);
     --chart-tooltip-text: #f9fafb;
     --chart-tooltip-border-color: rgba(148, 163, 184, 0.5);
-    --chart-crosshair-color: #9ca3af;
-    --chart-glyph-stroke-color: #0f172a;
+    --chart-crosshair-color: #9ca4ab;
+    --chart-glyph-stroke-color: #13181e;
     --chart-empty-text-color: var(--panel-text-muted);
 
     --chart-line-colors: #2dd4bf, #f97316, #a855f7, #38bdf8, #facc15;
