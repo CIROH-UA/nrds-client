@@ -1,6 +1,21 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 
+import { useVPUStore } from 'features/DataStream/store/Layers';
+
+/**
+ * How many steps the time cursor may take.
+ *
+ * The animation's clock rather than the chart's. currentTimeIndex drives both the map animation
+ * and the chart cursor, but only the chart's series depends on a feature being selected -- with
+ * nothing selected it is empty, and bounding the index by it meant every mutator here returned
+ * early. The slider would then report the animation's full length and refuse to move a step.
+ *
+ * The series is the fallback for the case with no animation loaded, which is how the chart
+ * behaved on its own before the map had one.
+ */
+const stepCount = (series) => useVPUStore.getState().times.length || series?.length || 0;
+
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
 const EMPTY_SERIES = [];
@@ -74,7 +89,7 @@ const useTimeSeriesStore = create(
         }),    
       setCurrentTimeIndex: (idx) => {
         set((s) => {
-          const maxIdx = Math.max(0, (s.series?.length || 0) - 1);
+          const maxIdx = Math.max(0, stepCount(s.series) - 1);
           const next = clamp(Number(idx) || 0, 0, maxIdx);
           if (next === s.currentTimeIndex) return s;   // IMPORTANT
           return { currentTimeIndex: next };
@@ -91,14 +106,14 @@ const useTimeSeriesStore = create(
       // --- stepping used by back/forward buttons + autoplay ---
       stepForward: () => {
         const { series, currentTimeIndex } = get();
-        const maxIdx = series.length - 1;
+        const maxIdx = stepCount(series) - 1;
         if (maxIdx < 0) return;
         set({ currentTimeIndex: (currentTimeIndex + 1) % (maxIdx + 1) });
       },
 
       stepBackward: () => {
         const { series, currentTimeIndex } = get();
-        const maxIdx = series.length - 1;
+        const maxIdx = stepCount(series) - 1;
         if (maxIdx < 0) return;
         set({ currentTimeIndex: currentTimeIndex === 0 ? maxIdx : currentTimeIndex - 1 });
       },

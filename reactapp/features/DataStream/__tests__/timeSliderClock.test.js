@@ -1,0 +1,129 @@
+/**
+ * The time cursor runs on the animation's clock, not the chart's.
+ *
+ * currentTimeIndex drives both the map animation and the chart cursor, but only the chart's
+ * series depends on a feature being selected. With nothing selected the series is empty, so
+ * bounding the index by it made every mutator return early: the slider would report the
+ * animation's full length and then refuse to move a single step. The series stays as the
+ * fallback for a chart with no animation behind it.
+ */
+import { render, screen } from '@testing-library/react';
+
+import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
+import { useVPUStore } from 'features/DataStream/store/Layers';
+import { TimeSlider } from 'features/DataStream/components/forecast/TimeSlider';
+
+const HOUR = 3600000;
+const T0 = 1787364000000;
+// What duckdb hands back for this column: epoch milliseconds, an hour apart.
+const times = (n) => Array.from({ length: n }, (_, i) => T0 + i * HOUR);
+
+const initial = {
+  ts: useTimeSeriesStore.getState(),
+  vpu: useVPUStore.getState(),
+};
+
+beforeEach(() => {
+  useTimeSeriesStore.setState(initial.ts, true);
+  useVPUStore.setState(initial.vpu, true);
+});
+
+describe('the index bounds', () => {
+  it('steps through the animation with no feature selected', () => {
+    // The case R3 exists for, and the one that could not work before: series is empty here.
+    useVPUStore.setState({ times: times(24) });
+    useTimeSeriesStore.setState({ series: [], currentTimeIndex: 0 });
+
+    useTimeSeriesStore.getState().stepForward();
+
+    expect(useTimeSeriesStore.getState().currentTimeIndex).toBe(1);
+  });
+
+  it('wraps at the end of the animation, not the end of the series', () => {
+    useVPUStore.setState({ times: times(24) });
+    useTimeSeriesStore.setState({ series: [], currentTimeIndex: 23 });
+
+    useTimeSeriesStore.getState().stepForward();
+
+    expect(useTimeSeriesStore.getState().currentTimeIndex).toBe(0);
+  });
+
+  it('steps backward from the start to the last animation frame', () => {
+    useVPUStore.setState({ times: times(24) });
+    useTimeSeriesStore.setState({ series: [], currentTimeIndex: 0 });
+
+    useTimeSeriesStore.getState().stepBackward();
+
+    expect(useTimeSeriesStore.getState().currentTimeIndex).toBe(23);
+  });
+
+  it('lets the scrub reach the last animation frame', () => {
+    useVPUStore.setState({ times: times(24) });
+    useTimeSeriesStore.setState({ series: [], currentTimeIndex: 0 });
+
+    useTimeSeriesStore.getState().setCurrentTimeIndex(23);
+
+    expect(useTimeSeriesStore.getState().currentTimeIndex).toBe(23);
+  });
+
+  it('clamps past the end rather than running off it', () => {
+    useVPUStore.setState({ times: times(24) });
+    useTimeSeriesStore.setState({ series: [], currentTimeIndex: 0 });
+
+    useTimeSeriesStore.getState().setCurrentTimeIndex(99);
+
+    expect(useTimeSeriesStore.getState().currentTimeIndex).toBe(23);
+  });
+
+  it('falls back to the series when no animation is loaded', () => {
+    // A chart on its own still steps, which is how this behaved before the map had a clock.
+    useVPUStore.setState({ times: [] });
+    useTimeSeriesStore.setState({ series: [{ x: 1, y: 1 }, { x: 2, y: 2 }], currentTimeIndex: 0 });
+
+    useTimeSeriesStore.getState().stepForward();
+
+    expect(useTimeSeriesStore.getState().currentTimeIndex).toBe(1);
+  });
+
+  it('does not move when there is neither', () => {
+    useVPUStore.setState({ times: [] });
+    useTimeSeriesStore.setState({ series: [], currentTimeIndex: 0 });
+
+    useTimeSeriesStore.getState().stepForward();
+    useTimeSeriesStore.getState().stepBackward();
+
+    expect(useTimeSeriesStore.getState().currentTimeIndex).toBe(0);
+  });
+});
+
+describe('the slider', () => {
+  it('offers the animation length and enables its controls with nothing selected', () => {
+    useVPUStore.setState({ times: times(24) });
+    useTimeSeriesStore.setState({ series: [], currentTimeIndex: 0 });
+
+    const { container } = render(<TimeSlider />);
+
+    // By id: the speed control is a range input too, so the role alone matches both.
+    const scrub = container.querySelector('#timeSlider');
+    expect(scrub).toHaveAttribute('max', '23');
+    expect(scrub).not.toBeDisabled();
+  });
+
+  it('labels the frame in hours from the start of the animation', () => {
+    useVPUStore.setState({ times: times(24) });
+    useTimeSeriesStore.setState({ series: [], currentTimeIndex: 5 });
+
+    render(<TimeSlider />);
+
+    expect(screen.getByText('T+5h')).toBeInTheDocument();
+  });
+
+  it('says T+0h with no animation, rather than reading past the end of an empty list', () => {
+    useVPUStore.setState({ times: [] });
+    useTimeSeriesStore.setState({ series: [], currentTimeIndex: 0 });
+
+    render(<TimeSlider />);
+
+    expect(screen.getByText('T+0h')).toBeInTheDocument();
+  });
+});

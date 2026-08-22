@@ -1,10 +1,18 @@
 // TimeSlider.jsx
 import React, { useEffect, useMemo, useRef, useCallback } from "react";
 import useTimeSeriesStore from "features/DataStream/store/Timeseries";
+import { useVPUStore } from "features/DataStream/store/Layers";
 import "./TimeSlider.css";
 
 export const TimeSlider = React.memo(() => {
-  const series = useTimeSeriesStore((s) => s.series);
+  /**
+   * The animation's clock, not the chart's.
+   *
+   * series is the selected feature's timeseries, so it is empty until something is selected --
+   * which left this control reporting no steps while an animation was loaded and running. times
+   * is what the map animates over, and it exists as soon as a vpu is loaded.
+   */
+  const times = useVPUStore((s) => s.times);
   const currentTimeIndex = useTimeSeriesStore((s) => s.currentTimeIndex);
   const setCurrentTimeIndex = useTimeSeriesStore((s) => s.setCurrentTimeIndex);
   const stepForward = useTimeSeriesStore((s) => s.stepForward);
@@ -20,16 +28,20 @@ export const TimeSlider = React.memo(() => {
 
   const intervalRef = useRef(null);
 
-  const timeSteps = Array.isArray(series) ? series.length : 0;
+  const timeSteps = Array.isArray(times) ? times.length : 0;
 
   const currentLabel = useMemo(() => {
-     if (!timeSteps) return "T+0h";
-    const t0 = series?.[0]?.x;
-    const t = series?.[currentTimeIndex]?.x;
-    if (typeof t0 !== "object" || typeof t !== "object") return "T+0h";
+    if (!timeSteps) return "T+0h";
+    // duckdb hands these back as epoch milliseconds, even though the parquet column is a
+    // nanosecond timestamp. Dates are tolerated too, since that is the shape the chart's series
+    // carries and this label used to be built from it.
+    const ms = (t) => (t instanceof Date ? t.getTime() : Number(t));
+    const t0 = ms(times[0]);
+    const t = ms(times[Math.min(currentTimeIndex, timeSteps - 1)]);
+    if (!Number.isFinite(t0) || !Number.isFinite(t)) return "T+0h";
     const hours = Math.round((t - t0) / 3600000); // ms -> hours
     return `T+${hours}h`;
-  }, [series, currentTimeIndex, timeSteps]);
+  }, [times, currentTimeIndex, timeSteps]);
 
   // Start/stop autoplay
   useEffect(() => {
