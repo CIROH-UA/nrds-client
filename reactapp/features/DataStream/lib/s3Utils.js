@@ -97,6 +97,37 @@ export async function getOptionsFromURL(url, { signal } = {}) {
 }
 
 /**
+ * Hold an answer for the life of the page, unless it is the kind of answer that is more likely
+ * a bad moment than a fact.
+ *
+ * The three things this wraps -- a model's runs, whether one run has parquet, and a model's
+ * readable dates -- are all lookups of a bucket that does not change under a reader in the
+ * course of a session, and all cost a paged S3 request or several. They were being asked more
+ * than once: deciding which models to offer reads the newest run of each, and then building the
+ * chosen model's date list read the same listing and probed the same date over again.
+ *
+ * The promise is stored rather than the value, so two callers asking at once share one round
+ * trip. Failures and non-answers are dropped, because remembering one would make a single bad
+ * moment last the rest of the session; a reload picks up whatever has been published since.
+ */
+const held = (store, key, compute, worthKeeping) => {
+  const already = store.get(key);
+  if (already) return already;
+
+  const pending = compute();
+  store.set(key, pending);
+  pending.then(
+    (value) => { if (!worthKeeping(value)) store.delete(key); },
+    () => store.delete(key)
+  );
+  return pending;
+};
+
+const runsByModel = new Map();
+const parquetByRun = new Map();
+const datesByModel = new Map();
+
+/**
  * Whether a dated run published an output this app can read.
  *
  * Pages the whole date prefix looking for the first key under an outputs/troute directory, and
@@ -114,7 +145,13 @@ export async function getOptionsFromURL(url, { signal } = {}) {
  */
 const PROBE_PAGE_LIMIT = 6;
 
-async function dateHasParquet(model, date, { signal } = {}) {
+function dateHasParquet(model, date, { signal } = {}) {
+  // Not a definite yes or no is not an answer, so it is not worth keeping.
+  return held(parquetByRun, `${model}/${date}`, () => probeForParquet(model, date, { signal }),
+    (answer) => answer !== null);
+}
+
+async function probeForParquet(model, date, { signal } = {}) {
   const bucket = "ciroh-community-ngen-datastream";
   const prefix = `outputs/${model}/v2.2_hydrofabric/${date}/`;
   let token = null;
@@ -161,10 +198,11 @@ async function dateHasParquet(model, date, { signal } = {}) {
  */
 const DATED_RUN = /^ngen\.\d{8}$/;
 
-const datedRunsNewestFirst = async (model, { signal } = {}) => {
-  const listed = await getOptionsFromURL(`outputs/${model}/v2.2_hydrofabric/`, { signal });
-  return listed.filter((d) => DATED_RUN.test(d.value)).reverse();
-};
+const datedRunsNewestFirst = (model, { signal } = {}) =>
+  held(runsByModel, model, async () => {
+    const listed = await getOptionsFromURL(`outputs/${model}/v2.2_hydrofabric/`, { signal });
+    return listed.filter((d) => DATED_RUN.test(d.value)).reverse();
+  }, (runs) => runs.length);
 
 /**
  * The models worth offering: the ones with at least one run this app can read.
@@ -257,28 +295,11 @@ async function datesWithReadableOutputs(model, dates, { signal } = {}) {
  * the list changing shape when the user does nothing but switch models. That is what happened
  * to the ordering and the readability filter, so both now live behind this one call.
  */
-// Held for the life of the page, like cachedBaseOptions above and for the same reason: this
-// answer costs a listing plus two to eleven probes, and going back to a model already looked at
-// is an ordinary thing to do. Holding the promise rather than the value also means two callers
-// asking at once share one round trip. A reload picks up newly published dates.
-const datesByModel = new Map();
-
 export function readableDatesNewestFirst(model, { signal } = {}) {
-  const remembered = datesByModel.get(model);
-  if (remembered) return remembered;
-
-  const pending = (async () => {
+  return held(datesByModel, model, async () => {
     const runs = await datedRunsNewestFirst(model, { signal });
     return datesWithReadableOutputs(model, runs, { signal });
-  })();
-  datesByModel.set(model, pending);
-  // An empty answer is usually a failed or aborted listing rather than a model with no dates,
-  // and remembering it would make one bad moment permanent. Same rule as cachedBaseOptions.
-  pending.then(
-    (dates) => { if (!dates.length) datesByModel.delete(model); },
-    () => datesByModel.delete(model)
-  );
-  return pending;
+  }, (dates) => dates.length);
 }
 
 export const makePrefix = (model, avail_date,ngen_forecast,ngen_cycle, ngen_ensemble, ngen_vpu, outputFile) => {

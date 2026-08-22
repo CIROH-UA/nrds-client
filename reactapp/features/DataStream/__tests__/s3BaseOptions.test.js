@@ -65,12 +65,18 @@ describe('initialS3Data', () => {
 
     const result = await initialS3Data('16');
 
-    // Five listings, plus the probing. One date listing and one probe per model to decide which
-    // models are offerable at all (two models here, so four), then two probes on the chosen
-    // model's date list -- with both ends readable the whole list is kept and the binary search
-    // never runs. Counted rather than waved at, because all of it is paid once and a vpu change
-    // must pay none of it.
-    expect(global.fetch).toHaveBeenCalledTimes(11);
+    /**
+     * Five listings plus the probing, counted rather than waved at: all of it is paid once, a
+     * vpu change must pay none of it, and the count is what caught two requests being made
+     * twice over.
+     *
+     * models(1) + per model a date listing and a probe to decide it is offerable at all, two
+     * models so 4, + the chosen model's date list, whose listing and whose newest-date probe
+     * are both already known from that check and so cost nothing, + the oldest-date probe(1),
+     * with both ends readable so the binary search never runs, + forecasts(1) + cycles(1) +
+     * outputFiles(1) = 9.
+     */
+    expect(global.fetch).toHaveBeenCalledTimes(9);
     expect(result.models.map((m) => m.value)).toEqual(['aa', 'bb']);
     expect(result.outputFiles.map((f) => f.value)).toEqual(['troute_output.parquet']);
   });
