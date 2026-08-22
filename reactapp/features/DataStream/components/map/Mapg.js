@@ -28,6 +28,7 @@ import {
 } from '../../lib/layers';
 import { flowPathLayerProps, shouldPromptZoom } from './flowPathLayer';
 import { ValueLegend } from './ValueLegend';
+import { TimeSlider } from '../forecast/TimeSlider';
 import { selectMapFeature } from '../../actions/selectFeature';
 import { hoveredFeatureOf, pickHoverFeature } from '../../actions/hoverFeature';
 
@@ -37,7 +38,7 @@ import {
   useFlowPathsHighlightLayer,
   useConusGaugesLayer,
 } from './MapLayers';
-import { MapHint } from '../styles/Styles';
+import { MapHint, TimeSliderDock } from '../styles/Styles';
 
 const INITIAL_VIEW = { longitude: -96, latitude: 40, zoom: 4 };
 
@@ -146,12 +147,24 @@ const MainMap = () => {
   const {
     conus_pmtiles,
     flowpaths_pmtiles,
+    vpu,
   } = useDataStreamStore(
     useShallow((s) => ({
       conus_pmtiles: s.community_pmtiles,
       flowpaths_pmtiles: s.flowpaths_pmtiles,
+      vpu: s.vpu,
     }))
   );
+
+  /**
+   * Whether the time slider is on the map.
+   *
+   * Once a vpu has been chosen, and for as long as flowpaths are on. Not keyed on the clock
+   * itself: a dead transport control on the opening view is clutter, and one that vanishes every
+   * time a later load empties the clock reads as breakage. Between those, the slider stays put
+   * and disables itself, which is what it already did in the panel.
+   */
+  const sliderDocked = isFlowPathsVisible && Boolean(vpu);
 
   const { set_hovered_feature, selectedMapFeature, hovered_feature } = useFeatureStore(
     useShallow((s) => ({
@@ -607,6 +620,11 @@ const MainMap = () => {
         pathDataRef={pathDataRef}
         pathTick={pathTick}
       />
+      {sliderDocked && (
+        <TimeSliderDock>
+          <TimeSlider />
+        </TimeSliderDock>
+      )}
       <ValueLegend
         bounds={colorBounds}
         variable={variable}
@@ -614,7 +632,7 @@ const MainMap = () => {
       />
       <CustomPopUp hovered_feature={hovered_feature} enabledHovering={enabledHovering} />
       {belowFlowpathZoom && (
-        <MapHint type="button" onClick={zoomToFlowpaths}>
+        <MapHint type="button" $raised={sliderDocked} onClick={zoomToFlowpaths}>
           Flowpaths are only mapped from zoom {FLOWPATHS_MIN_ZOOM}. Zoom in to see the animation.
         </MapHint>
       )}

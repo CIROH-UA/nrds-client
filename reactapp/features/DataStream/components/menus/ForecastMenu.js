@@ -7,7 +7,6 @@ import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import { useVPUStore, useFeatureStore } from 'features/DataStream/store/Layers';
 import { ForecastHeader } from '../forecast/ForecastHeader';
 import { FeatureInformation } from '../forecast/FeatureInformation';
-import { TimeSlider } from '../forecast/TimeSlider';
 import { useShallow } from 'zustand/react/shallow';
 
 const ForecastMenu = () => {
@@ -50,8 +49,9 @@ const ForecastMenu = () => {
               <DataMenu />
             </Content>
             <Content>
+                {/* The time slider used to sit here. It drives the animation, so it moved onto
+                    the map beside it; this block is the variables menu on its own now. */}
                 <VariablesMenu />
-                <TimeSlider />
             </Content>
             <Content>
               <FeatureInformation />

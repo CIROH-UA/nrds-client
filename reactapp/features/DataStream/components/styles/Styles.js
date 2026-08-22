@@ -382,11 +382,46 @@ export const SButton = styled(Button)`
  * A button rather than a notice: telling someone to zoom in and making them find the control
  * are different things, and the whole complaint was that the data could not be located.
  */
-export const MapHint = styled.button`
+/**
+ * Where the time slider sits once it is a map control rather than a panel one.
+ *
+ * Bottom centre, because it drives the animation and belongs near it rather than in a panel the
+ * reader has to look away to reach. That slot already had MapHint in it, and the two appear
+ * under overlapping conditions -- a vpu loaded with flowpaths on, before the reader has zoomed
+ * in far enough for the reaches to be mapped -- so MapHint is raised above this rather than left
+ * to collide with it.
+ *
+ * Shrinks rather than hides on a narrow screen. LegendBox answers that case with display: none,
+ * which it can afford because it only explains a ramp; this is the only control that scrubs
+ * time, so hiding it would take the animation away with it.
+ *
+ * pointer-events are on, unlike the legend: it is a control. The box is bounded so it only takes
+ * the map interaction underneath itself. touch-action is set because maplibre claims drag
+ * gestures on its container, and without it the thumb is not reliably draggable on a touchscreen.
+ */
+export const TimeSliderDock = styled.div`
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
   bottom: 28px;
+  z-index: 1000;
+  width: min(520px, calc(100vw - 32px));
+  padding: 4px 14px 10px;
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-md);
+  background-color: var(--map-panel-bg);
+  color: var(--map-panel-text);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  pointer-events: auto;
+  touch-action: manipulation;
+`;
+
+export const MapHint = styled.button`
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  /* Above the time slider when it is docked, in its usual place when it is not. */
+  bottom: ${(p) => (p.$raised ? '150px' : '28px')};
   z-index: 1000;
   display: flex;
   align-items: center;
