@@ -70,6 +70,7 @@ const FlowPathsOverlay = React.memo(function FlowPathsOverlay({
   bounds,
   pathDataRef,
   pathTick,
+  getCursor,
 }) {
   const currentTimeIndex = useTimeSeriesStore((s) => s.currentTimeIndex);
 
@@ -87,10 +88,11 @@ const FlowPathsOverlay = React.memo(function FlowPathsOverlay({
     return props ? [new PathLayer(props)] : NO_LAYERS;
   }, [visible, valuesByVar, bounds, variable, timesArr, currentTimeIndex, pathTick, pathDataRef]);
 
-  return <DeckGLOverlay layers={layers} interleaved />;
+  return <DeckGLOverlay layers={layers} interleaved getCursor={getCursor} />;
 });
 
 FlowPathsOverlay.propTypes = {
+  getCursor: PropTypes.func,
   visible: PropTypes.bool,
   valuesByVar: PropTypes.object,
   timesArr: PropTypes.array,
@@ -229,6 +231,24 @@ const MainMap = () => {
    * grow, and it would come straight back.
    */
   const insideClickable = useRef(0);
+
+  /**
+   * What the cursor should be, answered for deck.gl rather than written behind its back.
+   *
+   * The overlay is interleaved, so deck renders into maplibre's own canvas and its
+   * _updateCursor writes container.style.cursor on every pointer update, from a getCursor that
+   * defaults to grabbing-or-grab. Setting the canvas cursor ourselves was therefore undone on
+   * the very next mouse move, which is why the pointer never appeared over a catchment however
+   * the listeners were registered. Answering deck's own question instead means the two cannot
+   * disagree. The direct writes below stay for immediacy; deck now agrees with them.
+   */
+  const getCursor = useCallback(
+    ({ isDragging }) => {
+      if (isDragging) return 'grabbing';
+      return insideClickable.current > 0 ? 'pointer' : 'grab';
+    },
+    []
+  );
 
   const setPointerCursor = useCallback((e) => {
     insideClickable.current += 1;
@@ -556,6 +576,7 @@ const MainMap = () => {
       </Source>
 
       <FlowPathsOverlay
+        getCursor={getCursor}
         visible={isFlowPathsVisible}
         valuesByVar={valuesByVar}
         timesArr={timesArr}
