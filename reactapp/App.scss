@@ -26,6 +26,50 @@ $theme-colors: (
 /* Import Bootstrap SCSS */
 @import "../node_modules/bootstrap/scss/bootstrap";
 
+/* === TYPEFACE === */
+
+/*
+ * Public Sans, self-hosted.
+ *
+ * The app had no font-family at all, so it ran on Bootstrap's system-ui stack and changed
+ * personality between macOS, Windows and Linux. Public Sans is the USWDS face, which suits a
+ * NOAA/CIROH-funded tool, and it is served from here rather than from Google Fonts: the app
+ * already ships its own static assets, and a third-party request is a dependency and a privacy
+ * footnote for nothing.
+ *
+ * Licence: OFL-1.1 in practice, and assets/fonts/LICENSE.md ships with it. GSA's modifications
+ * are CC0, but the Libre Franklin base they derive from is OFL, and the licence says the more
+ * restrictive terms govern the combined work.
+ *
+ * Three weights, not nine: 400, 500 and 600 are what the interface actually asks for. There is
+ * no variable build in the distribution, which is why --weight-strong is 600 rather than 650 --
+ * 650 was never a weight any system font had either, so it silently rounded to 700 on Windows
+ * and Linux while rendering true on macOS. Italics are not shipped and nothing declares them.
+ */
+@font-face {
+  font-family: 'Public Sans';
+  src: url('./assets/fonts/PublicSans-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Public Sans';
+  src: url('./assets/fonts/PublicSans-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Public Sans';
+  src: url('./assets/fonts/PublicSans-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* === THEME VARIABLES === */
 
 /* Base (light) theme */
@@ -69,7 +113,14 @@ $theme-colors: (
   --text-lg: 1.125rem;
   --weight-normal: 400;
   --weight-medium: 500;
-  --weight-strong: 650;
+  /* 600, because that is a weight the face has. 650 rounded to 700 on Windows and Linux while
+     rendering true on macOS SF, so "strong" meant two different things depending on the reader. */
+  --weight-strong: 600;
+
+  /* The stacks, declared once. Every fallback is a real face rather than a generic, so a blocked
+     font request degrades to the system UI face and not to a serif. */
+  --font-ui: 'Public Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
 
   /* Header status strip. Values chosen against this theme's header background: the text
      reaches 14.1:1 normally and 5.8:1 when reporting a failure. $danger itself only makes
@@ -301,6 +352,7 @@ html, body, #root {
   height: 100%;
   background-color: var(--background-color);
   color: var(--text-color);
+  font-family: var(--font-ui);
 }
 
 body {

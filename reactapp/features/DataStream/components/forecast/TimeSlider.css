@@ -12,9 +12,9 @@
 }
 
 .time-value {
-  /* The readout role: tabular alignment is the only reason it is monospace. IBM Plex Mono was
-     named here and never loaded by anything, so it silently fell back to the generic family. */
-  font-family: SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  /* Tabular alignment was the only reason this was monospace, and Public Sans has tabular
+     figures, so the readout can use the interface face and still hold its columns still. */
+  font-variant-numeric: tabular-nums;
   font-size: var(--text-sm);
   color: var(--map-panel-text);
 }

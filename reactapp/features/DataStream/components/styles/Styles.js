@@ -208,7 +208,7 @@ export const PopupContent = styled.div`
   }
 
   .popup-measure .popup-value {
-    font-family: SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+    font-family: var(--font-mono);
     font-weight: 650;
   }
 
@@ -225,7 +225,7 @@ export const PopupContent = styled.div`
   }
 
   .popup-value {
-    font-family: monospace;
+    font-family: var(--font-mono);
     word-break: break-all;
   }
 `;
@@ -499,7 +499,8 @@ export const LegendScale = styled.div`
   display: flex;
   justify-content: space-between;
   margin-top: 4px;
-  font-family: SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  /* Tabular figures rather than a second typeface; the ticks only have to stop shifting. */
+  font-variant-numeric: tabular-nums;
   font-size: var(--text-xs);
   color: var(--panel-text-muted);
 
