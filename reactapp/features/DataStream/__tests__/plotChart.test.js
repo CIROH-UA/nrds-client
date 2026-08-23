@@ -120,3 +120,43 @@ describe('distinctTickFormat', () => {
     expect(distinctTickFormat([null, undefined, NaN], timeFormat)).toBe('%m/%d');
   });
 });
+
+/**
+ * The hydrograph has a value axis.
+ *
+ * It had a time axis and no other. The left margin already reserved 50px for one and
+ * leftTickLabelProps was already written and passed into the chart, which never destructured it
+ * -- so the props were handed over and dropped, and the reader got a shape with no numbers on
+ * the only chart in the app.
+ */
+describe('the value axis', () => {
+  const { formatAxisValue } = require('features/DataStream/components/forecast/Plot');
+
+  it('keeps thousands short enough for the margin', () => {
+    // Discharge on a main stem runs to thousands; "2911.00" does not fit in 50px.
+    expect(formatAxisValue(2911)).toBe('3k');
+    expect(formatAxisValue(12500)).toBe('13k');
+  });
+
+  it('drops decimals once they stop meaning anything', () => {
+    expect(formatAxisValue(48)).toBe('48');
+    expect(formatAxisValue(10)).toBe('10');
+  });
+
+  it('keeps them where the whole range is small', () => {
+    // A headwater reach runs well under 1 m3/s, where rounding to integers is all zeroes.
+    expect(formatAxisValue(4.27)).toBe('4.3');
+    expect(formatAxisValue(0.0413)).toBe('0.04');
+  });
+
+  it('says nothing for a value it cannot read', () => {
+    expect(formatAxisValue(null)).toBe('');
+    expect(formatAxisValue(undefined)).toBe('');
+    expect(formatAxisValue(NaN)).toBe('');
+  });
+
+  it('handles negatives, which a bias or an anomaly variable can produce', () => {
+    expect(formatAxisValue(-48)).toBe('-48');
+    expect(formatAxisValue(-0.5)).toBe('-0.50');
+  });
+});

@@ -3,7 +3,8 @@ import React, { useCallback, useMemo, useEffect, useRef, useId } from 'react';
 import { useIsNarrowViewport } from './useIsNarrowViewport';
 import { Group } from '@visx/group';
 import { scaleLinear, scaleTime } from '@visx/scale';
-import { AxisBottom } from '@visx/axis';
+import { AxisBottom, AxisLeft } from '@visx/axis';
+import { GridRows } from '@visx/grid';
 import { LinePath, Line } from '@visx/shape';
 import { extent, bisector } from 'd3-array';
 import { useTooltip, TooltipWithBounds, defaultStyles } from '@visx/tooltip';
@@ -20,6 +21,25 @@ import { distinctTickFormat } from 'features/DataStream/lib/utils';
 const MARGIN = Object.freeze({ top: 40, right: 20, bottom: 30, left: 50 });
 const axisLabelColor = 'var(--chart-axis-label-color, #111827)';
 const axisTickTextColor = 'var(--chart-axis-tick-text-color, #111827)';
+const gridColor = 'var(--chart-grid-color, #e4e7eb)';
+
+/**
+ * Axis values, short enough to sit in a 50px margin.
+ *
+ * Discharge spans several orders of magnitude between a headwater and a main stem, so a fixed
+ * number of decimals is either noise at the top or nothing at the bottom.
+ */
+export const formatAxisValue = (v) => {
+  // Checked before Number(), which turns null and '' into 0 and would label an absent tick "0".
+  if (v === null || v === undefined || v === '') return '';
+
+  const n = Number(v);
+  if (!Number.isFinite(n)) return '';
+  if (Math.abs(n) >= 1000) return `${Math.round(n / 1000)}k`;
+  if (Math.abs(n) >= 10) return String(Math.round(n));
+  if (Math.abs(n) >= 1) return n.toFixed(1);
+  return n.toFixed(2);
+};
 const tooltipBg = 'var(--chart-tooltip-bg, rgba(255, 255, 255, 0.95))';
 const tooltipTextColor = 'var(--chart-tooltip-text, #111827)';
 const tooltipBorderColor = 'var(--chart-tooltip-border-color, rgba(148, 163, 184, 0.6))';
@@ -46,6 +66,7 @@ const StaticSvgLayer = React.memo(function StaticSvgLayer({
   getDate,
   getYValue,
   axisLabelProps,
+  leftTickLabelProps,
   bottomTickLabelProps,
 }) {
   return (
@@ -59,6 +80,27 @@ const StaticSvgLayer = React.memo(function StaticSvgLayer({
       <RectClipPath id={clipId} x={0} y={0} width={innerWidth} height={innerHeight} />
 
       <Group left={margin.left} top={margin.top}>
+
+        {/* A hydrograph with no value axis is a shape, not a reading. The left margin already
+            reserved room for this and leftTickLabelProps was already written and handed in; the
+            axis itself was never added, so the props were dropped on the floor. */}
+        <GridRows
+          scale={yScale}
+          width={innerWidth}
+          numTicks={4}
+          stroke={gridColor}
+          strokeDasharray="2,3"
+          pointerEvents="none"
+        />
+
+        <AxisLeft
+          scale={yScale}
+          numTicks={4}
+          tickFormat={formatAxisValue}
+          tickLabelProps={leftTickLabelProps}
+          hideAxisLine
+          hideTicks
+        />
 
         <AxisBottom
           scale={xScale}
