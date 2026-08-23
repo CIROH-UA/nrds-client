@@ -930,3 +930,33 @@ export const SkipLink = styled.a`
     top: var(--space-sm);
   }
 `;
+
+/**
+ * A standing property of the product, worn beside its name.
+ *
+ * This was a dismissible full-width strip between the header and the map. Two things were wrong
+ * with that beyond the layout bug it caused. It spent a band of vertical space, above a map, on
+ * a sentence that never changes; and being dismissible made it transient, when what it says is
+ * permanently true -- a caveat you can close is not load-bearing, so either it did not need to
+ * be that loud or it should not have had an X.
+ *
+ * A badge is neither. It cannot be dismissed because it is a fact about the product rather than
+ * a notice about a moment, it costs no layout, and it sits where a reader looks to find out what
+ * they are using. The sentence it stands for lives with the results it qualifies, in the panel's
+ * data note, and in the About dialog the (i) beside this opens.
+ *
+ * Not interactive: the header's own info button is two elements away and does the explaining, so
+ * a second control here would be a target to hit for no new destination.
+ */
+export const ExperimentalBadge = styled.span`
+  flex: 0 0 auto;
+  padding: 1px var(--space-sm);
+  border: 1px solid var(--notice-border);
+  border-radius: var(--radius-pill);
+  background-color: var(--notice-bg);
+  color: var(--notice-text);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  line-height: 1.5;
+  white-space: nowrap;
+`;

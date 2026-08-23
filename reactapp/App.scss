@@ -98,8 +98,8 @@ $theme-colors: (
      in both themes. On the dark panel a black shadow is invisible; on the light one it is heavy
      and muddy. These are tinted with the family hue and split into two levels, so the control
      the reader operates sits above the readouts that only report. */
-  /* The standing caveat in the header strip. Amber because it qualifies rather than fails --
-     --status-failed-* is red and reserved for something that actually went wrong. */
+  /* The standing caveat, worn as a badge beside the app name. Amber because it qualifies rather
+     than fails: --status-failed-* is red and reserved for something that actually went wrong. */
   --notice-bg: oklch(0.945 0.070 85);
   --notice-border: oklch(0.620 0.070 85);
   --notice-text: oklch(0.390 0.070 85);
@@ -396,59 +396,6 @@ body {
   padding-top: var(--ts-header-height);
 }
 
-.experimental-banner {
-  /* A notice, not an alarm. It was a two-tone gradient with a drop shadow and bold text at
-     0.85rem padding, which is more emphasis than a standing caveat earns and put a shadow on
-     something docked in the app frame -- see the Flat Shell Rule. One quiet line now, in flow
-     above the map, so nothing has to be positioned around it. */
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-sm);
-  flex: 0 0 auto;
-  padding: var(--space-xs) var(--space-md);
-  margin: 0;
-  background-color: var(--notice-bg);
-  border-bottom: 1px solid var(--notice-border);
-  color: var(--notice-text);
-  font-size: var(--text-xs);
-  line-height: 1.4;
-}
-
-.experimental-banner__content {
-  min-width: 0;
-}
-
-/* 44px, the minimum DESIGN.md sets for an interactive control. Centred rather than padded so
-   the glyph stays where it looks like it is. The strip itself is one line tall now, so the
-   button is wider than it is high and its box is allowed to overhang the padding. */
-.experimental-banner__close {
-  margin: calc(var(--space-xs) * -1) 0;
-  appearance: none;
-  align-items: center;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  display: inline-flex;
-  flex: 0 0 auto;
-  font-size: 1.1rem;
-  font-weight: 500;
-  justify-content: center;
-  line-height: 1;
-  min-height: 44px;
-  min-width: 44px;
-  padding: 0;
-}
-
-.experimental-banner__close:hover {
-  opacity: 0.75;
-}
-
-.experimental-banner__close:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 2px;
-}
 
 
 
