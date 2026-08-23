@@ -135,16 +135,45 @@ describe('the control in the feature panel', () => {
   it('sits beside the chart it relates to', () => {
     render(<ForecastHeader title="Cat 2859355" onClick={() => {}} />);
 
-    expect(screen.getByRole('button', { name: /show on map/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /zoom to catchment/i })).toBeInTheDocument();
   });
 
   it('moves the map when pressed', () => {
     useFeatureStore.setState({ selected_feature: { _id: 'cat-1', lat: 40, lon: -111 } });
     render(<ForecastHeader title="Cat 1" onClick={() => {}} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /show on map/i }));
+    fireEvent.click(screen.getByRole('button', { name: /zoom to catchment/i }));
 
     expect(map.flyTo).toHaveBeenCalled();
+  });
+
+  /**
+   * It was text in the link colour that underlined on hover, which is the affordance for going
+   * somewhere. This moves the map: it is an action, and borrowing a link's clothes is why it did
+   * not read as pressable.
+   */
+  it('is a button, not something dressed as a link', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const styles = fs.readFileSync(
+      path.join(__dirname, '../components/styles/Styles.js'), 'utf8'
+    );
+    const i = styles.indexOf('export const GhostButton');
+    const decl = styles.slice(i, styles.indexOf('\n`;', i));
+
+    expect(decl).not.toMatch(/text-decoration/);
+    expect(decl).not.toMatch(/color: var\(--link-color\)/);
+    expect(decl).toMatch(/border: 1px solid/);
+    expect(decl).toMatch(/min-height: 44px/);
+  });
+
+  it('says what it does rather than what is already true', () => {
+    // "Show on map" describes a state the reader can already see: the catchment is on the map,
+    // that is where they clicked it.
+    render(<ForecastHeader title="Cat 1" onClick={() => {}} />);
+
+    expect(screen.queryByRole('button', { name: /show on map/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /zoom to catchment/i })).toBeInTheDocument();
   });
 
   it('does not crowd out the button that clears the selection', () => {

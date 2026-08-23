@@ -11,9 +11,9 @@ import { showSelection } from 'features/DataStream/actions/showSelection';
 /**
  * The panel's header, and the controls that act on the selection as a whole.
  *
- * "Show on map" is here rather than floating over the map, which is where it started and where
- * it read as unrelated to anything. It only means something while a feature is selected, this
- * panel only exists while a feature is selected, and the chart underneath is the reason the
+ * "Zoom to catchment" is here rather than floating over the map, which is where it started and
+ * where it read as unrelated to anything. It only means something while a feature is selected,
+ * this panel only exists while a feature is selected, and the chart underneath is the reason the
  * reader wants to find it again.
  */
 export const ForecastHeader = ({ title, onClick }) => {
@@ -43,13 +43,16 @@ export const ForecastHeader = ({ title, onClick }) => {
         </InfoPanel>
       )}
 
+      {/* Named for what it does. "Show on map" describes a state that is already true -- the
+          catchment is on the map, that is where it was clicked -- so it read as a no-op. What
+          the reader wants after zooming out is to get back to it. */}
       <GhostButton
         type="button"
         onClick={showSelection}
-        title="Centre the map on this catchment"
+        title="Move the map back to this catchment"
       >
-        <IoLocateOutline size={15} aria-hidden="true" />
-        Show on map
+        <IoLocateOutline size={16} aria-hidden="true" />
+        Zoom to catchment
       </GhostButton>
     </div>
   );

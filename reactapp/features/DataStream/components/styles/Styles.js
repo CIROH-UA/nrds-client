@@ -440,37 +440,40 @@ export const TimeSliderDock = styled(MapSurface).attrs({ $control: true })`
 `;
 
 /**
- * A control that acts without announcing itself.
+ * The panel's secondary action.
  *
- * Text and an icon on the panel's own surface, no filled face. The panel already has one filled
- * button -- Update, which fetches -- and a second one competing with it would leave neither
- * reading as the primary action. This one only moves the map.
+ * It was text in the link colour that underlined on hover, which is the affordance for going
+ * somewhere. This does not go anywhere: it moves the map. Borrowing a link's clothes for an
+ * action is the reason it did not read as pressable, and the underline was the tell.
+ *
+ * A bordered transparent button instead, sharing the shape and the 44px of every other control
+ * here. Quieter than Update, which is filled, because a panel with two equally loud buttons has
+ * no primary action.
  */
 export const GhostButton = styled.button`
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-xs);
-  /* 44px like every other control here. It was 32, which is above the WCAG AA minimum of 24 and
-     below the bar this project set itself. Padding rather than a taller box, so the text still
-     sits tight under the title. */
   min-height: 44px;
-  margin-top: 0;
-  padding: var(--space-sm) 0;
-  border: 0;
-  background: none;
-  color: var(--link-color);
-  font-size: var(--text-xs);
+  margin-top: var(--space-xs);
+  padding: 0 var(--space-md);
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-color);
+  font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   cursor: pointer;
+  transition: background-color 160ms cubic-bezier(0.22, 1, 0.36, 1);
 
   &:hover {
-    text-decoration: underline;
+    background-color: var(--nav-button-hover-bg);
   }
 
   &:focus-visible {
     outline: 2px solid var(--nav-pill-active-bg);
     outline-offset: 2px;
-    border-radius: var(--radius-sm);
   }
 `;
 
