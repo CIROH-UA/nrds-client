@@ -1,4 +1,5 @@
 
+import PropTypes from 'prop-types';
 import { useState } from 'react';
 import { MdLocationPin, MdClose } from "react-icons/md";
 import { IoLocateOutline } from "react-icons/io5";
@@ -56,4 +57,9 @@ export const ForecastHeader = ({ title, onClick }) => {
       </GhostButton>
     </div>
   );
+};
+
+ForecastHeader.propTypes = {
+  title: PropTypes.string,
+  onClick: PropTypes.func,
 };
