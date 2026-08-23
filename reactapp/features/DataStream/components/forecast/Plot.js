@@ -293,7 +293,8 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout, e
       backgroundColor: tooltipBg,
       color: tooltipTextColor,
       fontSize: 14,
-      boxShadow: '0 6px 16px rgba(0, 0, 0, 0.25)',
+      // Flat: this sits on the panel, which is ours, and the border below already separates it.
+      boxShadow: 'none',
       borderRadius: 6,
       border: `1px solid ${tooltipBorderColor}`,
       padding: '8px 10px',

@@ -68,6 +68,7 @@ export const readMapTheme = () => {
     dividesHighlightOutline: readToken('--map-divides-highlight-outline', 'rgba(253, 0, 253, 0.7)'),
     flowpaths: readToken('--map-flowpaths-color', '#0b0e10'),
     gauges: readToken('--map-gauges-color', '#646464'),
+    vpuBoundary: readToken('--map-vpu-boundary-color', '#009988'),
     cursorSymbolFill: readToken('--map-cursor-symbol-fill', '#1f78b4'),
     // Shared: the gauge outline and the cursor legend symbol both read it.
     pointStroke: readToken('--map-point-stroke-color', '#f7fafe'),

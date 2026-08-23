@@ -159,6 +159,11 @@ $theme-colors: (
 
   --map-gauges-color: #616569;
 
+  /* Mirrors the boundary colour in the basemap style document, which this app toggles but does
+     not draw. It cannot be read from the map, so it is declared here and the legend symbol reads
+     it -- one value to correct if that style ever changes, instead of a literal in a component. */
+  --map-vpu-boundary-color: #009988;
+
   
   // Shared by the gauge outline and the cursor legend symbol. Named for the nexus layer
   // until that layer was removed; the colours are unchanged.
@@ -284,6 +289,8 @@ $theme-colors: (
 
     --map-gauges-color: #c4c9cd;
 
+    --map-vpu-boundary-color: #33bbee;
+
     --map-cursor-symbol-fill: #2c3e50;
     --map-point-stroke-color: #e9ecef;
 
@@ -304,7 +311,10 @@ $theme-colors: (
       --accent-text: #c9ced2;
 
     --panel-background: #{$secondary};
-    --panel-border-color: oklch(0.619 0.008 249);
+    /* 3.15:1 on the panel it edges, the same figure the light theme holds. It was 0.619, which
+       measured 2.9979 -- under the 1.4.11 floor and documented as "3.00". A boundary chosen to
+       sit exactly on a threshold has nowhere to go when anything around it moves. */
+    --panel-border-color: oklch(0.630 0.008 249);
     --muted-text: oklch(0.985 0.006 249);
 
     --offcanvas-bg: #2c3e50;

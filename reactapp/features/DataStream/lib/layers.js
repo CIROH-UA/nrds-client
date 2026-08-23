@@ -50,7 +50,6 @@ const STYLE_FLOWPATHS_LAYER_ID = 'flowpaths';
 const STYLE_VPU_LAYER_ID = 'vpu';
 
 /** The colour the basemap style draws vpu boundaries in, so the legend can match it. */
-const VPU_BOUNDARY_COLOR = 'rgb(0, 153, 136)';
 
 /** Show or hide the style's vpu boundaries. */
 export const setVpuVisibility = (map, visible) => {
@@ -186,12 +185,13 @@ export const symbologyColors = () => {
     flowStroke: map.flowpaths,
     gaugeFill: map.gauges,
     gaugeStroke: map.pointStroke,
+    vpuStroke: map.vpuBoundary,
   };
 }
 
 // --- Small SVG legend symbols ----------------------------------
 
-export const VpuSymbol = ({ stroke = VPU_BOUNDARY_COLOR }) => (
+export const VpuSymbol = ({ stroke }) => (
   <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
     <path
       d="M2 13 L6 5 L11 9 L16 3"

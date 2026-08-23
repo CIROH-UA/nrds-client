@@ -104,3 +104,38 @@ describe('the legend title', () => {
     expect(decl).not.toContain('var(--weight-strong)');
   });
 });
+
+/**
+ * The Flat Shell Rule, as an assertion.
+ *
+ * DESIGN.md: surfaces are flat at rest, depth is tonal, and a shadow is only justified when the
+ * surface underneath is not ours to control -- which in this app means the basemap and nothing
+ * else. Four shadows had drifted past that: the modal, the chart tooltip, the Update button and
+ * the hover popup, all of them pure black at 25% in both themes, which is invisible against a
+ * dark panel and heavy against a light one.
+ */
+describe('the Flat Shell Rule', () => {
+  const plot = fs.readFileSync(
+    path.join(__dirname, '../components/forecast/Plot.js'),
+    'utf8'
+  );
+
+  it('leaves no untinted black shadow anywhere in the components', () => {
+    [styles, plot].forEach((src) => {
+      const shadows = src.match(/box-?[Ss]hadow[^;,\n]*rgba\(0,\s*0,\s*0/g) || [];
+      expect(shadows).toEqual([]);
+    });
+  });
+
+  it('keeps a shadow only on what floats over the basemap', () => {
+    // The hover popup does. It reads a per-theme elevation token rather than a literal.
+    const i = styles.indexOf('export const PopupContent');
+    expect(styles.slice(i, styles.indexOf('\n`;', i)))
+      .toContain('box-shadow: var(--elevation-map-readout)');
+  });
+
+  it.each(['ThemedModal', 'XButton'])('%s is flat, because the app is underneath it', (name) => {
+    const i = styles.indexOf(`export const ${name}`);
+    expect(styles.slice(i, styles.indexOf('\n`;', i))).toContain('box-shadow: none');
+  });
+});

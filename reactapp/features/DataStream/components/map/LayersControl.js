@@ -127,7 +127,7 @@ export const LayerControl = () => {
 
       <Row>
         <IconLabel>
-          <VpuSymbol />
+          <VpuSymbol stroke={colors.vpuStroke} />
           VPU Boundaries
         </IconLabel>
         <Switch

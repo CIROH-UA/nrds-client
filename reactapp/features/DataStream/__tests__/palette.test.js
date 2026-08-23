@@ -142,3 +142,28 @@ describe('the selection highlight', () => {
     fills.forEach(([, alpha]) => expect(Number(alpha)).toBeLessThanOrEqual(0.35));
   });
 });
+
+/**
+ * Boundaries clear the non-text contrast floor with room to spare.
+ *
+ * The dark hairline was chosen to sit exactly on 3.00 and measured 2.9979 -- under it, and
+ * documented as passing. A value picked at a threshold has nowhere to go when anything around
+ * it moves, so the bar here is above the floor rather than on it.
+ */
+describe('the panel hairline', () => {
+  const surfaces = {
+    light: ['--panel-border-color', '--panel-background', '/* Base (light) theme */'],
+    dark: ['--panel-border-color', '--panel-background', '/* Dark theme override */'],
+  };
+
+  it.each(Object.entries(surfaces))('clears 3:1 on the %s panel with headroom', (_theme, [fg, bg, marker]) => {
+    const block = scss.slice(scss.indexOf(marker));
+    const read = (name) => {
+      const m = block.match(new RegExp(`${name}:\\s*([^;]+);`))
+        || scss.match(new RegExp(`${name}:\\s*([^;]+);`));
+      return parseColor(m[1].replace(/#\{\$light\}/, '#f8f9fa').replace(/#\{\$secondary\}/, '#2c3e50'));
+    };
+
+    expect(contrastRatio(read(fg), read(bg))).toBeGreaterThan(3.05);
+  });
+});

@@ -75,7 +75,9 @@ export const ThemedModal = styled(Modal)`
     color: var(--modal-text-color);
     border: 1px solid var(--modal-border-color);
     border-radius: var(--radius-md);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    /* Flat. The surface underneath is ours and a scrim already covers it, so this added only
+       an untinted black that the dark theme cannot show anyway. */
+    box-shadow: none;
   }
 
   .modal-header {
@@ -177,7 +179,9 @@ export const PopupContent = styled.div`
   background-color: var(--popup-bg);
   color: var(--popup-text-color);
 
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  /* Over the basemap, which is the only surface this app does not control and so the only
+     place the Flat Shell Rule allows a shadow. Tinted and per-theme, like the other overlays. */
+  box-shadow: var(--elevation-map-readout);
   font-size: 12px;
   line-height: 1.4;
 
@@ -320,7 +324,8 @@ export const XButton = styled(Button)`
   &:focus:not(:disabled) {
     background-color: var(--button-primary-hover-bg);
     color: var(--button-primary-text-hover);
-    box-shadow: 0 1px 2px 0 rgba(60, 64, 67, .3), 0 1px 3px 1px rgba(60, 64, 67, .15);
+    /* Bootstrap's. Nine of these were removed by hand across the app; this one was missed. */
+    box-shadow: none;
   }
 
   /* Pressing it could only ever fail when there is nothing to read, so it says so by feel as
