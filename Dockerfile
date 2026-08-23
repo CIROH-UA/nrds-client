@@ -16,6 +16,10 @@ ARG MICRO_TETHYS=true \
 COPY . ${TETHYS_HOME}/apps/nrds
 COPY run.sh ${TETHYS_HOME}/run.sh
 
+# Turn the compressor on. The base image enables gzip but leaves gzip_types at its default of
+# text/html, so the bundle shipped uncompressed. See the file for why it goes in conf.d.
+COPY deploy/nginx-gzip.conf /etc/nginx/conf.d/gzip.conf
+
 ###############
 # ENVIRONMENT #
 ###############
