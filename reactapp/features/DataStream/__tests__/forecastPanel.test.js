@@ -37,6 +37,13 @@ describe('the run controls', () => {
     });
   });
 
+  it('leaves none on the variable label either', () => {
+    // With the other five gone this was the only icon left on a field label, which is worse
+    // than five: one decorated row among plain ones reads as a mistake.
+    const variables = read('../components/forecast/variablesMenu.js');
+    expect(variables).not.toContain('<VariableIcon');
+  });
+
   it('keeps the icon that carries meaning', () => {
     // The one in the "no output file" notice is doing a job: it marks a state, not a label.
     expect(dataMenu).toMatch(/<FileIcon aria-hidden/);
@@ -71,5 +78,63 @@ describe('the panel still works', () => {
     render(<ForecastMenu />);
 
     expect(screen.getByRole('heading', { name: /change the run/i })).toBeInTheDocument();
+  });
+});
+
+/**
+ * The panel is grouped by when a change takes effect.
+ *
+ * Variable applies the moment it is picked: variablesMenu loads the series and sets the layer's
+ * variable itself. The run selectors do nothing until Update. Those are two different kinds of
+ * control and the panel had them in one run, with Variable last -- below the Update button, so
+ * it read as an afterthought to the query rather than a property of the reading.
+ */
+describe('the order of the panel', () => {
+  const ForecastMenu = require('features/DataStream/components/menus/ForecastMenu').default;
+  const useTimeSeriesStore = require('features/DataStream/store/Timeseries').default;
+
+  const useDataStreamStore = require('features/DataStream/store/Datastream').default;
+
+  beforeEach(() => {
+    useTimeSeriesStore.setState({ feature_id: 'cat-7', variable: 'flow' });
+    // The variable row renders only once a run has told us what variables it has.
+    useDataStreamStore.setState({ variables: ['flow', 'velocity'] });
+  });
+
+  const positionOf = (container, text) => {
+    const all = [...container.querySelectorAll('*')];
+    return all.findIndex((el) => el.children.length === 0 && new RegExp(text, 'i').test(el.textContent));
+  };
+
+  it('puts the variable before the run controls', () => {
+    const { container } = render(<ForecastMenu />);
+
+    const variable = positionOf(container, '^Variable$');
+    const heading = positionOf(container, '^Change the run$');
+
+    expect(variable).toBeGreaterThan(-1);
+    expect(heading).toBeGreaterThan(-1);
+    expect(variable).toBeLessThan(heading);
+  });
+
+  it('puts the variable before Update, not after it', () => {
+    const { container } = render(<ForecastMenu />);
+
+    const variable = positionOf(container, '^Variable$');
+    const update = positionOf(container, '^Update$');
+
+    expect(update).toBeGreaterThan(-1);
+    expect(variable).toBeLessThan(update);
+  });
+
+  it('keeps the variable in the same block as the chart it changes', () => {
+    const src = fs.readFileSync(
+      path.join(__dirname, '../components/menus/ForecastMenu.js'), 'utf8'
+    );
+    const firstBlock = src.slice(src.indexOf('<Content>'), src.indexOf('</Content>'));
+
+    expect(firstBlock).toContain('<TimeSeriesCard />');
+    expect(firstBlock).toContain('<VariablesMenu />');
+    expect(firstBlock).not.toContain('<DataMenu />');
   });
 });

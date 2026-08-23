@@ -1,10 +1,9 @@
-import React, { Fragment, useMemo, useCallback } from 'react';
+import { Fragment, useMemo, useCallback } from 'react';
 import DataMenu from '../forecast/dataMenu';
 import VariablesMenu from '../forecast/variablesMenu';
 import { Content, Container } from '../styles/Styles';
 import TimeSeriesCard from '../forecast/TimeseriesCard';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
-import { useFeatureStore } from 'features/DataStream/store/Layers';
 import { useVPUStore } from 'features/DataStream/store/VPU';
 import { ForecastHeader } from '../forecast/ForecastHeader';
 import { useShallow } from 'zustand/react/shallow';
@@ -44,14 +43,20 @@ const ForecastMenu = () => {
                   )}
             </div>
             
+            {/* Grouped by when a change takes effect, which is the distinction that matters
+                here and the one the order was getting wrong. The variable applies the moment it
+                is picked and it changes what this chart plots, so it belongs to the chart. The
+                run selectors do nothing until Update, so they are a separate block behind it.
+
+                The variable used to sit below Update, which read as an afterthought to the
+                query rather than a property of the reading. */}
             <Content>
               <TimeSeriesCard />
-              <DataMenu />
+              <VariablesMenu />
             </Content>
+
             <Content>
-                {/* The time slider used to sit here. It drives the animation, so it moved onto
-                    the map beside it; this block is the variables menu on its own now. */}
-                <VariablesMenu />
+              <DataMenu />
             </Content>
           </Container>
     </Fragment>
