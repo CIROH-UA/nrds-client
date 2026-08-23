@@ -8,6 +8,7 @@ import Header   from 'features/Tethys/components/layout/Header';
 import NavMenu  from 'features/Tethys/components/layout/NavMenu';
 import NotFound from 'features/Tethys/components/error/NotFound';
 import { AppContext } from 'features/Tethys/context/context';
+import { SkipLink, VisuallyHidden } from 'features/DataStream/components/styles/Styles';
 
 const isExternal = (to, externalFlag) =>
   externalFlag ?? /^https?:\/\//i.test(to);      // auto-detect absolute URLs
@@ -25,6 +26,11 @@ export default function Layout({ navLinks = [], routes = [], children }) {
     // the banner occupies. With height: 100% on both, the banner pushed the map 52px past the
     // bottom of the window and took the attribution control off screen with it.
     <div className="h-100 d-flex flex-column">
+      {/* First in the tab order on purpose: the nav, the banner and its dismiss button sit
+          between the header and the map, and without this every page load costs a keyboard
+          reader three stops before they reach anything they came for. */}
+      <SkipLink href="#main-content">Skip to the map</SkipLink>
+
       <Header onNavChange={setNavVisible} />
 
       {bannerVisible && (
@@ -73,10 +79,18 @@ export default function Layout({ navLinks = [], routes = [], children }) {
 
       </NavMenu>
 
-      <Routes>
-        {routes}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      {/* The app had no main landmark and no h1. Both existed only on the error page, so a
+          screen reader had nothing to jump to and the heading tree started at h2. The heading is
+          hidden rather than absent: this design has no visible headline by choice, the largest
+          type in it being 18px, but the document still needs a name. */}
+      <main id="main-content" className="h-100 d-flex flex-column" style={{ minHeight: 0 }}>
+        <VisuallyHidden>{tethysApp.title}</VisuallyHidden>
+
+        <Routes>
+          {routes}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </main>
 
       {children}
     </div>

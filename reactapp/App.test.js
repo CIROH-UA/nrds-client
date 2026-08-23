@@ -79,7 +79,42 @@ describe('the app shell', () => {
     renderApp();
 
     // Its own name: the inherited version of this test looked for a different app entirely.
-    expect(await screen.findByText(/NRDS/i)).toBeInTheDocument();
+    // By role, because the name now appears twice -- once in the brand link and once as the
+    // document's heading, which is the point of the heading.
+    expect(await screen.findByRole('heading', { level: 1, name: /NRDS/i })).toBeInTheDocument();
+  });
+
+  /**
+   * The app had no main landmark and no h1. Both existed only on the error page, so a screen
+   * reader had nothing to jump to and the heading tree started at h2 with the feature panel.
+   */
+  it('has a main landmark to skip into', async () => {
+    renderApp();
+    await screen.findByTestId('datastream-view');
+
+    const main = document.querySelector('main#main-content');
+    expect(main).toBeInTheDocument();
+    expect(main).toContainElement(screen.getByTestId('datastream-view'));
+  });
+
+  it('offers a skip link before anything else in the tab order', async () => {
+    renderApp();
+
+    const skip = await screen.findByRole('link', { name: /skip to the map/i });
+    expect(skip).toHaveAttribute('href', '#main-content');
+    // First, or it is not a skip link: the nav, the banner and its dismiss button all sit
+    // between the header and the map.
+    const focusable = document.querySelectorAll('a[href], button, input, select, [tabindex]');
+    expect(focusable[0]).toBe(skip);
+  });
+
+  it('starts its heading tree at level one', async () => {
+    renderApp();
+    await screen.findByTestId('datastream-view');
+
+    const levels = [...document.querySelectorAll('h1,h2,h3,h4,h5,h6')]
+      .map((h) => Number(h.tagName[1]));
+    expect(Math.min(...levels)).toBe(1);
   });
 
   it('has no cache control in the header, since there is no cache to clear', async () => {

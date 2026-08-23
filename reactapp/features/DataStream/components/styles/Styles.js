@@ -598,6 +598,11 @@ export const IconLabel = styled.span`
   display: flex;
   align-items: center;
   gap: 6px;
+  /* A flex item will not shrink below its content by default, so a long feature title pushed
+     the info and close buttons off the edge of the panel instead of wrapping. Catchment ids
+     are generated, not typed, so there is no length to design for. */
+  min-width: 0;
+  overflow-wrap: break-word;
   font-size: ${({ $fontSize }) => ($fontSize ? `${$fontSize}px` : 'var(--text-sm)')};
   font-weight: var(--weight-medium);
   /* Explicit, because this renders as a heading in places and would inherit h2 margins. */
@@ -853,4 +858,50 @@ export const NoData = styled.div`
   font-style: italic;
   font-size: 1rem;
   color: var(--chart-empty-text-color, #6b7280);
+`;
+/**
+ * Present to a screen reader, absent to everyone else.
+ *
+ * The clip-path-plus-1px technique rather than display:none or visibility:hidden, both of which
+ * remove the element from the accessibility tree as well as from the page. Used for the page's
+ * h1: this design has no visible headline by choice -- the largest type in the app is 18px --
+ * but a document still needs a name, and heading navigation is how a screen-reader user finds
+ * out what they are looking at.
+ */
+export const VisuallyHidden = styled.h1`
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+`;
+
+/**
+ * The first thing a keyboard reaches, and only then.
+ *
+ * Between the header and the map sit the nav, the banner and its dismiss button. Without this,
+ * reaching the map or the feature panel means tabbing through all of them on every page load.
+ * Hidden until focused, which is the whole convention: it is for people who are already
+ * tabbing, and it would be noise for anyone else.
+ */
+export const SkipLink = styled.a`
+  position: absolute;
+  left: var(--space-sm);
+  top: -100%;
+  z-index: 2000;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  background: var(--nav-pill-active-bg);
+  color: var(--nav-pill-active-text-color);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+
+  &:focus {
+    top: var(--space-sm);
+  }
 `;
