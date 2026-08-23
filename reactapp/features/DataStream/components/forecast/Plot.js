@@ -15,6 +15,7 @@ import { getVariableUnits } from '../../lib/data';
 import useDataStreamStore from '../../store/Datastream';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import { ChartContainer, NoData } from '../styles/Styles';
+import { distinctTickFormat } from 'features/DataStream/lib/utils';
 
 const MARGIN = Object.freeze({ top: 40, right: 20, bottom: 30, left: 50 });
 const axisLabelColor = 'var(--chart-axis-label-color, #111827)';
@@ -258,13 +259,12 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout, e
     [tooltipBg, tooltipTextColor, tooltipBorderColor]
   );
 
-  const formatDate = useCallback(
-    (date) => {
-      const fmt = forecast === 'short_range' ? '%H:%M' : '%m/%d';
-      return timeFormat(fmt)(date);
-    },
-    [forecast]
-  );
+  // Chosen from where the ticks actually fall, not from the forecast's name: a medium-range
+  // chart spanning under two days put two ticks on one day and labelled both "08/31".
+  const formatDate = useMemo(() => {
+    const fmt = distinctTickFormat(xTickValues, timeFormat);
+    return (date) => timeFormat(fmt)(date);
+  }, [xTickValues]);
 
   const formatTooltipDate = useMemo(() => timeFormat('%Y-%m-%d %H:%M:%S'), []);
   const bisectDate = useMemo(() => bisector((d) => getDate(d)).left, [getDate]);

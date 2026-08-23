@@ -62,3 +62,61 @@ describe('LineChart', () => {
     ).not.toThrow();
   });
 });
+
+/**
+ * Every tick on the time axis says something different.
+ *
+ * The format used to be chosen from the forecast's name -- %H:%M for short range, %m/%d for
+ * anything longer -- which says nothing about where the ticks actually land. A medium-range
+ * chart spanning under two days put two ticks on the same calendar day and drew both of them as
+ * "08/31". An axis with two identical labels is an axis with none.
+ */
+describe('distinctTickFormat', () => {
+  const { timeFormat } = require('d3-time-format');
+  const { distinctTickFormat } = require('features/DataStream/lib/utils');
+
+  // Local, not UTC: d3's timeFormat renders in local time, so ticks built in UTC would land on
+  // a different calendar day for any reader west of Greenwich and make this test's answer
+  // depend on the machine running it.
+  const at = (...args) => new Date(...args);
+  const labels = (ticks, fmt) => ticks.map((t) => timeFormat(fmt)(t));
+
+  it('separates two ticks that fall on the same day', () => {
+    // The reported case: a medium-range chart, two ticks, one date.
+    const ticks = [at(2026, 7, 31, 0), at(2026, 7, 31, 12), at(2026, 8, 1, 0)];
+
+    const fmt = distinctTickFormat(ticks, timeFormat);
+
+    expect(new Set(labels(ticks, fmt)).size).toBe(3);
+  });
+
+  it('stays coarse when the dates already differ', () => {
+    // A ten-day chart should not be labelled to the minute to solve a problem it does not have.
+    const ticks = [at(2026, 7, 29), at(2026, 7, 31), at(2026, 8, 2)];
+
+    expect(distinctTickFormat(ticks, timeFormat)).toBe('%m/%d');
+  });
+
+  it('drops the date when every tick is on one day', () => {
+    // Short range. Repeating 08/31 on all four ticks is noise, not a label.
+    const ticks = [at(2026, 7, 31, 0), at(2026, 7, 31, 6), at(2026, 7, 31, 12)];
+
+    expect(distinctTickFormat(ticks, timeFormat)).toBe('%H:%M');
+  });
+
+  it('goes to seconds only when minutes collide', () => {
+    const ticks = [at(2026, 7, 31, 9, 0, 0), at(2026, 7, 31, 9, 0, 30)];
+
+    expect(distinctTickFormat(ticks, timeFormat)).toBe('%H:%M:%S');
+  });
+
+  it('has nothing to decide with fewer than two ticks', () => {
+    expect(distinctTickFormat([], timeFormat)).toBe('%m/%d');
+    expect(distinctTickFormat([at(2026, 7, 31)], timeFormat)).toBe('%m/%d');
+    expect(distinctTickFormat(undefined, timeFormat)).toBe('%m/%d');
+  });
+
+  it('ignores values that are not times', () => {
+    expect(distinctTickFormat([null, undefined, NaN], timeFormat)).toBe('%m/%d');
+  });
+});

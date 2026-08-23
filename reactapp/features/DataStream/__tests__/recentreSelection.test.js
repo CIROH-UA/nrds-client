@@ -45,61 +45,111 @@ describe('selectionLngLat', () => {
   });
 });
 
-describe('the control that uses it', () => {
-  const fs = require('fs');
-  const path = require('path');
-  const mapg = fs.readFileSync(path.join(__dirname, '../components/map/Mapg.js'), 'utf8');
-  const styles = fs.readFileSync(path.join(__dirname, '../components/styles/Styles.js'), 'utf8');
+/**
+ * Putting the selection back on screen.
+ *
+ * The control started as a button floating over the map, which put it nowhere near the thing it
+ * relates to and, on its first outing, underneath the side panel. It sits in the feature panel
+ * now, under the chart it belongs to, which also makes it a component that can be rendered.
+ */
+describe('showSelection', () => {
+  const { showSelection, SELECTION_ZOOM } = require('features/DataStream/actions/showSelection');
+  const { setMapHandle } = require('features/DataStream/lib/mapHandle');
+  const { useFeatureStore } = require('features/DataStream/store/Layers');
 
-  it('only appears when there is somewhere to go back to', () => {
-    expect(mapg).toMatch(/\{selectionAt && \(\s*<RecentreButton/);
+  const initial = useFeatureStore.getState();
+  let map;
+
+  beforeEach(() => {
+    useFeatureStore.setState(initial, true);
+    map = { flyTo: jest.fn() };
+    setMapHandle(map);
   });
 
-  it('carries a name, since it is an icon on a small screen', () => {
-    expect(mapg).toMatch(/aria-label="Show the selected catchment"/);
+  afterEach(() => setMapHandle(null));
+
+  it('flies to the selected feature', () => {
+    useFeatureStore.setState({ selected_feature: { _id: 'cat-1', lat: 40.8, lon: -111.5 } });
+
+    expect(showSelection()).toBe(true);
+    expect(map.flyTo).toHaveBeenCalledWith({
+      center: [-111.5, 40.8],
+      zoom: SELECTION_ZOOM,
+      essential: true,
+    });
   });
 
   it('returns at a zoom where the catchment is actually drawn', () => {
-    // The fill only reaches full opacity at 11. Recentering at whatever zoom the reader drifted
-    // to would put them over a highlight they still could not see.
-    expect(mapg).toMatch(/const SELECTION_ZOOM = 11;/);
-    expect(mapg).toMatch(/zoom: SELECTION_ZOOM/);
+    // The fill only reaches full opacity at 11. Returning at whatever zoom the reader drifted to
+    // would centre them on a highlight they still could not see.
+    expect(SELECTION_ZOOM).toBe(11);
   });
 
-  it('is built on the shared surface at control elevation, like the slider', () => {
-    const i = styles.indexOf('export const RecentreButton');
-    const decl = styles.slice(i, styles.indexOf('\n`;', i));
-    expect(decl).toMatch(/styled\(MapSurface\)/);
-    expect(decl).toMatch(/\$control:\s*true/);
+  it('keeps moving for a reader who asked for less motion', () => {
+    // essential:true. Without it maplibre skips the move under prefers-reduced-motion and the
+    // press does nothing at all, which is worse than the animation.
+    useFeatureStore.setState({ selected_feature: { _id: 'cat-1', lat: 40, lon: -111 } });
+
+    showSelection();
+
+    expect(map.flyTo.mock.calls[0][0].essential).toBe(true);
   });
 
-  /**
-   * The map fills the whole view and the side panel floats on top of it, so the map's left edge
-   * is behind the panel. This first shipped at `left: 10px` and landed underneath the panel's
-   * Update button. Anything anchored to this map has to hold to the right or the middle.
-   */
-  it('is anchored from the right, where the map is not covered', () => {
-    const i = styles.indexOf('export const RecentreButton');
-    const decl = styles.slice(i, styles.indexOf('\n`;', i));
-    expect(decl).toMatch(/right:\s*10px;/);
-    expect(decl).not.toMatch(/^\s*left:/m);
+  it('does nothing when nothing is selected', () => {
+    expect(showSelection()).toBe(false);
+    expect(map.flyTo).not.toHaveBeenCalled();
   });
 
-  it('clears the legend it stacks above, in both viewport sizes', () => {
-    // The legend sits at bottom 42 and stands about 63 tall, and drops to bottom 96 on a narrow
-    // screen. Overlapping it would put a control on top of the key it belongs beside.
-    const i = styles.indexOf('export const RecentreButton');
-    const decl = styles.slice(i, styles.indexOf('\n`;', i));
-    const bottoms = [...decl.matchAll(/bottom:\s*(\d+)px/g)].map((m) => Number(m[1]));
+  it('does nothing for a feature it cannot place', () => {
+    useFeatureStore.setState({ selected_feature: { _id: 'cat-1' } });
 
-    expect(bottoms).toHaveLength(2);
-    expect(bottoms[0]).toBeGreaterThan(42 + 63);
-    expect(bottoms[1]).toBeGreaterThan(96 + 63);
+    expect(showSelection()).toBe(false);
+    expect(map.flyTo).not.toHaveBeenCalled();
   });
 
-  it('flies rather than jumps, and cannot be cut off by reduced motion', () => {
-    // essential:true keeps the move when the reader has prefers-reduced-motion set, which would
-    // otherwise leave them wherever they were with no feedback at all.
-    expect(mapg).toMatch(/flyTo\(\{ center: selectionAt, zoom: SELECTION_ZOOM, essential: true \}\)/);
+  it('does nothing before the map exists', () => {
+    setMapHandle(null);
+    useFeatureStore.setState({ selected_feature: { _id: 'cat-1', lat: 40, lon: -111 } });
+
+    expect(showSelection()).toBe(false);
+  });
+});
+
+describe('the control in the feature panel', () => {
+  const { render, screen, fireEvent } = require('@testing-library/react');
+  const { ForecastHeader } = require('features/DataStream/components/forecast/ForecastHeader');
+  const { setMapHandle } = require('features/DataStream/lib/mapHandle');
+  const { useFeatureStore } = require('features/DataStream/store/Layers');
+
+  const initial = useFeatureStore.getState();
+  let map;
+
+  beforeEach(() => {
+    useFeatureStore.setState(initial, true);
+    map = { flyTo: jest.fn() };
+    setMapHandle(map);
+  });
+
+  afterEach(() => setMapHandle(null));
+
+  it('sits beside the chart it relates to', () => {
+    render(<ForecastHeader title="Cat 2859355" onClick={() => {}} />);
+
+    expect(screen.getByRole('button', { name: /show on map/i })).toBeInTheDocument();
+  });
+
+  it('moves the map when pressed', () => {
+    useFeatureStore.setState({ selected_feature: { _id: 'cat-1', lat: 40, lon: -111 } });
+    render(<ForecastHeader title="Cat 1" onClick={() => {}} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /show on map/i }));
+
+    expect(map.flyTo).toHaveBeenCalled();
+  });
+
+  it('does not crowd out the button that clears the selection', () => {
+    render(<ForecastHeader title="Cat 1" onClick={() => {}} />);
+
+    expect(screen.getByRole('button', { name: /clear selection/i })).toBeInTheDocument();
   });
 });

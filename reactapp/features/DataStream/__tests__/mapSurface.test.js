@@ -18,9 +18,10 @@ const styles = fs.readFileSync(
   'utf8'
 );
 
-// The legend used to be one of these. It moved into the layer panel, beside the switch that
-// turns the animation on, so the map carries only the two controls now.
-const OVERLAYS = ['MapHint', 'RecentreButton', 'TimeSliderDock'];
+// The legend used to be one of these, and so did the recentre button. The legend moved into the
+// layer panel beside the switch that turns the animation on; the button moved into the feature
+// panel beside the chart it relates to. What floats over the map now is what belongs to the map.
+const OVERLAYS = ['MapHint', 'TimeSliderDock'];
 
 const declarationOf = (name) => {
   const i = styles.indexOf(`export const ${name} = styled`);

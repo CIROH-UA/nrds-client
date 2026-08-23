@@ -12,7 +12,6 @@ import Map, {
   useMap,
 } from 'react-map-gl/maplibre';
 import { Protocol } from 'pmtiles';
-import { IoLocateOutline } from 'react-icons/io5';
 import useTimeSeriesStore from '../../store/Timeseries';
 import useDataStreamStore from '../../store/Datastream';
 import { useVPUStore } from '../../store/VPU';
@@ -27,6 +26,8 @@ import { useMapTheme } from '../../lib/mapTheme';
 import { createPointerCursor } from '../../lib/mapCursor';
 import { animationIsOnMap, quantiseZoom } from '../../lib/flowpaths';
 import { selectionLngLat } from '../../lib/layers';
+import { setMapHandle } from '../../lib/mapHandle';
+import { showSelection } from '../../actions/showSelection';
 import {
   DIVIDES_MIN_ZOOM,
   FLOWPATHS_LAYER_ID,
@@ -48,11 +49,9 @@ import {
   useFlowPathsHighlightLayer,
   useConusGaugesLayer,
 } from './MapLayers';
-import { MapHint, RecentreButton, TimeSliderDock } from '../styles/Styles';
+import { MapHint, TimeSliderDock } from '../styles/Styles';
 
 const INITIAL_VIEW = { longitude: -96, latitude: 40, zoom: 4 };
-// Where a selection is shown from. The catchment fill only reaches full opacity at zoom 11.
-const SELECTION_ZOOM = 11;
 
 // Half-width of the hover hit box. A flowpath renders two pixels wide, so an exact-pixel query
 // is a target most people cannot hit, and one react-map-gl's own query missed outright.
@@ -227,18 +226,9 @@ const MainMap = () => {
     map.easeTo({ zoom: FLOWPATHS_MIN_ZOOM + 1, essential: true });
   }, [selectionAt, mapRef]);
 
-  /**
-   * Put the selected catchment back on screen.
-   *
-   * SELECTION_ZOOM rather than the current one: the catchment fill only reaches full opacity at
-   * zoom 11, so returning at whatever zoom the reader had drifted to could centre them on a
-   * highlight they still cannot see.
-   */
-  const flyToSelection = useCallback(() => {
-    const map = mapRef.current?.getMap?.() ?? mapRef.current;
-    if (!map || !selectionAt) return;
-    map.flyTo({ center: selectionAt, zoom: SELECTION_ZOOM, essential: true });
-  }, [selectionAt, mapRef]);
+  // Selecting something moves the map to it. The same move on demand lives beside the chart it
+  // relates to, in the feature panel; see actions/showSelection.js.
+  const flyToSelection = useCallback(() => showSelection(), []);
 
 
 
@@ -281,6 +271,7 @@ const MainMap = () => {
     if (!isMapUsable(map)) return;
 
     hoverMapRef.current = map;
+    setMapHandle(map);
     hideStyleFlowpaths(map);
     setVpuVisibility(map, useLayersStore.getState().vpu.visible);
     reorderLayers(map);
@@ -537,20 +528,9 @@ const MainMap = () => {
           <TimeSlider />
         </TimeSliderDock>
       )}
-      {selectionAt && (
-        <RecentreButton
-          type="button"
-          onClick={flyToSelection}
-          aria-label="Show the selected catchment"
-          title="Show the selected catchment"
-        >
-          <IoLocateOutline size={18} aria-hidden="true" />
-          <span>Selected</span>
-        </RecentreButton>
-      )}
-      {/* Standard map furniture the app was missing. The zoom buttons are also the only way to
-          zoom from the keyboard, and the scale bar is what makes a catchment's size readable. */}
-      <NavigationControl position="top-right" showCompass={false} />
+      {/* Bottom right, not top right: the layer panel owns that corner and was covering the
+          zoom buttons. The two stack here, clear of the slider in the middle. */}
+      <NavigationControl position="bottom-right" showCompass={false} />
       <ScaleControl position="bottom-right" unit="metric" />
       <SelectedFeaturePopup />
       <CustomPopUp hovered_feature={hovered_feature} enabledHovering={enabledHovering} />

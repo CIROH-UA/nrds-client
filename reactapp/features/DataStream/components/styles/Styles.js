@@ -433,6 +433,38 @@ export const TimeSliderDock = styled(MapSurface).attrs({ $control: true })`
   touch-action: manipulation;
 `;
 
+/**
+ * A control that acts without announcing itself.
+ *
+ * Text and an icon on the panel's own surface, no filled face. The panel already has one filled
+ * button -- Update, which fetches -- and a second one competing with it would leave neither
+ * reading as the primary action. This one only moves the map.
+ */
+export const GhostButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-height: 32px;
+  margin-top: var(--space-xs);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--link-color);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--nav-pill-active-bg);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+`;
+
 export const MapHint = styled(MapSurface).attrs({ as: 'button' })`
   left: 50%;
   transform: translateX(-50%);
@@ -467,52 +499,6 @@ export const MapHint = styled(MapSurface).attrs({ as: 'button' })`
  * layer panel opens at the top right. Raised clear of the attribution bar. Small on purpose: it
  * explains one ramp, and the map is the thing being read.
  */
-/**
- * Return to the selected catchment.
- *
- * Stacked above the legend on the right.
- *
- * Not bottom left, which is where it went first and looked wrong in a way worth writing down:
- * the map fills the whole view and the side panel floats over it, so the map's left edge is
- * behind the panel and `left: 10px` put the control underneath it. Anything positioned against
- * this map has to keep to the right of the panel or the middle.
- *
- * A control rather than a readout, so it takes the higher elevation -- it is the same kind of
- * thing as the slider, and the reader has to be able to tell it apart from the legend beside it.
- */
-export const RecentreButton = styled(MapSurface).attrs({ as: 'button', $control: true })`
-  right: 10px;
-  bottom: 120px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0 var(--space-sm);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  cursor: pointer;
-
-  &:hover {
-    background-color: var(--button-primary-hover-bg);
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--nav-pill-active-bg);
-    outline-offset: 2px;
-  }
-
-  /* The label goes when there is no room for it; the icon and the accessible name stay. The
-     legend drops lower on a narrow screen, so this rides up with it. */
-  @media (max-width: 768px) {
-    bottom: 174px;
-
-    span {
-      display: none;
-    }
-  }
-`;
 
 
 /* A label, not a heading. Uppercase with tracking at weight 650 is the house style of every

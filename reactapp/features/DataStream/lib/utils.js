@@ -220,3 +220,36 @@ export const formatFrameTime = (value) => {
     `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`
   );
 };
+
+/**
+ * A time format that gives every tick a different label.
+ *
+ * The axis used to pick its format from the forecast name -- %H:%M for short range, %m/%d for
+ * anything longer -- which says nothing about how the ticks actually fall. A medium-range chart
+ * spanning under two days gets two ticks on the same calendar day and drew them both as
+ * "08/31": an axis with two identical labels, which is an axis with none.
+ *
+ * The ticks are what decide. Coarsest format first, refined only when it collides, so a chart
+ * that spans days is not labelled to the minute for no reason.
+ *
+ * Returns a d3 format string. Ordered coarse to fine; the last is the fallback when even
+ * seconds collide, which means the ticks are duplicates and no format can separate them.
+ */
+const TICK_FORMATS = ['%m/%d', '%m/%d %H:%M', '%H:%M', '%H:%M:%S'];
+
+export const distinctTickFormat = (ticks, format) => {
+  const values = (ticks || []).filter((t) => t instanceof Date || Number.isFinite(t));
+  if (values.length < 2) return TICK_FORMATS[0];
+
+  const sameDay = values.every(
+    (t) => new Date(t).toDateString() === new Date(values[0]).toDateString()
+  );
+  // Within one day the date is the same on every tick, so it is noise rather than a label.
+  const candidates = sameDay ? ['%H:%M', '%H:%M:%S'] : TICK_FORMATS;
+
+  for (const candidate of candidates) {
+    const labels = values.map((t) => format(candidate)(t));
+    if (new Set(labels).size === labels.length) return candidate;
+  }
+  return candidates[candidates.length - 1];
+};
