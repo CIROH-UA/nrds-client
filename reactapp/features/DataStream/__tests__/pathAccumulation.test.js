@@ -174,8 +174,23 @@ describe('keeping the most detailed capture', () => {
     const store = new Map();
     addPaths(store, [reach(detailed)], { 'wb-1': 0 }, 9);
 
-    expect(addPaths(store, [reach(coarse)], { 'wb-1': 0 }, 4)).toBe(0);
+    addPaths(store, [reach(coarse)], { 'wb-1': 0 }, 4);
+
     expect(store.get('wb-1').path).toHaveLength(4);
+  });
+
+  test('but a wider look is a change, because it changes what is drawn', () => {
+    // This asserted 0 while the only thing a wider view could tell us was geometry we already
+    // had. It now also tells us the reach is served at zoom 4, which moves it into the set drawn
+    // over the whole vpu -- so the caller does need to rebuild.
+    const store = new Map();
+    addPaths(store, [reach(detailed)], { 'wb-1': 0 }, 9);
+
+    expect(addPaths(store, [reach(coarse)], { 'wb-1': 0 }, 4)).toBe(1);
+    expect(store.get('wb-1').minZoom).toBe(4);
+
+    // And a second identical wide look is not.
+    expect(addPaths(store, [reach(coarse)], { 'wb-1': 0 }, 4)).toBe(0);
   });
 
   test('the same zoom twice is not a change', () => {
@@ -188,5 +203,157 @@ describe('keeping the most detailed capture', () => {
     const store = new Map();
     addPaths(store, [reach(coarse)], { 'wb-1': 0 }, 7.4);
     expect(store.get('wb-1').zoom).toBe(7.4);
+  });
+});
+
+/**
+ * Density follows the current zoom, not wherever the reader has been.
+ *
+ * The store accumulates and nothing removes from it, which is deliberate: the geometry has to
+ * outlive the viewport that produced it or panning drops reaches mid-animation. But the whole
+ * store was handed to deck.gl, so after zooming into half a vpu and back out, that half kept its
+ * close-up density and the rest stayed coarse. One region, two resolutions, and it lasted the
+ * whole session because the store is only cleared on a vpu change.
+ *
+ * The fix is not to prune. Each reach records two zooms: the finest it has been seen at, which
+ * is where its geometry came from, and the coarsest, which is the lowest zoom the tileset serves
+ * it at and therefore when it should be drawn.
+ */
+const at = (id) => feature(id, [[0, 0], [1, 1]]);
+
+describe('the two zooms a reach remembers', () => {
+  test('records the zoom it was first seen at as its coarsest', () => {
+    const store = new Map();
+
+    addPaths(store, [at('wb-1')], index, 6);
+
+    expect(store.get('wb-1').minZoom).toBe(6);
+    expect(store.get('wb-1').zoom).toBe(6);
+  });
+
+  test('takes finer geometry without forgetting how coarse it is served', () => {
+    // The reach is a main stem: the tileset serves it at 6 and again, in more detail, at 11.
+    const store = new Map();
+    addPaths(store, [at('wb-1')], index, 6);
+
+    addPaths(store, [at('wb-1')], index, 11);
+
+    expect(store.get('wb-1').zoom).toBe(11);
+    expect(store.get('wb-1').minZoom).toBe(6);
+  });
+
+  test('lowers the coarsest when a wider view turns out to serve it', () => {
+    // The order the reader happens to travel in must not decide what they see. A reach first met
+    // close up is still a main stem, and the wide view proves it by serving it.
+    const store = new Map();
+    addPaths(store, [at('wb-1')], index, 11);
+
+    addPaths(store, [at('wb-1')], index, 6);
+
+    expect(store.get('wb-1').minZoom).toBe(6);
+    expect(store.get('wb-1').zoom).toBe(11);
+  });
+
+  test('leaves a headwater marked as fine detail', () => {
+    // Only ever served close up, so it should not be drawn over the whole vpu.
+    const store = new Map();
+    addPaths(store, [at('wb-2')], index, 11);
+
+    expect(store.get('wb-2').minZoom).toBe(11);
+  });
+});
+
+describe('what is drawn at a given zoom', () => {
+  const { pathsVisibleAt } = require('features/DataStream/lib/layers');
+
+  const store = () => {
+    const s = new Map();
+    addPaths(s, [at('wb-1')], index, 6);   // main stem
+    addPaths(s, [at('wb-2')], index, 11);  // headwater
+    addPaths(s, [at('wb-3')], index, 9);   // tributary
+    return [...s.values()];
+  };
+
+  test('over the whole vpu, only what the tileset serves there', () => {
+    expect(pathsVisibleAt(store(), 6).map((p) => p.id)).toEqual(['wb-1']);
+  });
+
+  test('closer in, everything down to that zoom', () => {
+    expect(pathsVisibleAt(store(), 9).map((p) => p.id).sort()).toEqual(['wb-1', 'wb-3']);
+  });
+
+  test('closest, all of it', () => {
+    expect(pathsVisibleAt(store(), 11).map((p) => p.id).sort()).toEqual(['wb-1', 'wb-2', 'wb-3']);
+  });
+
+  test('the same everywhere at one zoom, wherever the reader has been', () => {
+    // The defect: a half visited at 11 drew at 11 while the rest drew at 6.
+    const visited = store();
+    expect(pathsVisibleAt(visited, 6)).toHaveLength(1);
+    expect(pathsVisibleAt(visited, 6)).toEqual(pathsVisibleAt(visited, 6));
+  });
+
+  test('draws a reach with no zoom recorded rather than hiding it', () => {
+    // Anything predating the tag, or arriving from somewhere that does not set it, is geometry
+    // the animation had before this change and should not lose to it.
+    expect(pathsVisibleAt([{ id: 'x', path: [] }], 4)).toHaveLength(1);
+  });
+
+  test('answers an empty list for nothing', () => {
+    expect(pathsVisibleAt([], 8)).toEqual([]);
+    expect(pathsVisibleAt(undefined, 8)).toEqual([]);
+  });
+});
+
+/**
+ * The reported bug, end to end.
+ *
+ * Zoom into half a vpu, zoom back out, and that half kept its close-up density while the rest
+ * stayed coarse: one region drawn at two resolutions, and it lasted the whole session because
+ * the store is only cleared when the vpu changes.
+ */
+describe('a reader who zooms into one half and back out', () => {
+  const { pathsVisibleAt } = require('features/DataStream/lib/layers');
+
+  const WEST = ['wb-1'];
+  const EAST = ['wb-2'];
+  const EAST_DETAIL = ['wb-2', 'wb-3'];
+  const idx = { 'wb-1': 0, 'wb-2': 1, 'wb-3': 2 };
+  const feats = (ids) => ids.map((id) => feature(id, [[0, 0], [1, 1]]));
+
+  const travel = () => {
+    const store = new Map();
+    // The whole vpu at a wide zoom: the tileset serves one main stem per half.
+    addPaths(store, feats([...WEST, ...EAST]), idx, 6);
+    // Close up on the east: it now also serves the tributary there.
+    addPaths(store, feats(EAST_DETAIL), idx, 11);
+    // And back out over the whole vpu.
+    addPaths(store, feats([...WEST, ...EAST]), idx, 6);
+    return [...store.values()];
+  };
+
+  test('keeps everything it collected', () => {
+    // The point of accumulating: nothing is thrown away by moving.
+    expect(travel()).toHaveLength(3);
+  });
+
+  test('draws both halves at the same density once back out', () => {
+    const drawn = pathsVisibleAt(travel(), 6).map((p) => p.id).sort();
+
+    // One reach per half, not two in the east and one in the west.
+    expect(drawn).toEqual(['wb-1', 'wb-2']);
+  });
+
+  test('still has the eastern detail waiting when the reader returns', () => {
+    const drawn = pathsVisibleAt(travel(), 11).map((p) => p.id).sort();
+
+    expect(drawn).toEqual(['wb-1', 'wb-2', 'wb-3']);
+  });
+
+  test('and the main stems keep the geometry read closest', () => {
+    // Density follows the zoom; detail does not regress with it.
+    const east = travel().find((p) => p.id === 'wb-2');
+    expect(east.zoom).toBe(11);
+    expect(east.minZoom).toBe(6);
   });
 });

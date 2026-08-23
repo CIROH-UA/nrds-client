@@ -631,11 +631,22 @@ export const mapFeatureId = (feature) =>
 /**
  * Collect paths, keeping the most detailed version of each, and report how many changed.
  *
- * Keyed on the path id so a reach seen from three viewports is stored once, and tagged with the
- * zoom it was read at so a closer look can replace a coarser one. First-seen-wins was the
- * defect: the tileset serves a filtered, simplified subset at low zoom, so a reach first seen
- * over the whole state kept that coarse geometry even after the reader zoomed in on it. Drawn
- * together, captures from different zooms left visible steps in density along tile edges.
+ * Keyed on the path id so a reach seen from three viewports is stored once. Nothing is ever
+ * removed: the geometry has to outlive the viewport that produced it, or panning drops reaches
+ * out of a running animation and deck.gl, which has no zoom limit of its own, has nothing to
+ * draw over a wide view.
+ *
+ * Each reach remembers two zooms, because they answer two different questions.
+ *
+ * ``zoom`` is the finest it has been seen at, and decides which geometry to keep.
+ * First-seen-wins was the original defect: the tileset serves a simplified subset at low zoom,
+ * so a reach first met over the whole state kept that coarse shape even after the reader zoomed
+ * in on it, and captures from different zooms left steps in density along tile edges.
+ *
+ * ``minZoom`` is the coarsest it has been served at, and decides when to draw it -- see
+ * pathsVisibleAt. It has to be tracked separately and it has to be able to fall. A main stem
+ * first met close up would otherwise be marked as fine detail for ever, because the order the
+ * reader happened to travel in is not a fact about the river.
  *
  * The count is what tells the caller whether to hand deck.gl a new array.
  */
@@ -643,12 +654,38 @@ export function addPaths(store, features, featureIdToIndex, zoom = 0) {
   let changed = 0;
   for (const path of convertFeaturesToPaths(features, featureIdToIndex)) {
     const held = store.get(path.id);
-    if (held && held.zoom >= zoom) continue;
-    store.set(path.id, { ...path, zoom });
+    const minZoom = held ? Math.min(held.minZoom ?? held.zoom ?? zoom, zoom) : zoom;
+
+    // Nothing new: the geometry is already at least this detailed and the floor has not moved.
+    if (held && held.zoom >= zoom && held.minZoom === minZoom) continue;
+
+    const geometry = held && held.zoom >= zoom ? held : path;
+    store.set(path.id, { ...geometry, zoom: Math.max(held?.zoom ?? zoom, zoom), minZoom });
     changed += 1;
   }
   return changed;
 }
+
+/**
+ * The reaches worth drawing at a given zoom.
+ *
+ * The store accumulates and never prunes, so handing all of it to deck.gl drew whatever the
+ * reader had ever been close to. Zoom into half a vpu and back out, and that half kept its
+ * close-up density while the rest stayed coarse: one region at two resolutions, lasting the
+ * whole session, because the store is only cleared when the vpu changes.
+ *
+ * Filtering rather than pruning. A reach is drawn when the tileset would serve it at this zoom,
+ * which is what minZoom records, so the density matches the static network at every scale and
+ * nothing is lost when the reader moves away.
+ *
+ * A path with no zoom recorded is drawn. Anything arriving from somewhere that does not tag is
+ * geometry the animation had before this existed, and it should not disappear to it.
+ */
+export const pathsVisibleAt = (paths, zoom) => {
+  if (!paths?.length) return [];
+  if (!Number.isFinite(zoom)) return paths;
+  return paths.filter((p) => (p.minZoom ?? -Infinity) <= zoom);
+};
 
 function convertFeaturesToPaths(features, featureIdToIndex) {
   const out = [];

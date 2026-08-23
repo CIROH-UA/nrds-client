@@ -108,7 +108,14 @@ export function flowPathLayerProps({
  */
 export function shouldPromptZoom({ visible, valuesByVar, timesArr, zoom, collectedPaths = 0 }) {
   if (!visible || !valuesByVar || !timesArr?.length) return false;
-  // Geometry already collected keeps drawing at any zoom, so there is nothing to prompt about.
+  // Anything collected at all means the reader has data somewhere, so this would be telling
+  // them to zoom in on ground they have already covered.
+  //
+  // Not the same as "something is drawn": paths are filtered to the zoom the tileset serves them
+  // at, so a store full of headwaters draws nothing over a whole vpu. That gap is unreachable
+  // in practice -- FLOWPATHS_MIN_ZOOM is 1 and the check below needs a zoom under it -- and
+  // counting the visible subset here would put an O(n) filter over the store into every render
+  // of the map component to fix a case that cannot happen.
   if (collectedPaths > 0) return false;
   return Number.isFinite(zoom) && zoom < FLOWPATHS_MIN_ZOOM;
 }

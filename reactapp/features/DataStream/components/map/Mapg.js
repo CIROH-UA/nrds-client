@@ -35,6 +35,7 @@ import {
   FLOWPATHS_MIN_ZOOM,
   addPaths,
   createPathStore,
+  pathsVisibleAt,
   hideStyleFlowpaths,
   setVpuVisibility,
 } from '../../lib/layers';
@@ -108,7 +109,10 @@ const FlowPathsOverlay = React.memo(function FlowPathsOverlay({
       timesArr,
       variable,
       bounds,
-      pathData: pathDataRef.current,
+      // Only what the tileset would serve at this zoom. The store keeps everything ever seen,
+      // so handing all of it over drew whichever areas the reader had been close to at their
+      // close-up density and left the rest coarse.
+      pathData: pathsVisibleAt(pathDataRef.current, zoom),
       currentTimeIndex,
       pathTick,
       zoom,
