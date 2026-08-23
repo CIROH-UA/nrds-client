@@ -23,6 +23,17 @@ export const makeTitle = (forecast, feature_id) => {
 };
 
 /**
+ * The run, named for the caption under the panel's heading.
+ *
+ * It used to be part of the heading, which made a two-line title in a 400px panel out of two
+ * facts of different kinds: which catchment this is, which does not change while the panel is
+ * open, and which run produced the numbers, which the controls below can change. The first is
+ * the name of the thing; the second is a property of it.
+ */
+export const makeRunLabel = (forecast) =>
+  capitalizeWords(`${String(forecast ?? '').replace(/_/g, ' ')} Forecast`);
+
+/**
  * The panel's title when there is no forecast to name.
  *
  * makeTitle asserts a forecast, and a selection whose output-file listing is empty has none: the

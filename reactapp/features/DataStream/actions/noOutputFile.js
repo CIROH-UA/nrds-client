@@ -41,7 +41,7 @@ export function abandonSelectionWithNoOutput() {
 
   const featureId = useFeatureStore.getState().selected_feature?._id;
   if (featureId) {
-    timeseries.set_layout({ ...timeseries.layout, title: makeFeatureTitle(featureId) });
+    timeseries.set_layout({ ...timeseries.layout, title: makeFeatureTitle(featureId), subtitle: '' });
   }
 
   useTimeSeriesStore.setState({

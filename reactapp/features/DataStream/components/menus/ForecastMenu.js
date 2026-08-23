@@ -37,7 +37,8 @@ const ForecastMenu = () => {
             <div>
                   {layout?.title && (
                     <ForecastHeader
-                      title ={layout.title}
+                      title={layout.title}
+                      subtitle={layout.subtitle}
                       onClick={onReset}
                     />
                   )}

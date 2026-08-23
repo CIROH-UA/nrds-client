@@ -23,7 +23,7 @@ const declOf = (name) => {
 };
 
 describe('the minimum target', () => {
-  it.each(['GhostButton', 'MapHint', 'XButton', 'SButton', 'ModalCloseButton', 'Switch'])(
+  it.each(['MapHint', 'XButton', 'SButton', 'ModalCloseButton', 'Switch'])(
     '%s reserves 44px',
     (name) => {
       expect(declOf(name)).toMatch(/min-height:\s*44px/);

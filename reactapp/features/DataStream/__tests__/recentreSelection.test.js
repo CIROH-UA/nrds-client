@@ -148,26 +148,29 @@ describe('the control in the feature panel', () => {
   });
 
   /**
-   * It was text in the link colour that underlined on hover, which is the affordance for going
-   * somewhere. This moves the map: it is an action, and borrowing a link's clothes is why it did
-   * not read as pressable.
+   * It has been three things. A button floating over the map, which read as unrelated to
+   * anything and landed under the side panel. Then text in the link colour that underlined on
+   * hover, which is the affordance for going somewhere when this only moves the map. Then a
+   * full-width bordered button between the title and the chart, which put a utility action in
+   * the most prominent position in the panel.
+   *
+   * It is an icon in the title row now, beside the other two controls that act on the selection
+   * as a whole, where it costs no vertical space and no reading order.
    */
-  it('is a button, not something dressed as a link', () => {
+  it('is an icon in the title row, not a block above the chart', () => {
     const fs = require('fs');
     const path = require('path');
-    const styles = fs.readFileSync(
-      path.join(__dirname, '../components/styles/Styles.js'), 'utf8'
+    const header = fs.readFileSync(
+      path.join(__dirname, '../components/forecast/ForecastHeader.js'), 'utf8'
     );
-    const i = styles.indexOf('export const GhostButton');
-    const decl = styles.slice(i, styles.indexOf('\n`;', i));
+    const row = header.slice(header.indexOf('<Row>'), header.indexOf('</Row>'));
 
-    expect(decl).not.toMatch(/text-decoration/);
-    expect(decl).not.toMatch(/color: var\(--link-color\)/);
-    expect(decl).toMatch(/border: 1px solid/);
-    expect(decl).toMatch(/min-height: 44px/);
+    // Inside the row, with the info toggle and the close button.
+    expect(row).toMatch(/<IoLocateOutline/);
+    expect(header).not.toMatch(/GhostButton/);
   });
 
-  it('says what it does rather than what is already true', () => {
+    it('says what it does rather than what is already true', () => {
     // "Show on map" describes a state the reader can already see: the catchment is on the map,
     // that is where they clicked it.
     render(<ForecastHeader title="Cat 1" onClick={() => {}} />);

@@ -138,3 +138,42 @@ describe('the order of the panel', () => {
     expect(firstBlock).not.toContain('<DataMenu />');
   });
 });
+
+/**
+ * The heading names the catchment; the caption says which run.
+ *
+ * They used to be one string -- "Cat 2863225 Short Range Forecast" -- which wrapped to two lines
+ * in a 400px panel and repeated what the Forecast select said two blocks below. They are facts
+ * of different kinds: one names the thing and does not change while the panel is open, the other
+ * is a property of it that the controls can change.
+ */
+describe('the panel heading', () => {
+  const { ForecastHeader } = require('features/DataStream/components/forecast/ForecastHeader');
+  const { makeFeatureTitle, makeRunLabel } = require('features/DataStream/lib/utils');
+
+  it('names the catchment alone', () => {
+    expect(makeFeatureTitle('cat-2863225')).toBe('Cat 2863225');
+  });
+
+  it('names the run separately', () => {
+    expect(makeRunLabel('short_range')).toBe('Short Range Forecast');
+    expect(makeRunLabel('analysis_assim')).toBe('Analysis Assim Forecast');
+  });
+
+  it('says nothing rather than "Forecast" when there is no run', () => {
+    // A selection whose output listing is empty has no forecast to name.
+    render(<ForecastHeader title="Cat 1" subtitle="" onClick={() => {}} />);
+
+    expect(screen.getByRole('heading', { level: 2, name: /cat 1/i })).toBeInTheDocument();
+    expect(screen.queryByText(/forecast/i)).not.toBeInTheDocument();
+  });
+
+  it('keeps the run out of the heading', () => {
+    render(<ForecastHeader title="Cat 1" subtitle="Short Range Forecast" onClick={() => {}} />);
+
+    const heading = screen.getByRole('heading', { level: 2 });
+    expect(heading).toHaveTextContent(/cat 1/i);
+    expect(heading).not.toHaveTextContent(/short range/i);
+    expect(screen.getByText('Short Range Forecast')).toBeInTheDocument();
+  });
+});

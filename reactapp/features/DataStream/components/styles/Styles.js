@@ -440,41 +440,16 @@ export const TimeSliderDock = styled(MapSurface).attrs({ $control: true })`
 `;
 
 /**
- * The panel's secondary action.
+ * The line under a panel's heading.
  *
- * It was text in the link colour that underlined on hover, which is the affordance for going
- * somewhere. This does not go anywhere: it moves the map. Borrowing a link's clothes for an
- * action is the reason it did not read as pressable, and the underline was the tell.
- *
- * A bordered transparent button instead, sharing the shape and the 44px of every other control
- * here. Quieter than Update, which is filled, because a panel with two equally loud buttons has
- * no primary action.
+ * For a fact about the thing named above rather than part of its name. The run used to be half
+ * the heading, which made a two-line title in a 400px panel out of two facts of different kinds
+ * and repeated what the Forecast select already said.
  */
-export const GhostButton = styled.button`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-xs);
-  min-height: 44px;
-  margin-top: var(--space-xs);
-  padding: 0 var(--space-md);
-  border: 1px solid var(--panel-border-color);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-color);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  cursor: pointer;
-  transition: background-color 160ms cubic-bezier(0.22, 1, 0.36, 1);
-
-  &:hover {
-    background-color: var(--nav-button-hover-bg);
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--nav-pill-active-bg);
-    outline-offset: 2px;
-  }
+export const PanelCaption = styled.p`
+  margin: calc(var(--space-xs) * -1) 0 var(--space-sm) 26px;
+  font-size: var(--text-xs);
+  color: var(--panel-text-muted);
 `;
 
 export const MapHint = styled(MapSurface).attrs({ as: 'button' })`

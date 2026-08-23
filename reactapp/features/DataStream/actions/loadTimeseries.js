@@ -1,5 +1,5 @@
 import { checkForTable, getTimeseries } from 'features/DataStream/lib/queryData';
-import { makeTitle } from 'features/DataStream/lib/utils';
+import { makeFeatureTitle, makeRunLabel } from 'features/DataStream/lib/utils';
 import { createSequence } from 'features/DataStream/lib/sequence';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
@@ -104,7 +104,8 @@ export async function loadTimeseries({ featureId, variable, vpuGeneration } = {}
     store.getState().set_layout({
       yaxis: requestedVariable,
       xaxis: '',
-      title: makeTitle(forecast, targetId),
+      title: makeFeatureTitle(targetId),
+      subtitle: makeRunLabel(forecast),
     });
     // Recorded as loaded only when something was charted, so asking again is always answered.
     store.setState({
