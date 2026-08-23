@@ -27,9 +27,6 @@ jest.mock('features/DataStream/components/forecast/TimeseriesCard', () => functi
 jest.mock('features/DataStream/components/forecast/variablesMenu', () => function Variables() {
   return <div data-testid="variables-menu" />;
 });
-jest.mock('features/DataStream/components/forecast/FeatureInformation', () => ({
-  FeatureInformation: function FeatureInformation() { return <div />; },
-}));
 
 const ForecastMenu = require('features/DataStream/components/menus/ForecastMenu').default;
 

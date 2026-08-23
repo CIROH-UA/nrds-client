@@ -7,7 +7,6 @@ import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import { useFeatureStore } from 'features/DataStream/store/Layers';
 import { useVPUStore } from 'features/DataStream/store/VPU';
 import { ForecastHeader } from '../forecast/ForecastHeader';
-import { FeatureInformation } from '../forecast/FeatureInformation';
 import { useShallow } from 'zustand/react/shallow';
 
 const ForecastMenu = () => {
@@ -54,9 +53,6 @@ const ForecastMenu = () => {
                     the map beside it; this block is the variables menu on its own now. */}
                 <VariablesMenu />
             </Content>
-            <Content>
-              <FeatureInformation />
-            </Content>            
           </Container>
     </Fragment>
 

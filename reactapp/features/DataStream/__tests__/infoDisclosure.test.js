@@ -10,7 +10,6 @@ import { render, screen, act } from '@testing-library/react';
 
 import { InfoToggle } from 'features/DataStream/components/InfoDisclosure';
 import { ForecastHeader } from 'features/DataStream/components/forecast/ForecastHeader';
-import { FeatureInformation } from 'features/DataStream/components/forecast/FeatureInformation';
 import { useFeatureStore } from 'features/DataStream/store/Layers';
 
 const initialFs = useFeatureStore.getState();
@@ -96,24 +95,9 @@ describe('the data note in the forecast header', () => {
   });
 });
 
-describe('the layer note in feature information', () => {
-  test('opens in place under its own heading', async () => {
-    useFeatureStore.setState({ selected_feature: { _id: 'cat-1', lat: 40.6, lon: -111.9 } });
-    render(<FeatureInformation />);
-
-    await click(screen.getByRole('button', { name: /show layer information/i }));
-
-    expect(screen.getByText(/community HydroFabric/i)).toBeInTheDocument();
-    expect(screen.queryByRole('dialog')).toBeNull();
-  });
-
-  test('uses an id distinct from the other copy of the same note', async () => {
-    // Both this and the layer panel show LayerInfoContent; two aria-controls pointing at one id
-    // is what the dialogs did wrong.
-    useFeatureStore.setState({ selected_feature: { _id: 'cat-1' } });
-    render(<FeatureInformation />);
-
-    const button = screen.getByRole('button', { name: /show layer information/i });
-    expect(button.getAttribute('aria-controls')).toBe('feature-layer-info');
-  });
-});
+/**
+ * There used to be a second copy of the layer note here, inside the side panel's Feature
+ * Information block. That block moved onto the map as a popup and did not take a nested help
+ * disclosure with it, so the layer panel now holds the only copy -- and the test that checked
+ * the two used distinct aria-controls ids has nothing left to compare.
+ */

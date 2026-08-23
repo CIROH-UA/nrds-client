@@ -12,6 +12,7 @@ import useDataStreamStore from '../../store/Datastream';
 import { useVPUStore } from '../../store/VPU';
 import { useLayersStore, useFeatureStore } from '../../store/Layers';
 import CustomPopUp from './Popup';
+import { SelectedFeaturePopup } from './SelectedFeaturePopup';
 import {
   reorderLayers,
   computeBounds,
@@ -551,6 +552,7 @@ const MainMap = () => {
           <span>Selected</span>
         </RecentreButton>
       )}
+      <SelectedFeaturePopup />
       <CustomPopUp hovered_feature={hovered_feature} enabledHovering={enabledHovering} />
       {belowFlowpathZoom && (
         <MapHint type="button" $raised={sliderDocked} onClick={zoomToFlowpaths}>

@@ -468,15 +468,19 @@ export const MapHint = styled(MapSurface).attrs({ as: 'button' })`
 /**
  * Return to the selected catchment.
  *
- * Bottom left, which is the only free corner: the layer panel and its button take the top right,
- * the legend the bottom right, and the slider and the zoom hint the bottom centre.
+ * Stacked above the legend on the right.
+ *
+ * Not bottom left, which is where it went first and looked wrong in a way worth writing down:
+ * the map fills the whole view and the side panel floats over it, so the map's left edge is
+ * behind the panel and `left: 10px` put the control underneath it. Anything positioned against
+ * this map has to keep to the right of the panel or the middle.
  *
  * A control rather than a readout, so it takes the higher elevation -- it is the same kind of
  * thing as the slider, and the reader has to be able to tell it apart from the legend beside it.
  */
 export const RecentreButton = styled(MapSurface).attrs({ as: 'button', $control: true })`
-  left: 10px;
-  bottom: 42px;
+  right: 10px;
+  bottom: 120px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -497,8 +501,11 @@ export const RecentreButton = styled(MapSurface).attrs({ as: 'button', $control:
     outline-offset: 2px;
   }
 
-  /* The label goes when there is no room for it; the icon and the accessible name stay. */
+  /* The label goes when there is no room for it; the icon and the accessible name stay. The
+     legend drops lower on a narrow screen, so this rides up with it. */
   @media (max-width: 768px) {
+    bottom: 174px;
+
     span {
       display: none;
     }

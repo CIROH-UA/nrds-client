@@ -73,13 +73,28 @@ describe('the control that uses it', () => {
     expect(decl).toMatch(/\$control:\s*true/);
   });
 
-  it('does not collide with the other overlays', () => {
-    // Bottom left is the only free corner: layers top right, legend bottom right, slider and
-    // hint bottom centre.
+  /**
+   * The map fills the whole view and the side panel floats on top of it, so the map's left edge
+   * is behind the panel. This first shipped at `left: 10px` and landed underneath the panel's
+   * Update button. Anything anchored to this map has to hold to the right or the middle.
+   */
+  it('is anchored from the right, where the map is not covered', () => {
     const i = styles.indexOf('export const RecentreButton');
     const decl = styles.slice(i, styles.indexOf('\n`;', i));
-    expect(decl).toMatch(/left: 10px;/);
-    expect(decl).not.toMatch(/right:/);
+    expect(decl).toMatch(/right:\s*10px;/);
+    expect(decl).not.toMatch(/^\s*left:/m);
+  });
+
+  it('clears the legend it stacks above, in both viewport sizes', () => {
+    // The legend sits at bottom 42 and stands about 63 tall, and drops to bottom 96 on a narrow
+    // screen. Overlapping it would put a control on top of the key it belongs beside.
+    const i = styles.indexOf('export const RecentreButton');
+    const decl = styles.slice(i, styles.indexOf('\n`;', i));
+    const bottoms = [...decl.matchAll(/bottom:\s*(\d+)px/g)].map((m) => Number(m[1]));
+
+    expect(bottoms).toHaveLength(2);
+    expect(bottoms[0]).toBeGreaterThan(42 + 63);
+    expect(bottoms[1]).toBeGreaterThan(96 + 63);
   });
 
   it('flies rather than jumps, and cannot be cut off by reduced motion', () => {
