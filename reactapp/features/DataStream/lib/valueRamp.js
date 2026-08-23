@@ -27,20 +27,23 @@ import { hexToRgb } from 'features/DataStream/lib/colorMath';
  * eye resolves, and it doubles as the colour-blind safety net: adjacent stops differ by about
  * 0.07 in lightness, which survives any hue confusion.
  *
- * The hue path runs blue to violet to magenta to red, skipping the green and olive band that
- * makes spectral ramps read as camouflage, and keeping the cool-low warm-high convention readers
- * of flow maps expect.
+ * Four of the six stops are blue, and warm is reserved for the top two. That is not decoration.
+ * normalizeValue is logarithmic and bent so the median reach lands mid-ramp, so whichever colour
+ * sits in the middle is the colour a loaded vpu appears to be -- with violet there, a whole
+ * region drew as a dark purple mass. Blue in the middle means a typical view reads as water and
+ * a warm reach means something worth looking at, which is also how the National Water Prediction
+ * Service draws the same data: calm blue for stream reaches, saturated colour kept for status.
  *
  * These live in JS rather than in App.scss with the other map colours, deliberately. Every stop
  * is load-bearing against measured constraints, and the test next door checks all of them; a
  * six-colour ramp is not something to hand-edit in a stylesheet without re-running that audit.
  */
 export const LIGHT_RAMP = Object.freeze(
-  ['#2272b9', '#5f27d5', '#721878', '#62103a', '#4a090b', '#260f03'].map(hexToRgb).map(Object.freeze)
+  ['#1f74b0', '#18609f', '#104a97', '#2b18a4', '#480729', '#2f0502'].map(hexToRgb).map(Object.freeze)
 );
 
 export const DARK_RAMP = Object.freeze(
-  ['#2a8ade', '#9788f3', '#ee79f5', '#f8a8c7', '#faccc7', '#fdeae1'].map(hexToRgb).map(Object.freeze)
+  ['#2991e5', '#31a9ea', '#38c1f0', '#40daf2', '#fbd189', '#fde7d5'].map(hexToRgb).map(Object.freeze)
 );
 
 const MISSING_COLOR = [100, 100, 100, 150];

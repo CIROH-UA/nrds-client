@@ -235,10 +235,11 @@ export const PopupContent = styled.div`
 `;
 
 export const Container = styled.div`
+  /* Fills whatever the flex column leaves, rather than measuring down from the top of the window.
+     The old top/height pair assumed the header was the only thing above it and broke the moment
+     anything else was, which is what the banner is. */
   position: absolute;
-  top: calc(var(--ts-header-height));
-  left: 0;
-  height: calc(100% - var(--ts-header-height));
+  inset: 0 auto 0 0;
   width: 400px;
   padding: 20px;
   background-color: var(--background-color);
@@ -856,6 +857,10 @@ export const ViewContainer = styled.div`
   /* Takes the space the header and the banner leave, rather than a full 100% underneath them.
      min-height: 0 so the map can shrink inside the column instead of forcing it taller. */
   flex: 1 1 auto;
+  /* And it is the containing block for what floats inside it. Without this the feature panel
+     resolved against the viewport and anchored itself to a hard-coded header height, which knows
+     nothing about the banner above it -- so the banner printed straight over the panel's title. */
+  position: relative;
   min-height: 0;
   width: 100%;
   display: flex;

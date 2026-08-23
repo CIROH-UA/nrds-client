@@ -109,3 +109,49 @@ describe('the two ramps together', () => {
     expect(darkDir).toBe(1);
   });
 });
+
+/**
+ * The ramp reads as water, and warm means something.
+ *
+ * normalizeValue is logarithmic and bent so the median reach lands in the middle of the ramp.
+ * Whichever colour sits there is therefore the colour a loaded vpu appears to be: with violet at
+ * the midpoint an entire region drew as a dark purple mass, which looks nothing like water and
+ * nothing like the National Water Prediction Service drawing the same rivers.
+ *
+ * So the middle is blue and warm is reserved for the top, where it flags a reach worth looking
+ * at rather than describing the median. This is the constraint that is easiest to lose to a
+ * later tweak, because every other rule here would still pass.
+ */
+const hueOf = ([r, g, b]) => {
+  const f = (c) => (c / 255 <= 0.04045 ? c / 255 / 12.92 : ((c / 255 + 0.055) / 1.055) ** 2.4);
+  const [lr, lg, lb] = [f(r), f(g), f(b)];
+  const l = Math.cbrt(0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb);
+  const m = Math.cbrt(0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb);
+  const s = Math.cbrt(0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb);
+  const a = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s;
+  const bb = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s;
+  return ((Math.atan2(bb, a) * 180) / Math.PI + 360) % 360;
+};
+const isBlue = (stop) => {
+  const h = hueOf(stop);
+  return h >= 195 && h <= 290;
+};
+
+describe.each([['light', LIGHT_RAMP], ['dark', DARK_RAMP]])('the %s ramp reads as water', (_n, ramp) => {
+  it('spends most of itself on blue', () => {
+    expect(ramp.filter(isBlue).length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('is blue where the median reach lands', () => {
+    // The middle two stops are what a typical view is made of.
+    expect(isBlue(ramp[2])).toBe(true);
+    expect(isBlue(ramp[3])).toBe(true);
+  });
+
+  it('keeps warm for the top, so a warm reach means a high one', () => {
+    // Contiguous and at the end: warm scattered through the ramp would be decoration.
+    const warm = ramp.map(isBlue).map((b) => !b);
+    expect(warm.slice(0, 4)).toEqual([false, false, false, false]);
+    expect(warm.slice(4).every(Boolean)).toBe(true);
+  });
+});

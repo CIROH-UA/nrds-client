@@ -36,7 +36,7 @@ export default function Layout({ navLinks = [], routes = [], children }) {
       {bannerVisible && (
         <div className="experimental-banner" role="status" aria-live="polite">
           <div className="experimental-banner__content">
-            <strong>Experimental Streamflow Predictions:</strong> These results are preliminary and may not represent accurate forecasts.
+            <strong>Experimental:</strong> these streamflow predictions are preliminary and are not an operational forecast.
           </div>
           <button
             type="button"
