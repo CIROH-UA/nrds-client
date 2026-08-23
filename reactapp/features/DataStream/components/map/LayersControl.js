@@ -7,6 +7,7 @@ import { CatchmentSymbol, FlowPathSymbol, GaugeSymbol, VpuSymbol, symbologyColor
 import { usePrefersDark } from '../../lib/mapTheme';
 import { InfoToggle } from '../InfoDisclosure';
 import { LayerInfoContent } from '../InfoContent';
+import { ValueLegendPanel } from './ValueLegend';
 
 export const LayerControl = () => {
   const [layerInfoOpen, setLayerInfoOpen] = useState(false);
@@ -136,6 +137,9 @@ export const LayerControl = () => {
           title="Toggle VPU boundaries"
         />
       </Row>
+
+      {/* The key for the animation, beside the switch that turns it on. */}
+      <ValueLegendPanel />
 
       <IconLabel $fontSize={14}>
         <span style={{ fontWeight: 600 }}>Map Interactions</span>

@@ -72,8 +72,6 @@ describe('the slider on the map', () => {
 
     expect(screen.getByRole('slider', { name: /animation time/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /play the animation/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /step forward/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /step back/i })).toBeDisabled();
     expect(screen.getByRole('combobox', { name: /playback speed/i })).toBeDisabled();
   });
 

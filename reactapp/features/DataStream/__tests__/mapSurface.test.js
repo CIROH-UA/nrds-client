@@ -18,7 +18,9 @@ const styles = fs.readFileSync(
   'utf8'
 );
 
-const OVERLAYS = ['LegendBox', 'MapHint', 'TimeSliderDock'];
+// The legend used to be one of these. It moved into the layer panel, beside the switch that
+// turns the animation on, so the map carries only the two controls now.
+const OVERLAYS = ['MapHint', 'RecentreButton', 'TimeSliderDock'];
 
 const declarationOf = (name) => {
   const i = styles.indexOf(`export const ${name} = styled`);
@@ -49,7 +51,7 @@ describe('elevation', () => {
     // The slider is driven; the legend and the hint only report. Flat elevation made a passive
     // caption look as important as the transport controls.
     expect(declarationOf('TimeSliderDock')).toMatch(/\$control:\s*true/);
-    expect(declarationOf('LegendBox')).not.toMatch(/\$control/);
+    expect(declarationOf('MapHint')).not.toMatch(/\$control/);
   });
 
   it('offers two levels, not one', () => {

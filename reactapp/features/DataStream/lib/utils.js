@@ -195,3 +195,28 @@ export function cacheFailureReason(err) {
   }
 }
 
+
+/**
+ * The frame's own timestamp, as the reader would write it.
+ *
+ * The slider said "T+5h", which is only meaningful if you already know when the forecast starts
+ * -- and the reader is usually asking the opposite question: what time is this frame. The times
+ * are epoch milliseconds out of duckdb, Dates tolerated because the chart's series carries those.
+ *
+ * Rendered in UTC and labelled as such. Forecast cycles are named in UTC and the reader's own
+ * timezone would quietly shift every frame away from the cycle it belongs to.
+ */
+export const formatFrameTime = (value) => {
+  // Rejected before Number(), which turns null and '' into 0 and would render them as 1970.
+  if (value === null || value === undefined || value === '') return '';
+
+  const ms = value instanceof Date ? value.getTime() : Number(value);
+  if (!Number.isFinite(ms)) return '';
+
+  const d = new Date(ms);
+  const pad = (n) => String(n).padStart(2, '0');
+  return (
+    `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ` +
+    `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`
+  );
+};

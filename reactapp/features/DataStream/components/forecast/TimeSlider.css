@@ -130,7 +130,7 @@
 
 .dock-row .time-value {
   flex: 0 0 auto;
-  min-width: 52px;
+  min-width: 132px;
   text-align: right;
   white-space: nowrap;
 }

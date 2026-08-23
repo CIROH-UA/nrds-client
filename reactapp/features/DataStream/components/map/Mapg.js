@@ -4,7 +4,13 @@ import { useShallow } from 'zustand/react/shallow';
 import maplibregl from 'maplibre-gl';
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import { PathLayer } from "@deck.gl/layers";
-import Map, { Source, useControl, useMap } from 'react-map-gl/maplibre';
+import Map, {
+  NavigationControl,
+  ScaleControl,
+  Source,
+  useControl,
+  useMap,
+} from 'react-map-gl/maplibre';
 import { Protocol } from 'pmtiles';
 import { IoLocateOutline } from 'react-icons/io5';
 import useTimeSeriesStore from '../../store/Timeseries';
@@ -15,7 +21,7 @@ import CustomPopUp from './Popup';
 import { SelectedFeaturePopup } from './SelectedFeaturePopup';
 import {
   reorderLayers,
-  computeBounds,
+  boundsFor,
 } from '../../lib/layers';
 import { useMapTheme } from '../../lib/mapTheme';
 import { createPointerCursor } from '../../lib/mapCursor';
@@ -32,7 +38,6 @@ import {
   setVpuVisibility,
 } from '../../lib/layers';
 import { flowPathLayerProps, shouldPromptZoom } from './flowPathLayer';
-import { ValueLegend } from './ValueLegend';
 import { TimeSlider } from '../forecast/TimeSlider';
 import { selectMapFeature } from '../../actions/selectFeature';
 import { hoveredFeatureOf, pickHoverFeature } from '../../actions/hoverFeature';
@@ -196,11 +201,8 @@ const MainMap = () => {
   const [zoom, setZoom] = useState(INITIAL_VIEW.zoom);
   const [mapReady, setMapReady] = useState(false);
 
-  // One computation for both the layer and its legend: they must describe the same ramp.
-  const colorBounds = useMemo(
-    () => (valuesByVar ? computeBounds(valuesByVar) : null),
-    [valuesByVar]
-  );
+  // Literally the same object the legend reads, so the two cannot describe different ramps.
+  const colorBounds = useMemo(() => boundsFor(valuesByVar), [valuesByVar]);
 
   // pathTick is what re-renders this, so reading the ref during render is current.
   const belowFlowpathZoom = shouldPromptZoom({
@@ -535,12 +537,6 @@ const MainMap = () => {
           <TimeSlider />
         </TimeSliderDock>
       )}
-      <ValueLegend
-        bounds={colorBounds}
-        ramp={mapTheme.ramp}
-        variable={variable}
-        visible={isFlowPathsVisible && Boolean(colorBounds) && (timesArr?.length || 0) > 0}
-      />
       {selectionAt && (
         <RecentreButton
           type="button"
@@ -552,6 +548,10 @@ const MainMap = () => {
           <span>Selected</span>
         </RecentreButton>
       )}
+      {/* Standard map furniture the app was missing. The zoom buttons are also the only way to
+          zoom from the keyboard, and the scale bar is what makes a catchment's size readable. */}
+      <NavigationControl position="top-right" showCompass={false} />
+      <ScaleControl position="bottom-right" unit="metric" />
       <SelectedFeaturePopup />
       <CustomPopUp hovered_feature={hovered_feature} enabledHovering={enabledHovering} />
       {belowFlowpathZoom && (

@@ -425,7 +425,9 @@ export const TimeSliderDock = styled(MapSurface).attrs({ $control: true })`
   left: 50%;
   transform: translateX(-50%);
   bottom: 28px;
-  width: min(560px, calc(100vw - 32px));
+  /* Wider than it was: one transport button instead of three, and a full timestamp instead of
+     "T+0h", so the track is what should get the room. */
+  width: min(680px, calc(100vw - 32px));
   padding: 6px 10px;
   pointer-events: auto;
   touch-action: manipulation;
@@ -512,21 +514,6 @@ export const RecentreButton = styled(MapSurface).attrs({ as: 'button', $control:
   }
 `;
 
-export const LegendBox = styled(MapSurface)`
-  right: 10px;
-  bottom: 42px;
-  width: 190px;
-  padding: 8px 10px;
-  pointer-events: none;
-
-  /* Narrower on a phone, not absent. This used to be display:none, which left the animation
-     running in six colours with nothing on screen to say what they meant -- and the slider that
-     drives it stayed, so the one control the reader had was the one they could not interpret. */
-  @media (max-width: 768px) {
-    width: 140px;
-    bottom: 96px;
-  }
-`;
 
 /* A label, not a heading. Uppercase with tracking at weight 650 is the house style of every
    generated dashboard, and it made a passive caption shout louder than the controls beside it. */

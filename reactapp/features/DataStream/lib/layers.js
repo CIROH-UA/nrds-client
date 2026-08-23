@@ -546,6 +546,28 @@ function fitCurve(medianOffset, span) {
 }
 
 /**
+ * computeBounds, remembered for the array it was computed from.
+ *
+ * The map layer and the legend have to describe the same ramp, and they are now in different
+ * components -- the reaches on the map, the key in the layer panel. Recomputing in both places
+ * would be correct, since computeBounds is pure, but it sorts a sample of up to a hundred
+ * thousand values and would do it twice for every vpu.
+ *
+ * One entry, keyed on identity rather than contents. The flat arrays are replaced wholesale when
+ * a variable or a vpu changes and are never mutated in place, so identity is a sound key and a
+ * miss costs only what the old behaviour cost anyway.
+ */
+let lastValues;
+let lastBounds = null;
+
+export const boundsFor = (values) => {
+  if (values === lastValues) return lastBounds;
+  lastValues = values;
+  lastBounds = values ? computeBounds(values) : null;
+  return lastBounds;
+};
+
+/**
  * Where a value sits on the ramp, 0 to 1.
  *
  * Logarithmic, because streamflow is. A linear ramp, and even the square root this replaced,

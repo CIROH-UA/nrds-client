@@ -1,6 +1,7 @@
 // TimeSlider.jsx
 import React, { useEffect, useMemo, useRef, useCallback } from "react";
 import useTimeSeriesStore from "features/DataStream/store/Timeseries";
+import { formatFrameTime } from "features/DataStream/lib/utils";
 import { useVPUStore } from "features/DataStream/store/VPU";
 import "./TimeSlider.css";
 
@@ -10,7 +11,6 @@ export const TimeSlider = React.memo(() => {
   const currentTimeIndex = useTimeSeriesStore((s) => s.currentTimeIndex);
   const setCurrentTimeIndex = useTimeSeriesStore((s) => s.setCurrentTimeIndex);
   const stepForward = useTimeSeriesStore((s) => s.stepForward);
-  const stepBackward = useTimeSeriesStore((s) => s.stepBackward);
 
   const isPlaying = useTimeSeriesStore((s) => s.isPlaying);
   const toggleIsPlaying = useTimeSeriesStore((s) => s.toggleIsPlaying);
@@ -24,16 +24,12 @@ export const TimeSlider = React.memo(() => {
 
   const timeSteps = Array.isArray(times) ? times.length : 0;
 
-  const currentLabel = useMemo(() => {
-    if (!timeSteps) return "T+0h";
-    // Epoch milliseconds from duckdb; Dates tolerated because the chart's series carries those.
-    const ms = (t) => (t instanceof Date ? t.getTime() : Number(t));
-    const t0 = ms(times[0]);
-    const t = ms(times[Math.min(currentTimeIndex, timeSteps - 1)]);
-    if (!Number.isFinite(t0) || !Number.isFinite(t)) return "T+0h";
-    const hours = Math.round((t - t0) / 3600000); // ms -> hours
-    return `T+${hours}h`;
-  }, [times, currentTimeIndex, timeSteps]);
+  // The frame's own time, not its offset: "T+5h" only helps a reader who already knows when the
+  // cycle started, and the question is usually the other way round.
+  const currentLabel = useMemo(
+    () => (timeSteps ? formatFrameTime(times[Math.min(currentTimeIndex, timeSteps - 1)]) : ''),
+    [times, currentTimeIndex, timeSteps]
+  );
 
   // Start/stop autoplay
   useEffect(() => {
@@ -76,19 +72,6 @@ export const TimeSlider = React.memo(() => {
     <div className="panel time-dock" id="timePanel">
       <div className="dock-row">
         <button
-          className="play-btn"
-          onClick={stepBackward}
-          disabled={!timeSteps}
-          type="button"
-          aria-label="Step back one frame"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polygon points="19 20 9 12 19 4 19 20" fill="currentColor" />
-            <line x1="5" y1="19" x2="5" y2="5" />
-          </svg>
-        </button>
-
-        <button
           className={`play-btn ${isPlaying ? "active" : ""}`}
           id="playBtn"
           onClick={toggleIsPlaying}
@@ -106,19 +89,6 @@ export const TimeSlider = React.memo(() => {
               <polygon points="5 3 19 12 5 21 5 3" />
             </svg>
           )}
-        </button>
-
-        <button
-          className="play-btn"
-          onClick={stepForward}
-          disabled={!timeSteps}
-          type="button"
-          aria-label="Step forward one frame"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polygon points="5 4 15 12 5 20 5 4" fill="currentColor" />
-            <line x1="19" y1="5" x2="19" y2="19" />
-          </svg>
         </button>
 
         <input

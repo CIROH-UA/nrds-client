@@ -132,22 +132,24 @@ describe('the slider', () => {
     expect(scrub).not.toBeDisabled();
   });
 
-  it('labels the frame in hours from the start of the animation', () => {
+  it("labels the frame with its own time, not its offset from the start", () => {
+    // "T+5h" only helps a reader who already knows when the cycle began, and the question is
+    // usually the other way round: what time is this frame.
     useVPUStore.setState({ times: times(24) });
     useTimeSeriesStore.setState({ series: [], currentTimeIndex: 5 });
 
     render(<TimeSlider />);
 
-    expect(screen.getByText('T+5h')).toBeInTheDocument();
+    expect(screen.getByText('2026-08-22 07:00 UTC')).toBeInTheDocument();
   });
 
-  it('says T+0h with no animation, rather than reading past the end of an empty list', () => {
+  it('says nothing rather than reading past the end of an empty list', () => {
     useVPUStore.setState({ times: [] });
     useTimeSeriesStore.setState({ series: [], currentTimeIndex: 0 });
 
     render(<TimeSlider />);
 
-    expect(screen.getByText('T+0h')).toBeInTheDocument();
+    expect(screen.getByRole('slider', { name: /animation time/i })).toBeDisabled();
   });
 });
 
@@ -190,5 +192,43 @@ describe('stopping playback', () => {
     useVPUStore.setState({ times: times(12) });
 
     expect(useTimeSeriesStore.getState().isPlaying).toBe(true);
+  });
+});
+
+/**
+ * The frame's timestamp.
+ *
+ * Rendered in UTC on purpose. Forecast cycles are named in UTC -- ngen.20260822 cycle 00 -- and
+ * showing frames in the reader's own timezone would quietly shift every one of them away from
+ * the cycle it belongs to, which is the one number they are most likely to be checking against.
+ */
+describe('formatFrameTime', () => {
+  const { formatFrameTime } = require('features/DataStream/lib/utils');
+
+  it('reads epoch milliseconds, which is what duckdb hands back', () => {
+    expect(formatFrameTime(T0)).toBe('2026-08-22 02:00 UTC');
+  });
+
+  it('tolerates a Date, which is what the chart series carries', () => {
+    expect(formatFrameTime(new Date(T0))).toBe('2026-08-22 02:00 UTC');
+  });
+
+  it('does not drift with the machine it renders on', () => {
+    // The same instant, whatever the reader's offset. A local-time render would move a 00 cycle
+    // frame onto the previous day for anyone west of Greenwich.
+    expect(formatFrameTime(1787364000000)).toContain('UTC');
+    expect(formatFrameTime(1787364000000)).toBe('2026-08-22 02:00 UTC');
+  });
+
+  it('pads, so the column does not jump between single and double digits', () => {
+    expect(formatFrameTime(Date.UTC(2026, 0, 5, 9, 7))).toBe('2026-01-05 09:07 UTC');
+  });
+
+  it('says nothing for a time it cannot read', () => {
+    // An empty label is a gap; "Invalid Date" is a bug report shown to the reader.
+    expect(formatFrameTime(undefined)).toBe('');
+    expect(formatFrameTime(null)).toBe('');
+    expect(formatFrameTime(NaN)).toBe('');
+    expect(formatFrameTime('not a time')).toBe('');
   });
 });
