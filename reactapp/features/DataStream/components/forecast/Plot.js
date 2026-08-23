@@ -13,7 +13,6 @@ import { GlyphCircle } from '@visx/glyph';
 import { timeFormat } from 'd3-time-format';
 import { RectClipPath } from '@visx/clip-path';
 import { getVariableUnits } from '../../lib/data';
-import useDataStreamStore from '../../store/Datastream';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import { ChartContainer, NoData } from '../styles/Styles';
 import { distinctTickFormat } from 'features/DataStream/lib/utils';
@@ -180,7 +179,6 @@ const TooltipSvgLayer = React.memo(function TooltipSvgLayer({
 });
 
 const LineChart = React.memo(function LineChart({ width, height, data, layout, emptyMessage }) {
-  const forecast = useDataStreamStore((s) => s.forecast);
   const isPlayingRef = useRef(false);
 
   useEffect(() => {
@@ -354,13 +352,20 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout, e
       if (key === lastTooltipKeyRef.current) return;
       lastTooltipKeyRef.current = key;
 
-      // compute top from y positions (static yScale)
-      const yPositions = tooltipDataArray.map((d) => yScale(getYValue(d.dataPoint)));
-      const top = Math.min(...yPositions) + margin.top;
-
-      showTooltip({ tooltipData: tooltipDataArray, tooltipLeft: leftPx, tooltipTop: top });
+      // Pinned to the top of the plot area rather than tracking the point.
+      //
+      // It used to sit at the value, which put it over the time axis whenever the reader scrubbed
+      // across a low flow -- and on a hydrograph the interesting part is usually the recession,
+      // so that is most of the chart. Following the point also made it jump vertically on every
+      // step, which is motion the reader did not ask for. The crosshair already says where on the
+      // line they are; the tooltip only has to say what it reads there.
+      showTooltip({
+        tooltipData: tooltipDataArray,
+        tooltipLeft: leftPx,
+        tooltipTop: margin.top,
+      });
     },
-    [data, bisectDate, getDate, getYValue, yScale, margin.top, showTooltip]
+    [data, bisectDate, getDate, margin.top, showTooltip]
   );
 
   const snapToNearestDate = useCallback(

@@ -1,7 +1,7 @@
 // DataMenu.js
 import React, { Fragment, useMemo, useRef, useState } from 'react';
 import { abandonSelectionWithNoOutput } from 'features/DataStream/actions/noOutputFile';
-import { XButton, Row, IconLabel, Notice } from '../styles/Styles';
+import { XButton, Row, IconLabel, Notice, PanelSectionHeading } from '../styles/Styles';
 import SelectComponent from '../SelectComponent';
 import { getOptionsFromURL, readableDatesNewestFirst, makePrefix } from 'features/DataStream/lib/s3Utils';
 import { getCacheKey } from 'features/DataStream/lib/utils';
@@ -13,11 +13,6 @@ import useS3DataStreamBucketStore from 'features/DataStream/store/s3Store';
 import { useFeatureStore } from 'features/DataStream/store/Layers';
 import { useShallow } from 'zustand/react/shallow';
 import {
-  ModelIcon,
-  DateIcon,
-  ForecastIcon,
-  CycleIcon,
-  EnsembleIcon,
   FileIcon
 } from 'features/DataStream/lib/layers';
 
@@ -446,7 +441,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
         key: 'model',
         label: (
           <>
-            <ModelIcon /> Model
+            Model
           </>
         ),
         options: availableModelsList,
@@ -460,7 +455,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
         key: 'date',
         label: (
           <>
-            <DateIcon /> Date
+            Date
           </>
         ),
         options: availableDatesList,
@@ -474,7 +469,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
         key: 'forecast',
         label: (
           <>
-            <ForecastIcon /> Forecast
+            Forecast
           </>
         ),
         options: availableForecastList,
@@ -488,7 +483,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
         key: 'cycle',
         label: (
           <>
-            <CycleIcon /> Cycle
+            Cycle
           </>
         ),
         options: availableCyclesList,
@@ -502,7 +497,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
         key: 'ensemble',
         label: (
           <>
-            <EnsembleIcon /> Ensembles
+            Ensembles
           </>
         ),
         options: availableEnsembleList,
@@ -516,7 +511,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
         key: 'outputFile',
         label: (
           <>
-            <FileIcon/> Output File
+            Output File
           </>
         ),
        options: availableOutputFiles,
@@ -553,6 +548,11 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
 
   return (
     <Fragment>
+      {/* The panel was one undifferentiated stack: a chart, then five selects, then a button.
+          Naming this half separates the answer from the question that produced it, which is the
+          distinction a reader makes anyway and the one the layout was not making for them. */}
+      <PanelSectionHeading>Change the run</PanelSectionHeading>
+
       {rows.map((r) => (
         <Row key={r.key}>
           <IconLabel as="label" htmlFor={`select-${r.key}`}>{r.label}</IconLabel>

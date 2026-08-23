@@ -960,3 +960,21 @@ export const ExperimentalBadge = styled.span`
   line-height: 1.5;
   white-space: nowrap;
 `;
+
+/**
+ * The label on a block within a panel.
+ *
+ * The feature panel holds two different things -- a reading, and the controls that choose which
+ * reading -- and had nothing saying so. A heading is cheaper than a divider or a card and does
+ * not add a box inside a box, which is the failure mode this palette cannot rescue.
+ *
+ * Weight before size, per the type scale: this is --text-xs at the strong weight rather than a
+ * step up, because the panel's own title is only 16px and a section label must not compete
+ * with it.
+ */
+export const PanelSectionHeading = styled.h3`
+  margin: var(--space-md) 0 var(--space-xs);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-strong);
+  color: var(--panel-text-muted);
+`;
