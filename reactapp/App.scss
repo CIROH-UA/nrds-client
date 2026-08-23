@@ -132,7 +132,9 @@ $theme-colors: (
      reaches 14.1:1 normally and 5.8:1 when reporting a failure. $danger itself only makes
      4.5:1 on white, so failure text is a shade darker than it. */
   --status-text: #1e2125;
-  --status-bg: rgba(0, 0, 0, 0.06);
+  /* Tinted and a little stronger. At rgba(0,0,0,0.06) the pill was barely a shape, which is
+     part of why a load in progress went unnoticed -- and an untinted black besides. */
+  --status-bg: oklch(0.248 0.006 249 / 0.10);
   --status-failed-text: #b42318;
   --status-failed-bg: rgba(214, 37, 24, 0.08);
   --map-style-url: #{'https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/styles/light-style.json'};
@@ -272,7 +274,7 @@ $theme-colors: (
     /* 7.2:1 normally and 6.3:1 for failures against the dark header. $danger is far too dark
        to read on this background, so failure text is lightened rather than reused. */
     --status-text: oklch(0.985 0.006 249);
-    --status-bg: rgba(255, 255, 255, 0.14);
+    --status-bg: oklch(0.985 0.006 249 / 0.16);
 
     /* Deeper and darker on a dark map: a shadow reads there by darkening the basemap, not by
        adding a grey halo, so the same alpha that works on white disappears entirely. */

@@ -1,4 +1,4 @@
-import styled, { css } from 'styled-components';
+import styled, { css, keyframes } from 'styled-components';
 import { Button, Form, Modal } from 'react-bootstrap';
 import { FiSearch } from 'react-icons/fi';
 
@@ -955,4 +955,54 @@ export const PanelSectionHeading = styled.h3`
   font-size: var(--text-xs);
   font-weight: var(--weight-strong);
   color: var(--panel-text-muted);
+`;
+
+/**
+ * A line across the top of the map while the app is working.
+ *
+ * The status strip says what is loading, but it lives in the header beside the search box, and
+ * a reader who has just clicked a catchment in the middle of the map is not looking there. This
+ * is: it spans the whole width, it moves, and it is the one thing on screen that changes while
+ * a vpu comes down.
+ *
+ * Indeterminate on purpose. The work is an S3 listing, a parquet download and a duckdb table
+ * build, and there is no honest way to turn that into a percentage -- a fake one that sticks at
+ * 90% is worse than no number.
+ *
+ * Under prefers-reduced-motion it holds still and dims instead, following the same reasoning as
+ * the spinner: remove the motion, keep the signal.
+ */
+const slide = keyframes`
+  from { transform: translateX(-100%); }
+  to { transform: translateX(400%); }
+`;
+
+const pulse = keyframes`
+  50% { opacity: 0.35; }
+`;
+
+export const LoadProgressBar = styled.div`
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  z-index: 1200;
+  overflow: hidden;
+  pointer-events: none;
+  background-color: color-mix(in oklab, var(--nav-pill-active-bg) 18%, transparent);
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 25%;
+    background-color: var(--nav-pill-active-bg);
+    animation: ${slide} 1.1s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &::after {
+      width: 100%;
+      animation: ${pulse} 2.4s ease-in-out infinite;
+    }
+  }
 `;

@@ -35,6 +35,19 @@ const useTimeSeriesStore = create(
       layout: DEFAULT_LAYOUT,
       
       loading: false,
+      /**
+       * Work promised but not yet begun.
+       *
+       * A click writes its message before anything starts: naming the next step immediately is
+       * what stops the press looking ignored, and the load itself cannot report for most of a
+       * second while an S3 listing comes back. During that window `loading` is false, so the
+       * status strip drew its text with no spinner beside it -- a static grey pill, which is
+       * exactly what "the wait is not obvious" looks like.
+       *
+       * Cleared by endLoading when the last real load finishes, so the two together cover the
+       * whole span from the press to the answer.
+       */
+      pending: false,
       loadingText: '' ,
       // Whose data `series` holds, as vpu|variable|feature; null means nothing is loaded.
       last_loaded_key: null,

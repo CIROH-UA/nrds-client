@@ -19,9 +19,10 @@ import { StatusStrip } from '../styles/Styles';
  */
 export const LoadStatus = React.memo(function LoadStatus() {
   const indexLoading = useDataStreamStore((s) => s.index_status === 'loading');
-  const { loading, loadingText, failed, errorKind } = useTimeSeriesStore(
+  const { loading, pending, loadingText, failed, errorKind } = useTimeSeriesStore(
     useShallow((s) => ({
       loading: s.loading,
+      pending: s.pending,
       loadingText: s.loadingText,
       failed: s.last_error !== null,
       errorKind: s.last_error?.kind ?? null,
@@ -44,7 +45,10 @@ export const LoadStatus = React.memo(function LoadStatus() {
 
   return (
     <StatusStrip role="status" aria-live="polite" $failed={failed} data-error-kind={errorKind || undefined}>
-      {loading && <Spinner size={14} />}
+      {/* pending as well as loading: the click writes its message before the load starts, and
+          that gap is the slowest part of a vpu switch. A message with no spinner beside it reads
+          as a label rather than as work in progress. */}
+      {(loading || pending) && !failed && <Spinner size={14} />}
       {loadingText && <span>{loadingText}</span>}
     </StatusStrip>
   );

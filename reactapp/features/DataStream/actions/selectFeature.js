@@ -40,6 +40,7 @@ export function selectMapFeature(feature, layerId) {
     useTimeSeriesStore.setState({
       loadingText: vpuName === vpu ? `Loading ${featureId}` : `Loading ${vpuName}`,
       last_error: null,
+      pending: true,
     });
   }
   // Only for a feature we could name: charting falls back to the previous selection otherwise.

@@ -5,6 +5,7 @@ import MapComponent from 'features/DataStream/components/map/Mapg.js';
 import MainMenu from 'features/DataStream/components/menus/MainMenu';
 import { terminateDatabase } from 'features/DataStream/lib/duckdbClient';
 import { InitialS3Loader } from 'features/DataStream/views/InitialS3Loader';
+import { LoadProgress } from 'features/DataStream/components/status/LoadProgress';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 const DataStreamView = () => {
@@ -18,6 +19,8 @@ const DataStreamView = () => {
 
   return (
     <ViewContainer>
+      {/* Across the top of the map, which is where the reader is looking. */}
+      <LoadProgress />
       <InitialS3Loader />
       <ToastContainer stacked  />
         <MapContainer>

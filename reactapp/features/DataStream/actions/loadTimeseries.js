@@ -82,7 +82,8 @@ export async function loadTimeseries({ featureId, variable, vpuGeneration } = {}
 
   // Already charted, so nothing to fetch -- and the click's message has to come down with it.
   if (requestKey === state.last_loaded_key) {
-    store.setState({ loadingText: '' });
+    // Nothing to fetch, so nothing will call endLoading to retire the click's promise.
+    store.setState({ loadingText: '', pending: false });
     return;
   }
 
