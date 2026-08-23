@@ -20,6 +20,18 @@ const CustomPopUp = React.memo(({ hovered_feature, enabledHovering }) => {
       latitude={hovered_feature.latitude}
       offset={[0, -10]}
       closeButton={false}
+      /*
+       * The hover state owns when this is on screen, so maplibre must not also decide.
+       *
+       * Its Popup defaults to closeOnClick and registers map.on('click', _onClose) when added.
+       * react-map-gl adds the popup once, in an effect with empty deps, and guards every later
+       * update -- setLngLat included -- behind popup.isOpen(). One click therefore closed it for
+       * good: never repositioned, never re-added, still rendering into a detached container.
+       *
+       * The only thing that recovered it was unmounting, which happens when hovered_feature goes
+       * null, and above zoom 7 the divides fill covers every pixel so that never came.
+       */
+      closeOnClick={false}
     >
       <PopupContent>
         <div className="popup-title">Feature</div>
