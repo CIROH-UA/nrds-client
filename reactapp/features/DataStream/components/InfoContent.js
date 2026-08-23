@@ -52,12 +52,31 @@ export const LayerInfoContent = () => (
   </>
 );
 
+/**
+ * The caveat, written once.
+ *
+ * It appears in three places -- the first-run dialog, the About dialog, and the data note beside
+ * the forecast -- and three copies of a disclaimer is three chances for them to disagree about
+ * what the product claims.
+ *
+ * It names the decision rather than hedging. "Preliminary and may not represent accurate
+ * forecasts", which is what this used to say, warns without saying what the warning is for.
+ */
+export const ExperimentalCaveat = () => (
+  <p>
+    <strong>These results are experimental.</strong> They are preliminary research output, not an
+    operational forecast, and must not be used for decisions about life or property. The
+    operational service is the{' '}
+    <a href="https://water.noaa.gov/" target="_blank" rel="noreferrer">
+      National Water Prediction Service
+    </a>
+    .
+  </p>
+);
+
 export const DataInfoContent = () => (
   <>
-    <p>
-      <strong>These results are experimental.</strong> They are preliminary research output and
-      are not an operational forecast. Do not use them for decisions about life or property.
-    </p>
+    <ExperimentalCaveat />
     <p>
       The dates, models and forecasts offered here are read from the{' '}
       <a href="https://datastream.ciroh.org/index.html#v2.2/" target="_blank" rel="noreferrer">
@@ -74,14 +93,7 @@ export const DataInfoContent = () => (
 
 export const GeneralInfoContent = () => (
   <>
-    <p>
-      <strong>Experimental.</strong> Everything here is preliminary research output rather than an
-      operational forecast, and should not be used for decisions about life or property. The
-      operational service is the{' '}
-      <a href="https://water.noaa.gov/" target="_blank" rel="noreferrer">
-        National Water Prediction Service
-      </a>.
-    </p>
+    <ExperimentalCaveat />
     <p>
       The NextGen Research DataStream is an array of daily{' '}
       <a href="https://github.com/NOAA-OWP/ngen" target="_blank" rel="noreferrer">

@@ -9,6 +9,11 @@ import NavMenu  from 'features/Tethys/components/layout/NavMenu';
 import NotFound from 'features/Tethys/components/error/NotFound';
 import { AppContext } from 'features/Tethys/context/context';
 import { SkipLink, VisuallyHidden } from 'features/DataStream/components/styles/Styles';
+import { ExperimentalNoticeModal } from 'features/DataStream/components/Modals';
+import {
+  acknowledgeExperimental,
+  hasAcknowledgedExperimental,
+} from 'features/DataStream/lib/firstRun';
 
 const isExternal = (to, externalFlag) =>
   externalFlag ?? /^https?:\/\//i.test(to);      // auto-detect absolute URLs
@@ -16,6 +21,14 @@ const isExternal = (to, externalFlag) =>
 export default function Layout({ navLinks = [], routes = [], children }) {
   const { tethysApp } = useContext(AppContext);
   const [navVisible, setNavVisible] = useState(false);
+  // Read once at mount. Re-reading would reopen the dialog on any re-render that follows a
+  // storage failure, which is the one case where it cannot be recorded.
+  const [noticeOpen, setNoticeOpen] = useState(() => !hasAcknowledgedExperimental());
+
+  const acknowledgeNotice = () => {
+    acknowledgeExperimental();
+    setNoticeOpen(false);
+  };
 
   /** Close the off-canvas smoothly */
   const closeNav = () => startTransition(() => setNavVisible(false));
@@ -28,6 +41,8 @@ export default function Layout({ navLinks = [], routes = [], children }) {
       {/* First in the tab order on purpose: the nav, the banner and its dismiss button sit
           between the header and the map, and without this every page load costs a keyboard
           reader three stops before they reach anything they came for. */}
+      <ExperimentalNoticeModal show={noticeOpen} onAcknowledge={acknowledgeNotice} />
+
       <SkipLink href="#main-content">Skip to the map</SkipLink>
 
       <Header onNavChange={setNavVisible} />
