@@ -449,9 +449,12 @@ export const GhostButton = styled.button`
   display: inline-flex;
   align-items: center;
   gap: var(--space-xs);
-  min-height: 32px;
-  margin-top: var(--space-xs);
-  padding: 0;
+  /* 44px like every other control here. It was 32, which is above the WCAG AA minimum of 24 and
+     below the bar this project set itself. Padding rather than a taller box, so the text still
+     sits tight under the title. */
+  min-height: 44px;
+  margin-top: 0;
+  padding: var(--space-sm) 0;
   border: 0;
   background: none;
   color: var(--link-color);
@@ -624,7 +627,19 @@ export const Title = styled.span`
   align-items: center;
 `;
 
+/**
+ * The layer toggles.
+ *
+ * The pill itself is 34 by 18, which is the shape a switch should be and well under any touch
+ * target. It does not need to grow: the row's label is bound to it with htmlFor, so the target
+ * is the layer's name and symbol as well as the pill, which is both a larger area and the
+ * accessible name the control was getting only from a title attribute.
+ */
 export const Switch = styled(Form.Switch)`
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+
   .form-check-input {
     width: 34px;
     height: 18px;

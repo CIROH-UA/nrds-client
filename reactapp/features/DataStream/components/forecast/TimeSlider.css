@@ -21,14 +21,22 @@
 
 /* Scoped to this panel. These were bare element selectors, so they styled every range input in
    the app, including any added later by something unrelated. */
+/* The input is finger-height and transparent; the visible bar is the track pseudo-element.
+   Styling the input's own background made the whole control 6px tall, so the only way to scrub
+   was to land on a six-pixel line -- possible with a mouse, not with a thumb. */
 .dock-row input[type='range'] {
   width: 100%;
-  height: 6px;
+  height: 44px;
   -webkit-appearance: none;
   appearance: none;
+  background: transparent;
+  outline: none;
+}
+
+.dock-row input[type='range']::-webkit-slider-runnable-track {
+  height: 6px;
   background: var(--panel-border-color);
   border-radius: var(--radius-sm);
-  outline: none;
 }
 
 .dock-row input[type='range']:focus-visible {
@@ -40,6 +48,9 @@
   -webkit-appearance: none;
   width: var(--space-md);
   height: var(--space-md);
+  /* Half the track's height less half the thumb's, so it rides the centre of the bar rather
+     than sitting on top of it. webkit measures the thumb from the track, unlike moz. */
+  margin-top: -5px;
   background: var(--nav-pill-active-bg);
   border-radius: 50%;
   cursor: pointer;

@@ -80,7 +80,7 @@ export const LayerControl = () => {
       {/* <Content> */}
 
       <Row>
-        <IconLabel>
+        <IconLabel as="label" htmlFor="catchment-layer-switch">
           <CatchmentSymbol
             fill={colors.catchmentFill}
             stroke={colors.catchmentStroke}
@@ -96,7 +96,7 @@ export const LayerControl = () => {
       </Row>
 
       <Row>
-        <IconLabel>
+        <IconLabel as="label" htmlFor="flowpaths-layer-switch">
           <FlowPathSymbol stroke={colors.flowStroke} />
           FlowPaths
         </IconLabel>
@@ -109,7 +109,7 @@ export const LayerControl = () => {
       </Row>
 
       <Row>
-        <IconLabel>
+        <IconLabel as="label" htmlFor="conus-gauges-layer-switch">
           <GaugeSymbol
             fill={colors.gaugeFill}
             stroke={colors.gaugeStroke}
@@ -126,7 +126,7 @@ export const LayerControl = () => {
       {/* </Content> */}
 
       <Row>
-        <IconLabel>
+        <IconLabel as="label" htmlFor="vpu-layer-switch">
           <VpuSymbol stroke={colors.vpuStroke} />
           VPU Boundaries
         </IconLabel>
@@ -146,7 +146,7 @@ export const LayerControl = () => {
       </IconLabel>
 
       <Row>
-        <IconLabel>
+        <IconLabel as="label" htmlFor="enable-hovering-switch">
           <CursorSymbol fill={colors.cursorFill} stroke={colors.cursorStroke} />
           Enable Hovering 
         </IconLabel>
