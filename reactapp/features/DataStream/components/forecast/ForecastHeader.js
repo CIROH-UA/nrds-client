@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { MdLocationPin, MdClose } from "react-icons/md";
 import { IoLocateOutline } from "react-icons/io5";
 
