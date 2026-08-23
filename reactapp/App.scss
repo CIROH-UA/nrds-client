@@ -145,11 +145,16 @@ $theme-colors: (
   --map-divides-highlight-fill: rgba(27, 122, 102, 0.28);
   --map-divides-highlight-outline: rgba(27, 122, 102, 0.95);
 
-  /* The static network, in the interface's own hue rather than near-black. #0b0e10 read as ink
-     on paper rather than as water, and at 12:1 it was the loudest thing on the map -- louder
-     than the animation it sits under. This is quieter (4.8:1) and less chromatic than any stop
-     on the ramp, so a reach drawn in it cannot be mistaken for one carrying a value. */
-  --map-flowpaths-color: #445465;
+  /* The static network, in water's own colour. It was #0b0e10, ink on paper; then a blue-grey,
+     which measured well and still read grey. A stream should look like water.
+
+     It clears the basemap by hue rather than by lightness -- 1.9:1 in WCAG terms, which sounds
+     wrong until you notice WCAG contrast is a lightness ratio and cannot see hue at all. In
+     OKLab it sits 0.199 from the nearest basemap surface, about ten times a just-noticeable
+     difference, and 0.199 from the basemap's own water fill, so a stream still reads as separate
+     from the lake it runs into. Lightness is the right instrument for the value ramp, where
+     lightness is what carries the value. It is the wrong one here. */
+  --map-flowpaths-color: #1f9ec7;
 
 
   --map-gauges-color: #616569;
@@ -272,10 +277,10 @@ $theme-colors: (
     --map-divides-highlight-fill: rgba(66, 181, 154, 0.30);
     --map-divides-highlight-outline: rgba(66, 181, 154, 0.95);
 
-    /* Paul Tol's #0077bb measured 2.48:1 against this basemap's own fills -- below the 3:1 the
-       rest of the map holds to. Same idea, lifted into the family hue and far enough off the
-       background to read. */
-    --map-flowpaths-color: #76889b;
+    /* The same water, lifted for the dark basemap: 4.8:1 and 0.388 in OKLab from the nearest
+       surface. Paul Tol's #0077bb, which was here before, measured 2.48:1 -- too dark to read
+       against a near-black earth fill. */
+    --map-flowpaths-color: #38b0d8;
 
     --map-gauges-color: #c4c9cd;
 

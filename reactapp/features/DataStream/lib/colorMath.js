@@ -83,6 +83,36 @@ export const contrastRatio = (a, b) => {
 };
 
 /**
+ * How far apart two colours look, in OKLab.
+ *
+ * The companion to contrastRatio, and the right instrument for a different question. Contrast is
+ * a ratio of relative luminance: it measures lightness and is blind to hue, which is correct for
+ * anything whose value is read from how light it is -- the animated ramp, and text. It is the
+ * wrong measure for a layer that is distinguished by being a different colour. A cyan stream on
+ * a pale green-grey basemap can sit near 2:1 and still be unmistakable.
+ *
+ * Roughly 0.02 is a just-noticeable difference, so these numbers are best read as multiples of
+ * one: 0.2 is about ten JNDs apart and could not be confused by anyone.
+ */
+export const perceptualDistance = (a, b) => {
+  const lab = ([r, g, b2]) => {
+    const f = (c) => (c / 255 <= 0.04045 ? c / 255 / 12.92 : ((c / 255 + 0.055) / 1.055) ** 2.4);
+    const [lr, lg, lb] = [f(r), f(g), f(b2)];
+    const l = Math.cbrt(0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb);
+    const m = Math.cbrt(0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb);
+    const s2 = Math.cbrt(0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb);
+    return [
+      0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s2,
+      1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s2,
+      0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s2,
+    ];
+  };
+  const [al, aa, ab] = lab(a);
+  const [bl, ba, bb] = lab(b);
+  return Math.hypot(al - bl, aa - ba, ab - bb);
+};
+
+/**
  * Whether a run of lightnesses only ever goes one way.
  *
  * The shipped ramp went 0.55 up to 0.86 and back down to 0.54, so its two ends were the same

@@ -41,7 +41,12 @@ describe('map paint tokens', () => {
 });
 
 describe('the map keeps its contrast promises', () => {
-  const { contrastRatio, hexToRgb, parseColor } = require('features/DataStream/lib/colorMath');
+  const {
+    contrastRatio,
+    hexToRgb,
+    parseColor,
+    perceptualDistance,
+  } = require('features/DataStream/lib/colorMath');
   const {
     DARK_SURFACES,
     LIGHT_SURFACES,
@@ -52,22 +57,36 @@ describe('the map keeps its contrast promises', () => {
   const dark = scss.slice(scss.indexOf('/* Dark theme override */'));
   const tokenIn = (block, name) => parseColor(block.match(new RegExp(`${name}:\\s*([^;]+);`))[1]);
 
-  it.each(Object.entries(LIGHT_SURFACES))(
-    'the light-theme flowpaths read over %s',
-    (_n, surface) => {
-      // They were #0b0e10, which is ink rather than water and at 12:1 was the loudest thing on
-      // the map -- louder than the animation drawn on top of it.
-      expect(contrastRatio(tokenIn(light, '--map-flowpaths-color'), hexToRgb(surface)))
-        .toBeGreaterThanOrEqual(MIN_CONTRAST);
+  /**
+   * The network is measured by how different it looks, not by how much lighter or darker it is.
+   *
+   * It is drawn in water's own colour, which sits near 2:1 against the basemap in WCAG terms --
+   * and WCAG contrast is a ratio of relative luminance, so it is blind to hue by construction.
+   * That makes it the right instrument for the value ramp, where lightness is what carries the
+   * value, and the wrong one here, where the question is only whether a stream reads as a stream.
+   *
+   * The bar is 0.15 in OKLab, which is around seven times a just-noticeable difference.
+   */
+  const MIN_SEPARATION = 0.15;
+
+  it.each([['light', LIGHT_SURFACES], ['dark', DARK_SURFACES]])(
+    'the %s network is plainly a different colour from every basemap surface',
+    (theme, surfaces) => {
+      const colour = tokenIn(theme === 'light' ? light : dark, '--map-flowpaths-color');
+      Object.entries(surfaces).forEach(([, surface]) => {
+        expect(perceptualDistance(colour, hexToRgb(surface)))
+          .toBeGreaterThanOrEqual(MIN_SEPARATION);
+      });
     }
   );
 
-  it.each(Object.entries(DARK_SURFACES))(
-    'the dark-theme flowpaths read over %s',
-    (_n, surface) => {
-      // Paul Tol's #0077bb measured 2.48 here, below the bar the rest of the map holds to.
-      expect(contrastRatio(tokenIn(dark, '--map-flowpaths-color'), hexToRgb(surface)))
-        .toBeGreaterThanOrEqual(MIN_CONTRAST);
+  it.each([['light', LIGHT_SURFACES, '#80deea'], ['dark', DARK_SURFACES, '#31353f']])(
+    'a %s stream still reads as separate from the lake it runs into',
+    (_theme, surfaces, water) => {
+      // Drawing rivers in water's colour is the convention; drawing them indistinguishably from
+      // open water is not.
+      const colour = tokenIn(surfaces === LIGHT_SURFACES ? light : dark, '--map-flowpaths-color');
+      expect(perceptualDistance(colour, hexToRgb(water))).toBeGreaterThanOrEqual(MIN_SEPARATION);
     }
   );
 
@@ -90,23 +109,25 @@ describe('the map keeps its contrast promises', () => {
     }
   );
 
-  it('draws the static network more quietly than the animation over it', () => {
-    // Chroma is what separates "structure" from "a value". The ramp stops carry 0.09 and up.
-    const { LIGHT_RAMP } = require('features/DataStream/lib/valueRamp');
-    const chroma = ([r, g, b]) => {
-      const f = (c) => (c / 255 <= 0.04045 ? c / 255 / 12.92 : ((c / 255 + 0.055) / 1.055) ** 2.4);
-      const [lr, lg, lb] = [f(r), f(g), f(b)];
-      const l = Math.cbrt(0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb);
-      const m = Math.cbrt(0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb);
-      const s = Math.cbrt(0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb);
-      return Math.hypot(
-        1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
-        0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s
-      );
-    };
+  /**
+   * A static reach and an animated one are never the same colour.
+   *
+   * This used to compare chroma, on the reasoning that the network should be less saturated than
+   * the data drawn over it. That held while the network was a blue-grey and stopped holding the
+   * moment it became water-coloured -- a saturated cyan is not quieter than a dark red, it is
+   * somewhere else entirely. Which is the actual requirement: the two must not be confusable,
+   * and separation says that where chroma only said it by accident.
+   */
+  it.each([['light', 'LIGHT_RAMP'], ['dark', 'DARK_RAMP']])(
+    'no %s ramp stop can be mistaken for the static network',
+    (theme, rampName) => {
+      const ramp = require('features/DataStream/lib/valueRamp')[rampName];
+      const network = tokenIn(theme === 'light' ? light : dark, '--map-flowpaths-color');
 
-    const network = chroma(tokenIn(light, '--map-flowpaths-color'));
-    const quietestRampStop = Math.min(...LIGHT_RAMP.map(chroma));
-    expect(network).toBeLessThan(quietestRampStop);
-  });
+      ramp.forEach((stop) => {
+        expect(perceptualDistance(network, stop)).toBeGreaterThanOrEqual(0.1);
+      });
+    }
+  );
+
 });

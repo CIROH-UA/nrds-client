@@ -59,3 +59,41 @@ describe('isMonotonic', () => {
     expect(isMonotonic([0.2, 0.4, 0.4, 0.6])).toBe(false);
   });
 });
+
+/**
+ * The second instrument, and why there are two.
+ *
+ * contrastRatio is a ratio of relative luminance, so it is blind to hue by construction. That is
+ * correct for anything read by lightness -- text, and the animated ramp, where lightness is what
+ * carries the value. It is wrong for a layer distinguished by being a different colour: the
+ * static stream network sits near 2:1 against the basemap and is unmistakable.
+ */
+describe('perceptualDistance', () => {
+  const { perceptualDistance } = require('features/DataStream/lib/colorMath');
+
+  it('is zero for a colour against itself', () => {
+    expect(perceptualDistance(hexToRgb('#1f9ec7'), hexToRgb('#1f9ec7'))).toBeCloseTo(0, 10);
+  });
+
+  it('is symmetric', () => {
+    const a = hexToRgb('#1f9ec7');
+    const b = hexToRgb('#e2dfda');
+    expect(perceptualDistance(a, b)).toBeCloseTo(perceptualDistance(b, a), 10);
+  });
+
+  it('sees a difference that contrast cannot', () => {
+    // The case the second instrument exists for. These two are close in lightness, so their
+    // contrast ratio is near 1, and nobody would confuse a cyan for a beige.
+    const cyan = hexToRgb('#1f9ec7');
+    const olive = hexToRgb('#8f8f52');
+
+    expect(contrastRatio(cyan, olive)).toBeLessThan(1.4);
+    expect(perceptualDistance(cyan, olive)).toBeGreaterThan(0.1);
+  });
+
+  it('scales with how far apart things actually look', () => {
+    const white = hexToRgb('#ffffff');
+    expect(perceptualDistance(white, hexToRgb('#000000')))
+      .toBeGreaterThan(perceptualDistance(white, hexToRgb('#888888')));
+  });
+});
