@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+
 import { getMapHandle } from 'features/DataStream/lib/mapHandle';
 import { selectionLngLat } from 'features/DataStream/lib/layers';
 import { useFeatureStore } from 'features/DataStream/store/Layers';
@@ -29,4 +31,28 @@ export const showSelection = () => {
 
   map.flyTo({ center: at, zoom: SELECTION_ZOOM, essential: true });
   return true;
+};
+
+/**
+ * Move the map whenever the selection changes.
+ *
+ * A hook rather than an effect in the map component, because the effect there was keyed on a
+ * useCallback with an empty dependency array. That made the callback referentially stable for
+ * the life of the component, so the effect ran once on mount and never again: selecting a
+ * feature stopped moving the map at all.
+ *
+ * It survived review because a click already leaves the map where the feature is -- that is
+ * where the reader clicked -- so nothing appeared wrong. Only the search box, which selects
+ * something that may be a state away, showed it.
+ *
+ * Subscribing here means there is no dependency array to get wrong, and the whole behaviour can
+ * be rendered and tested without a canvas, which the effect could not.
+ */
+export const useShowSelectionOnChange = () => {
+  const selected = useFeatureStore((s) => s.selected_feature);
+
+  useEffect(() => {
+    if (!selected) return;
+    showSelection();
+  }, [selected]);
 };

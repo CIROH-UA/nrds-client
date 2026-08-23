@@ -9,6 +9,17 @@
  * calls it is in Mapg, which no test here mounts -- constructing a maplibregl.Map asks the canvas
  * for a WebGL context jsdom does not provide.
  */
+/**
+ * Testing Library is imported here, at module scope, and not required inside a describe.
+ *
+ * Its auto-cleanup registers an afterEach when the module first loads. Required from inside a
+ * describe callback, that registration lands in whichever block happens to be executing, so
+ * every hook and component rendered by the other blocks stayed mounted for the rest of the
+ * file -- and their store subscriptions kept firing. It showed up as a flyTo being called four
+ * times for two selections, one for each hook that should have been torn down.
+ */
+import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
+
 import { selectionLngLat } from 'features/DataStream/lib/layers';
 
 describe('selectionLngLat', () => {
@@ -116,7 +127,6 @@ describe('showSelection', () => {
 });
 
 describe('the control in the feature panel', () => {
-  const { render, screen, fireEvent } = require('@testing-library/react');
   const { ForecastHeader } = require('features/DataStream/components/forecast/ForecastHeader');
   const { setMapHandle } = require('features/DataStream/lib/mapHandle');
   const { useFeatureStore } = require('features/DataStream/store/Layers');
@@ -183,5 +193,75 @@ describe('the control in the feature panel', () => {
     render(<ForecastHeader title="Cat 1" onClick={() => {}} />);
 
     expect(screen.getByRole('button', { name: /clear selection/i })).toBeInTheDocument();
+  });
+});
+
+/**
+ * Selecting a feature moves the map to it.
+ *
+ * This had no test, which is why it stopped working without anyone noticing. The effect that did
+ * it was keyed on a useCallback with an empty dependency array, making the callback stable for
+ * the life of the map component, so it ran once on mount and never again.
+ *
+ * A click hid the breakage: the map is already where the feature is, because that is where the
+ * reader clicked. Only the search box, which can select something a state away, showed it -- and
+ * that is the path that had no coverage.
+ */
+describe('moving the map when the selection changes', () => {
+  const { useShowSelectionOnChange } = require('features/DataStream/actions/showSelection');
+  const { setMapHandle } = require('features/DataStream/lib/mapHandle');
+  const { useFeatureStore } = require('features/DataStream/store/Layers');
+
+  const start = useFeatureStore.getState();
+  let map;
+
+  beforeEach(() => {
+    useFeatureStore.setState(start, true);
+    map = { flyTo: jest.fn() };
+    setMapHandle(map);
+  });
+
+  afterEach(() => setMapHandle(null));
+
+  const select = (feature) => {
+    act(() => useFeatureStore.setState({ selected_feature: feature }));
+  };
+
+  it('flies to a feature selected after mount', () => {
+    // The search path: nothing selected when the map mounts, then a hit somewhere else entirely.
+    renderHook(() => useShowSelectionOnChange());
+    expect(map.flyTo).not.toHaveBeenCalled();
+
+    select({ _id: 'cat-1', lat: 40, lon: -111 });
+
+    expect(map.flyTo).toHaveBeenCalledTimes(1);
+    expect(map.flyTo.mock.calls[0][0].center).toEqual([-111, 40]);
+  });
+
+  it('flies again for the next feature, which is the part that broke', () => {
+    // A stable callback fires once and never again. Two selections, two moves.
+    renderHook(() => useShowSelectionOnChange());
+    select({ _id: 'cat-1', lat: 40, lon: -111 });
+    select({ _id: 'cat-2', lat: 41, lon: -112 });
+
+    expect(map.flyTo).toHaveBeenCalledTimes(2);
+    expect(map.flyTo.mock.calls[1][0].center).toEqual([-112, 41]);
+  });
+
+  it('does nothing while nothing is selected', () => {
+    renderHook(() => useShowSelectionOnChange());
+
+    expect(map.flyTo).not.toHaveBeenCalled();
+  });
+
+  it('does not move the map again on an unrelated re-render', () => {
+    // Panning and playback re-render the map constantly; a fly on each would fight the reader.
+    const { rerender } = renderHook(() => useShowSelectionOnChange());
+    select({ _id: 'cat-1', lat: 40, lon: -111 });
+
+    rerender();
+    rerender();
+
+    expect(map.flyTo).toHaveBeenCalledTimes(1);
   });
 });

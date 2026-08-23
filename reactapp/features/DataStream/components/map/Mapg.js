@@ -27,7 +27,7 @@ import { createPointerCursor } from '../../lib/mapCursor';
 import { animationIsOnMap, quantiseZoom } from '../../lib/flowpaths';
 import { selectionLngLat } from '../../lib/layers';
 import { setMapHandle } from '../../lib/mapHandle';
-import { showSelection } from '../../actions/showSelection';
+import { useShowSelectionOnChange } from '../../actions/showSelection';
 import {
   DIVIDES_MIN_ZOOM,
   FLOWPATHS_LAYER_ID,
@@ -232,7 +232,7 @@ const MainMap = () => {
 
   // Selecting something moves the map to it. The same move on demand lives beside the chart it
   // relates to, in the feature panel; see actions/showSelection.js.
-  const flyToSelection = useCallback(() => showSelection(), []);
+  useShowSelectionOnChange();
 
 
 
@@ -449,10 +449,7 @@ const MainMap = () => {
   }, [featureIdToIndex, isFlowPathsVisible]);
 
 
-  // Selecting something moves the map to it; the button below does the same thing on demand.
-  useEffect(() => {
-    flyToSelection();
-  }, [flyToSelection]);
+
 
 
   // The same list the cursor uses, so what invites a click and what answers one cannot drift.
