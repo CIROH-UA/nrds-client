@@ -71,13 +71,30 @@ describe('showSelection', () => {
   const initial = useFeatureStore.getState();
   let map;
 
+  const mountSheet = (offsetHeight) => {
+    render(<aside aria-label="Selected feature" />);
+    const sheet = screen.getByRole('complementary', { name: /selected feature/i });
+    Object.defineProperty(sheet, 'offsetHeight', { value: offsetHeight, configurable: true });
+    return sheet;
+  };
+
+  const onAPhone = () => {
+    const width = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { value: 390, configurable: true });
+    return () => Object.defineProperty(window, 'innerWidth', { value: width, configurable: true });
+  };
+
   beforeEach(() => {
     useFeatureStore.setState(initial, true);
     map = { flyTo: jest.fn() };
     setMapHandle(map);
   });
 
-  afterEach(() => setMapHandle(null));
+  afterEach(() => {
+    setMapHandle(null);
+    delete document.body.dataset.sheet;
+    document.body.style.removeProperty('--sheet-peek');
+  });
 
   it('flies to the selected feature', () => {
     useFeatureStore.setState({ selected_feature: { _id: 'cat-1', lat: 40.8, lon: -111.5 } });
@@ -97,18 +114,75 @@ describe('showSelection', () => {
    * describes it. The offset lifts the target into the strip that stays visible.
    */
   it('lifts the target out from under the sheet', () => {
-    document.body.innerHTML = '<aside aria-label="Selected feature"></aside>';
-    const sheet = document.querySelector('aside');
-    sheet.getBoundingClientRect = () => ({ height: 480 });
-    const width = window.innerWidth;
-    Object.defineProperty(window, 'innerWidth', { value: 390, configurable: true });
+    mountSheet(480);
+    document.body.dataset.sheet = 'expanded';
+    const restoreWidth = onAPhone();
     useFeatureStore.setState({ selected_feature: { _id: 'cat-1', lat: 40.8, lon: -111.5 } });
 
     showSelection();
 
     expect(map.flyTo).toHaveBeenCalledWith(expect.objectContaining({ offset: [0, -240] }));
-    Object.defineProperty(window, 'innerWidth', { value: width, configurable: true });
-    document.body.innerHTML = '';
+    restoreWidth();
+  });
+
+  /**
+   * The first selection of a session flies before the sheet exists to be measured.
+   *
+   * A click sets selected_feature synchronously, which is what triggers the flight, but the
+   * sheet only opens once feature_id lands at the end of the load -- so data-sheet still reads
+   * 'closed' and the offset came out zero, dropping the catchment under the panel about to
+   * cover it. That is the exact failure the offset was added to prevent. The auto-centring path
+   * asks for the coverage the sheet is about to have; the Zoom control keeps asking for the
+   * coverage it currently has.
+   */
+  it('lifts by the height the sheet is about to take, on the first selection', () => {
+    mountSheet(480);
+    document.body.dataset.sheet = 'closed';
+    const restoreWidth = onAPhone();
+    useFeatureStore.setState({ selected_feature: { _id: 'cat-1', lat: 40.8, lon: -111.5 } });
+
+    showSelection({ assumeOpen: true });
+
+    expect(map.flyTo).toHaveBeenCalledWith(expect.objectContaining({ offset: [0, -240] }));
+    restoreWidth();
+  });
+
+  it('still reports no coverage for the Zoom control, which runs against the real state', () => {
+    mountSheet(480);
+    document.body.dataset.sheet = 'closed';
+    const restoreWidth = onAPhone();
+    useFeatureStore.setState({ selected_feature: { _id: 'cat-1', lat: 40.8, lon: -111.5 } });
+
+    showSelection(new MouseEvent('click'));
+
+    expect(map.flyTo).toHaveBeenCalledWith(expect.objectContaining({ offset: [0, 0] }));
+    restoreWidth();
+  });
+
+  it('keeps the peek offset when the sheet is minimised, even if asked to assume it open', () => {
+    mountSheet(480);
+    document.body.dataset.sheet = 'collapsed';
+    document.body.style.setProperty('--sheet-peek', '92px');
+    const restoreWidth = onAPhone();
+    useFeatureStore.setState({ selected_feature: { _id: 'cat-1', lat: 40.8, lon: -111.5 } });
+
+    showSelection({ assumeOpen: true });
+
+    expect(map.flyTo).toHaveBeenCalledWith(expect.objectContaining({ offset: [0, -46] }));
+    restoreWidth();
+  });
+
+  it('lifts by the peek only, once the sheet is minimised', () => {
+    mountSheet(480);
+    document.body.dataset.sheet = 'collapsed';
+    document.body.style.setProperty('--sheet-peek', '92px');
+    const restoreWidth = onAPhone();
+    useFeatureStore.setState({ selected_feature: { _id: 'cat-1', lat: 40.8, lon: -111.5 } });
+
+    showSelection();
+
+    expect(map.flyTo).toHaveBeenCalledWith(expect.objectContaining({ offset: [0, -46] }));
+    restoreWidth();
   });
 
   it('returns at a zoom where the catchment is actually drawn', () => {
@@ -194,7 +268,7 @@ describe('the control in the feature panel', () => {
     const header = fs.readFileSync(
       path.join(__dirname, '../components/forecast/ForecastHeader.js'), 'utf8'
     );
-    const row = header.slice(header.indexOf('<Row>'), header.indexOf('</Row>'));
+    const row = header.slice(header.indexOf('<Row'), header.indexOf('</Row>'));
 
     // Inside the row, with the info toggle and the close button.
     expect(row).toMatch(/<IoLocateOutline/);
@@ -257,6 +331,31 @@ describe('moving the map when the selection changes', () => {
 
     expect(map.flyTo).toHaveBeenCalledTimes(1);
     expect(map.flyTo.mock.calls[0][0].center).toEqual([-111, 40]);
+  });
+
+  /**
+   * The offset has to survive the trip through the hook, not just exist on showSelection.
+   *
+   * Asserting it on a direct showSelection({ assumeOpen: true }) call leaves the wiring
+   * untested: drop the flag at this call site and every such test still passes, which is how
+   * the zero-offset first flight shipped in the first place.
+   */
+  it('asks for the coverage the sheet is about to have, not the none it has now', () => {
+    render(<aside aria-label="Selected feature" />);
+    Object.defineProperty(
+      screen.getByRole('complementary', { name: /selected feature/i }),
+      'offsetHeight', { value: 480, configurable: true }
+    );
+    document.body.dataset.sheet = 'closed';
+    const width = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { value: 390, configurable: true });
+
+    renderHook(() => useShowSelectionOnChange());
+    select({ _id: 'cat-1', lat: 40, lon: -111 });
+
+    expect(map.flyTo.mock.calls[0][0].offset).toEqual([0, -240]);
+    Object.defineProperty(window, 'innerWidth', { value: width, configurable: true });
+    delete document.body.dataset.sheet;
   });
 
   it('flies again for the next feature, which is the part that broke', () => {

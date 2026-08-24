@@ -71,7 +71,7 @@ describe('animationIsOnMap', () => {
   });
 
   it('is not on the map once the clock is emptied', () => {
-    // What closing the panel does: resetVPU drops the arrays and leaves the vpu selected.
+    // What leaving a vpu does: resetVPU drops the arrays and leaves the vpu selected.
     expect(animationIsOnMap({ times: [], flowpathsVisible: true })).toBe(false);
   });
 

@@ -82,6 +82,7 @@ $theme-colors: (
   --title-text-color: #5f6368;
   --ts-header-height: 56px;
   --sheet-height: min(58dvh, calc(100dvh - var(--ts-header-height) - 120px));
+  --sheet-peek: 88px;
   --sheet-offset: 0px;
   --modal-scrim: oklch(0.248 0.006 249);
 
@@ -265,9 +266,14 @@ $theme-colors: (
 }
 
 @media (max-width: 768px) {
-  body[data-sheet-open='true'] {
+  body[data-sheet='expanded'] {
     --sheet-offset: var(--sheet-height);
     --map-controls-offset: calc(var(--sheet-height) + 96px);
+  }
+
+  body[data-sheet='collapsed'] {
+    --sheet-offset: min(var(--sheet-peek), var(--sheet-height));
+    --map-controls-offset: calc(min(var(--sheet-peek), var(--sheet-height)) + 96px);
   }
 
   .maplibregl-ctrl.maplibregl-ctrl-group button {

@@ -71,11 +71,18 @@ describe('the time slider clears the sheet', () => {
 
   it('is offset only while a sheet is actually open, and only at that breakpoint', () => {
     expect(scss).toMatch(/--sheet-offset:\s*0px/);
-    expect(scss).toMatch(/body\[data-sheet-open='true'\][\s\S]{0,80}--sheet-offset:\s*var\(--sheet-height\)/);
+    expect(scss).toMatch(/body\[data-sheet='expanded'\][\s\S]{0,80}--sheet-offset:\s*var\(--sheet-height\)/);
+  });
+
+  it('follows the peek instead of the full height once minimised', () => {
+    // Clamped to the sheet: the peek is measured once, while --sheet-height tracks dvh live, so
+    // a peek left over from a taller viewport would otherwise offset past the sheet itself.
+    expect(scss).toMatch(/body\[data-sheet='collapsed'\][\s\S]{0,180}--sheet-offset:\s*min\(var\(--sheet-peek\), var\(--sheet-height\)\)/);
+    expect(scss).toMatch(/body\[data-sheet='collapsed'\][\s\S]{0,180}--map-controls-offset:\s*calc\(min\(var\(--sheet-peek\), var\(--sheet-height\)\)/);
   });
 
   it('is driven by the panel, whose siblings the map controls are', () => {
-    expect(forecastMenu).toMatch(/document\.body\.dataset\.sheetOpen/);
+    expect(forecastMenu).toMatch(/document\.body\.dataset\.sheet\b/);
   });
 });
 
@@ -153,9 +160,11 @@ describe('the navbar row', () => {
 describe('the sheet attribute effect', () => {
   it('does not delete and rewrite on every toggle', () => {
     const src = read('../components/menus/ForecastMenu.js');
-    const keyed = src.slice(src.indexOf('dataset.sheetOpen'));
-    expect(keyed.slice(0, keyed.indexOf('}, [isopen])'))).not.toMatch(/delete/);
-    expect(src).toMatch(/useEffect\(\(\) => \(\) => \{ delete document\.body\.dataset\.sheetOpen; \}, \[\]\)/);
+    const keyed = src.slice(src.indexOf('document.body.dataset.sheet ='));
+    expect(keyed.slice(0, keyed.indexOf('}, [isopen, collapsed, isSheet])'))).not.toMatch(/delete/);
+    const cleanup = src.slice(src.indexOf('useEffect(() => () => {'));
+    expect(cleanup.slice(0, cleanup.indexOf('}, [])'))).toMatch(/delete document\.body\.dataset\.sheet/);
+    expect(cleanup.slice(0, cleanup.indexOf('}, [])'))).toMatch(/removeProperty\('--sheet-peek'\)/);
   });
 });
 

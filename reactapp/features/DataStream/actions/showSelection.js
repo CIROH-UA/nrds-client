@@ -9,12 +9,12 @@ import { useFeatureStore } from 'features/DataStream/store/Layers';
 export const SELECTION_ZOOM = 11;
 
 /** Put the selected catchment back on screen. */
-export const showSelection = () => {
+export const showSelection = ({ assumeOpen = false } = {}) => {
   const map = getMapHandle();
   const at = selectionLngLat(useFeatureStore.getState().selected_feature);
   if (!map || !at) return false;
 
-  const covered = sheetCoverPx();
+  const covered = sheetCoverPx({ assumeOpen });
   map.flyTo({
     center: at,
     zoom: SELECTION_ZOOM,
@@ -30,6 +30,6 @@ export const useShowSelectionOnChange = () => {
 
   useEffect(() => {
     if (!selected) return;
-    showSelection();
+    showSelection({ assumeOpen: true });
   }, [selected]);
 };
