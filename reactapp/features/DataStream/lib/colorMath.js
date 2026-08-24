@@ -61,16 +61,29 @@ export const parseColor = (value) => {
   return null;
 };
 
-/** Perceptual lightness, 0 to 1. */
-export const lightness = ([r, g, b]) => {
+/**
+ * An sRGB colour in OKLab: [L, a, b].
+ *
+ * The one conversion both lightness and perceptualDistance read. They each had their own copy
+ * of these nine coefficients, which is nine chances for the two to disagree about where a
+ * colour sits while both look right on their own.
+ */
+const toOklab = ([r, g, b]) => {
   const lr = srgbToLinear(r);
   const lg = srgbToLinear(g);
   const lb = srgbToLinear(b);
   const l = Math.cbrt(0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb);
   const m = Math.cbrt(0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb);
   const s = Math.cbrt(0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb);
-  return 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s;
+  return [
+    0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s,
+  ];
 };
+
+/** Perceptual lightness, 0 to 1. */
+export const lightness = (rgb) => toOklab(rgb)[0];
 
 const relativeLuminance = ([r, g, b]) =>
   0.2126 * srgbToLinear(r) + 0.7152 * srgbToLinear(g) + 0.0722 * srgbToLinear(b);
@@ -95,20 +108,8 @@ export const contrastRatio = (a, b) => {
  * one: 0.2 is about ten JNDs apart and could not be confused by anyone.
  */
 export const perceptualDistance = (a, b) => {
-  const lab = ([r, g, b2]) => {
-    const f = (c) => (c / 255 <= 0.04045 ? c / 255 / 12.92 : ((c / 255 + 0.055) / 1.055) ** 2.4);
-    const [lr, lg, lb] = [f(r), f(g), f(b2)];
-    const l = Math.cbrt(0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb);
-    const m = Math.cbrt(0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb);
-    const s2 = Math.cbrt(0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb);
-    return [
-      0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s2,
-      1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s2,
-      0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s2,
-    ];
-  };
-  const [al, aa, ab] = lab(a);
-  const [bl, ba, bb] = lab(b);
+  const [al, aa, ab] = toOklab(a);
+  const [bl, ba, bb] = toOklab(b);
   return Math.hypot(al - bl, aa - ba, ab - bb);
 };
 
