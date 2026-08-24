@@ -23,11 +23,13 @@ import { cancelVpuLoads } from 'features/DataStream/actions/loadState';
  *
  * The selection itself survives: the panel is open because a feature is selected, and closing it
  * mid-interaction would take the reader somewhere they did not ask to go.
+ *
+ * Loads are cancelled before anything else, for the reason leaving a vpu cancels them. A load
+ * already running is not stopped by the selection changing under it, so it reaches its next
+ * checkpoint, finds the generation unchanged, and writes its arrays in behind this refusal.
  */
 export function abandonSelectionWithNoOutput() {
-  // First, for the reason leaving a vpu does it: a load already running is not stopped by the
-  // selection changing under it, so it reaches its next checkpoint, finds the generation
-  // unchanged, and writes its arrays in behind this refusal.
+  // First, or a load already running writes its arrays in behind this refusal.
   cancelVpuLoads();
   const { set_cache_key, set_outputFile } = useDataStreamStore.getState();
   const timeseries = useTimeSeriesStore.getState();
@@ -47,5 +49,7 @@ export function abandonSelectionWithNoOutput() {
   useTimeSeriesStore.setState({
     loadingText: 'No output file for this selection',
     last_error: { kind: 'no-output-file' },
+    // Nothing was loaded, so nothing will call endLoading to retire the click that asked.
+    pending: false,
   });
 }

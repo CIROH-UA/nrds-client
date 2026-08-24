@@ -163,6 +163,9 @@ const useTimeSeriesStore = create(
         set((s) => ({
           ...s,
           series: EMPTY_SERIES,
+          // With last_error: nothing remains to retire it, so the spinner would never stop.
+          pending: false,
+          loadingText: '',
           feature_id: null,
           variable: '',
           layout: DEFAULT_LAYOUT,

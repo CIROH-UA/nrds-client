@@ -75,6 +75,8 @@ export async function loadTimeseries({ featureId, variable, vpuGeneration } = {}
       store.setState({
         loadingText: `Failed to load timeseries for id: ${targetId}`,
         last_error: { kind: 'timeseries', featureId: targetId, variable: requestedVariable },
+        // Ahead of beginLoading, so the finally that balances the count never runs.
+        pending: false,
       });
       return;
     }

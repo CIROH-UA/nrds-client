@@ -1,6 +1,7 @@
 import useDataStreamStore from 'features/DataStream/store/Datastream';
 import { useVPUStore } from 'features/DataStream/store/VPU';
 import { loadTimeseries } from 'features/DataStream/actions/loadTimeseries';
+import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import { vpuLoadInFlight } from 'features/DataStream/actions/loadState';
 
 /**
@@ -43,5 +44,11 @@ export function chartSelection({ featureId, vpuName }) {
 
   return restore().catch((err) => {
     console.error('Could not chart', featureId, err);
+    // Neither branch reached beginLoading, so nothing else will retire the click's promise.
+    useTimeSeriesStore.setState({
+      loadingText: 'Could not load this selection',
+      last_error: { kind: 'timeseries', featureId },
+      pending: false,
+    });
   });
 }

@@ -147,3 +147,72 @@ describe('retiring the promise', () => {
     expect(useTimeSeriesStore.getState().pending).toBe(false);
   });
 });
+
+/**
+ * Every way out of a load retires the promise.
+ *
+ * `pending` is set the instant a click lands and cleared by endLoading when the last real load
+ * finishes. Four reviewers independently found exits that reach neither: a rejection escaping
+ * the dynamic import in chartSelection, the checkForTable catch in loadTimeseries, the
+ * no-output abandon path, and reset() closing the panel. The worst is the first -- a
+ * ChunkLoadError after a deploy leaves pending true with last_error null, so the spinner and
+ * the progress bar run forever with nothing loading.
+ */
+describe('pending is retired by every exit', () => {
+  const { resetLoadState } = require('features/DataStream/actions/loadState');
+
+  beforeEach(() => resetLoadState());
+
+  it('is cleared when the panel is closed', () => {
+    // reset() clears last_error, which is what was masking the stuck flag, so it must clear
+    // pending too or closing the panel after a failure leaves a permanent spinner.
+    useTimeSeriesStore.setState({ pending: true, loadingText: 'Loading cat-1' });
+
+    useTimeSeriesStore.getState().reset();
+
+    expect(useTimeSeriesStore.getState().pending).toBe(false);
+    expect(useTimeSeriesStore.getState().loadingText).toBe('');
+  });
+
+  it('survives reset_series, which every load calls on its way in', () => {
+    // The one clear that would be wrong: loadVpu and loadTimeseries both call this immediately
+    // before beginLoading, so clearing pending here would drop the click's promise mid-load.
+    useTimeSeriesStore.setState({ pending: true });
+
+    useTimeSeriesStore.getState().reset_series();
+
+    expect(useTimeSeriesStore.getState().pending).toBe(true);
+  });
+
+  it('is cleared when a selection is abandoned for having no output', async () => {
+    useTimeSeriesStore.setState({ pending: true });
+    const { abandonSelectionWithNoOutput } = require('features/DataStream/actions/noOutputFile');
+
+    abandonSelectionWithNoOutput();
+
+    expect(useTimeSeriesStore.getState().pending).toBe(false);
+  });
+
+  it('is cleared when the work promised never starts', async () => {
+    // chartSelection's catch: a ChunkLoadError from the dynamic import reaches neither
+    // beginLoading nor endLoading, so nothing else can retire the flag.
+    jest.resetModules();
+    jest.doMock('features/DataStream/actions/loadVpu', () => ({
+      loadVpu: () => Promise.reject(new Error('ChunkLoadError')),
+    }));
+    const store = require('features/DataStream/store/Timeseries').default;
+    const dataStream = require('features/DataStream/store/Datastream').default;
+    const { useVPUStore } = require('features/DataStream/store/VPU');
+    const { chartSelection } = require('features/DataStream/actions/chartSelection');
+
+    dataStream.setState({ cache_key: 'cfe_nom_d_short_range_00_VPU_01_t' });
+    useVPUStore.setState({ times: [] });
+    store.setState({ pending: true });
+
+    await chartSelection({ featureId: 'cat-1', vpuName: 'VPU_01' });
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(store.getState().pending).toBe(false);
+    jest.dontMock('features/DataStream/actions/loadVpu');
+  });
+});
