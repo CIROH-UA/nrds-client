@@ -30,6 +30,12 @@ const notFound = () => Object.assign(new Error('Request failed with status code 
   response: { status: 404 },
 });
 
+// What the portal's bucket actually answers for a key it does not hold: it allows anonymous
+// GetObject but not ListBucket, so it cannot say "absent" without leaking what it has.
+const forbidden = () => Object.assign(new Error('Request failed with status code 403'), {
+  response: { status: 403 },
+});
+
 const connectionWhere = (tableExists) => ({
   query: jest.fn(async () => ({ toArray: () => [{ cnt: tableExists ? 1 : 0 }] })),
   close: jest.fn(async () => {}),
@@ -96,6 +102,26 @@ describe('loadIndexData', () => {
     getConnection.mockResolvedValue(connectionWhere(false));
     fetchParquetBuffer
       .mockRejectedValueOnce(notFound())
+      .mockResolvedValueOnce(BYTES);
+
+    await loadIndexData({ remoteUrl: STATIC_URL, fallbackUrl: UPSTREAM_URL });
+
+    expect(fetchParquetBuffer).toHaveBeenNthCalledWith(1, STATIC_URL);
+    expect(fetchParquetBuffer).toHaveBeenNthCalledWith(2, UPSTREAM_URL);
+  });
+
+  /**
+   * The case that took production down.
+   *
+   * The portal builds this app without the slim-index step, so its collected static has no such
+   * key, and S3 answers 403 rather than 404. That was classified as a permissions failure and
+   * rethrown, so the fallback never ran and the search box read "Search unavailable" -- with a
+   * working public copy of the same index one request away.
+   */
+  it('falls back when the bucket answers 403 for a key it does not hold', async () => {
+    getConnection.mockResolvedValue(connectionWhere(false));
+    fetchParquetBuffer
+      .mockRejectedValueOnce(forbidden())
       .mockResolvedValueOnce(BYTES);
 
     await loadIndexData({ remoteUrl: STATIC_URL, fallbackUrl: UPSTREAM_URL });

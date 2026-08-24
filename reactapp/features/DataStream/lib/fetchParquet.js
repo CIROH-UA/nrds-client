@@ -28,8 +28,22 @@ const STALL_MS = 30_000;
 // Parquet brackets itself with PAR1 at both ends, which is what makes a wrong body detectable.
 const PARQUET_MAGIC = "PAR1";
 
-/** A response the server answered but had nothing at: a stale deploy, or a bad path. */
-export const isMissing = (err) => err?.response?.status === 404 || err?.name === "NotParquetError";
+/**
+ * A response the server answered but had nothing at: a stale deploy, or a bad path.
+ *
+ * 403 counts, because S3 says 403 where a filesystem says 404. A bucket that allows anonymous
+ * GetObject but not ListBucket cannot admit a key is absent without leaking what it holds, so it
+ * refuses instead -- and that is how the portal's static bucket is configured. Reading it as a
+ * permissions problem and throwing is what kept the fallback below from running against a portal
+ * whose static was collected without the slim index, which is the one case it exists for.
+ *
+ * Treating a genuine permissions failure as missing is the right trade here either way: the file
+ * cannot be read, the fallback is public, and a slower search beats a dead one.
+ */
+export const isMissing = (err) =>
+  err?.response?.status === 404 ||
+  err?.response?.status === 403 ||
+  err?.name === "NotParquetError";
 
 /** Silence, not slowness: the guard aborted because nothing arrived for its window. */
 export const isStalled = (err) =>
@@ -69,7 +83,6 @@ export async function fetchParquetBuffer(url, options = {}) {
     });
     body = res?.data;
   } catch (err) {
-    // Renamed rather than rethrown: the caller places failures by name, not by http library.
     if (stalled.signal.aborted) {
       const stall = new Error(`${url} stopped sending after ${stallMs} ms`);
       stall.name = "TimeoutError";

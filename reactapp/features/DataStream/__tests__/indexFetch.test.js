@@ -165,6 +165,19 @@ describe('failure classification', () => {
     expect(isMissing(new Error('offline'))).toBe(false);
   });
 
+  /**
+   * S3 says 403 where a filesystem says 404.
+   *
+   * A bucket that allows anonymous GetObject but not ListBucket cannot admit that a key is
+   * absent without leaking what it holds, so it refuses instead. ciroh-portal-assets, which
+   * serves the portal's collected static, is configured that way -- and a portal built without
+   * the slim-index step has no such key. This read as a permissions problem and was thrown,
+   * so the fallback that exists for exactly this case never ran and the search box went dead.
+   */
+  it('treats a 403 as missing, which is what S3 answers for a key that is not there', () => {
+    expect(isMissing({ response: { status: 403 } })).toBe(true);
+  });
+
   it('recognises an aborted request', () => {
     expect(isStalled({ code: 'ERR_CANCELED' })).toBe(true);
     expect(isStalled({ name: 'CanceledError' })).toBe(true);
