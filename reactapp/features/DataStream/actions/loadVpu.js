@@ -80,12 +80,13 @@ export async function loadVpu() {
       }
     }
 
-    const featureIDs = await getFeatureIDs(cacheKey);
+    // Together: neither reads the other's answer, and each is its own round trip to the worker.
+    const [featureIDs, variables] = await Promise.all([
+      getFeatureIDs(cacheKey),
+      getVariables({ cacheKey }),
+    ]);
     if (superseded()) return;
-    useVPUStore.getState().set_feature_ids(featureIDs);
-
-    const variables = await getVariables({ cacheKey });
-    if (superseded()) return;
+    useVPUStore.getState().setFeatureIds(featureIDs);
     set_variables(variables);
     timeseries.set_variable(variables[0]);
     const currentVariable = variables[0];

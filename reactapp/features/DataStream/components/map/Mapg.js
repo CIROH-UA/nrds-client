@@ -209,14 +209,19 @@ const MainMap = () => {
   // Literally the same object the legend reads, so the two cannot describe different ramps.
   const colorBounds = useMemo(() => boundsFor(valuesByVar), [valuesByVar]);
 
-  const belowFlowpathZoom = shouldPromptZoom({
-    visible: isFlowPathsVisible,
-    valuesByVar,
-    timesArr,
-    zoom,
-    // Read during render, which pathTick is what re-renders this for.
-    paths: pathDataRef.current,
-  });
+  // Memoised: below FLOWPATHS_MIN_ZOOM this scans the whole path store, and the store is never
+  // pruned. Unmemoised it ran again for every hover, selection and layer toggle.
+  const belowFlowpathZoom = useMemo(
+    () => shouldPromptZoom({
+      visible: isFlowPathsVisible,
+      valuesByVar,
+      timesArr,
+      zoom,
+      paths: pathDataRef.current,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- pathTick stands in for the ref
+    [isFlowPathsVisible, valuesByVar, timesArr, zoom, pathTick],
+  );
 
   const selectionAt = useMemo(() => selectionLngLat(selectedMapFeature), [selectedMapFeature]);
 
@@ -530,8 +535,7 @@ const MainMap = () => {
           <TimeSlider />
         </TimeSliderDock>
       )}
-      {/* Bottom right, not top right: the layer panel owns that corner and was covering the
-          zoom buttons. The two stack here, clear of the slider in the middle. */}
+      {/* Bottom right: the layer panel owns the top right and covered these. */}
       <NavigationControl position="bottom-right" showCompass={false} />
       <ScaleControl position="bottom-right" unit="metric" />
       <SelectedFeaturePopup />
