@@ -40,7 +40,7 @@ InfoModal.propTypes = {
 };
 
 export const GeneralInfoModal = (props) => (
-  <InfoModal {...props} title="Ngen Research DataStream">
+  <InfoModal {...props} title="NextGen Research DataStream - NRDS powered by NGIAB">
     <GeneralInfoContent />
   </InfoModal>
 );

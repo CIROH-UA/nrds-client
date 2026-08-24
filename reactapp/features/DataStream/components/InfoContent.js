@@ -138,7 +138,7 @@ export const GeneralInfoContent = () => (
           target="_blank"
           rel="noreferrer"
         >
-          the NRDS AWS architecture
+          the NGIAB-NRDS AWS architecture
         </a>
       </li>
       <li>
