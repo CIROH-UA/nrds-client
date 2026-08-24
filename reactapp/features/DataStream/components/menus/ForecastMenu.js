@@ -1,13 +1,12 @@
-import React, { Fragment, useMemo, useCallback } from 'react';
+import { Fragment, useMemo, useCallback, useEffect } from 'react';
 import DataMenu from '../forecast/dataMenu';
 import VariablesMenu from '../forecast/variablesMenu';
 import { Content, Container } from '../styles/Styles';
 import TimeSeriesCard from '../forecast/TimeseriesCard';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
-import { useVPUStore, useFeatureStore } from 'features/DataStream/store/Layers';
+import { useFeatureStore } from 'features/DataStream/store/Layers';
+import { useVPUStore } from 'features/DataStream/store/VPU';
 import { ForecastHeader } from '../forecast/ForecastHeader';
-import { FeatureInformation } from '../forecast/FeatureInformation';
-import { TimeSlider } from '../forecast/TimeSlider';
 import { useShallow } from 'zustand/react/shallow';
 
 const ForecastMenu = () => {
@@ -26,23 +25,28 @@ const ForecastMenu = () => {
     }))
   );
 
-  const isopen = useMemo(() => {
-      console.log("ForecastMenu isopen computed with feature_id:", feature_id);
-      return feature_id != null;
-  }, [feature_id]);
+  const isopen = useMemo(() => feature_id != null, [feature_id]);
+
+  useEffect(() => {
+    document.body.dataset.sheetOpen = isopen ? 'true' : 'false';
+  }, [isopen]);
+
+  useEffect(() => () => { delete document.body.dataset.sheetOpen; }, []);
 
   const onReset = useCallback(() => {
     reset();
     resetVPU();
+    useFeatureStore.getState().set_selected_feature(null);
   }, [reset, resetVPU]);
   
   return (
     <Fragment>          
-          <Container $isOpen={isopen}>
+          <Container as="aside" aria-label="Selected feature" $isOpen={isopen}>
             <div>
                   {layout?.title && (
                     <ForecastHeader
-                      title ={layout.title}
+                      title={layout.title}
+                      subtitle={layout.subtitle}
                       onClick={onReset}
                     />
                   )}
@@ -50,15 +54,12 @@ const ForecastMenu = () => {
             
             <Content>
               <TimeSeriesCard />
+              <VariablesMenu />
+            </Content>
+
+            <Content>
               <DataMenu />
             </Content>
-            <Content>
-                <VariablesMenu />
-                <TimeSlider />
-            </Content>
-            <Content>
-              <FeatureInformation />
-            </Content>            
           </Container>
     </Fragment>
 

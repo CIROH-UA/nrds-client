@@ -1,50 +1,45 @@
 import PropTypes from 'prop-types';
 import { useState, useEffect } from 'react';
+import styled from 'styled-components';
 
-import 'features/Tethys/components/loader/LoadingAnimation.scss';
+import Spinner from 'features/Tethys/components/loader/Spinner';
 
-const LoadingAnimation = ({delay}) => {
-  const [ show, setShow ] = useState(false);
+const Screen = styled.div`
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background-color: var(--background-color);
+  color: var(--panel-text-muted);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+`;
+
+/** The boot screen, shown while the app asks Tethys who it is and who is using it. */
+const LoadingAnimation = ({ delay }) => {
+  const [show, setShow] = useState(false);
 
   useEffect(() => {
-    // Option to delay display of animated loader for longer resolutions
-    const timeoutId = setTimeout(() => {
-      setShow(true);
-    }, Number(delay) || 0);
-
+    const timeoutId = setTimeout(() => setShow(true), Number(delay) || 0);
     return () => clearTimeout(timeoutId);
   }, [delay]);
 
+  if (!show) return null;
+
   return (
-    <>
-      {show &&
-      <div>
-        <div className="center"></div>
-        <div className="inner-spin">
-          <div className="inner-arc inner-arc_start-a"></div>
-          <div className="inner-arc inner-arc_end-a"></div>
-          <div className="inner-arc inner-arc_start-b"></div>
-          <div className="inner-arc inner-arc_end-b"></div>
-          
-          <div className="inner-moon-a"></div>
-          <div className="inner-moon-b"></div>
-        </div>
-        <div className="outer-spin">
-          <div className="outer-arc outer-arc_start-a"></div>
-          <div className="outer-arc outer-arc_end-a"></div>
-          <div className="outer-arc outer-arc_start-b"></div>
-          <div className="outer-arc outer-arc_end-b"></div>
-          <div className="outer-moon-a"></div>
-          <div className="outer-moon-b"></div>
-        </div>
-      </div>
-      }
-    </>
+    <Screen>
+      <Spinner size={40} thickness={3} label="Loading NRDS" />
+      <span>Loading</span>
+    </Screen>
   );
 };
 
 LoadingAnimation.propTypes = {
   delay: PropTypes.number,
-}
+};
 
 export default LoadingAnimation;

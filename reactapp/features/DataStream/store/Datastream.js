@@ -1,11 +1,29 @@
 import { create } from 'zustand';
+import { sameArrayValues } from 'features/DataStream/lib/equality';
+
+import { cancelVpuLoads } from 'features/DataStream/actions/loadState';
+import { cancelSelections } from 'features/DataStream/actions/selectionGeneration';
+import { useVPUStore } from 'features/DataStream/store/VPU';
+import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import { getYesterdayDateString } from '../lib/utils';
 
+/** Leave a vpu: stop playback, drop its animation arrays, and disown the load still fetching it. */
+function leaveCurrentVpu() {
+  cancelVpuLoads();
+  cancelSelections();
+  useTimeSeriesStore.setState({ isPlaying: false });
+  useVPUStore.getState().resetVPU();
+}
+
+/** Where the app reads its data from, before anything is selected. */
 const DEFAULTS = {
   bucket: "ciroh-community-ngen-datastream",
-  nexus_pmtiles: "https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/nexus.pmtiles",
   community_pmtiles: "https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/merged.pmtiles",
-  hydrofabric_index: "https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/hydrofabric_index.parquet",
+  flowpaths_pmtiles:
+    "https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/only_geometry/upstream_index/flowpaths.pmtiles",
+  hydrofabric_index: "/static/nrds/data/hydrofabric_index_slim.parquet",
+  hydrofabric_index_fallback:
+    "https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/hydrofabric_index.parquet",
   cache_key: null,
   vpu: null,
   model: "cfe_nom",
@@ -15,21 +33,21 @@ const DEFAULTS = {
   cycle: "00",
   outputFile: null,
   variables: [],
-};
-
-const sameArrayValues = (a, b) => {
-  if (a === b) return true;
-  if (!Array.isArray(a) || !Array.isArray(b)) return false;
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
-  return true;
+  /** Whether the id index is loading, ready, or gave up. */
+  index_status: 'loading',
 };
 
 const useDataStreamStore = create((set) => ({
     ...DEFAULTS,
     set_bucket: (bucket) => set((s) => (s.bucket === bucket ? s : { bucket })),
     set_cache_key: (cache_key) => set((s) => (s.cache_key === cache_key ? s : { cache_key })),
-    set_vpu: (vpu) => set((s) => (s.vpu === vpu ? s : { vpu })),
+    /** Move to another vpu, and stop animating the one being left. */
+    set_vpu: (vpu) =>
+      set((s) => {
+        if (s.vpu === vpu) return s;
+        leaveCurrentVpu();
+        return { vpu };
+      }),
     set_date: (date) => set((s) => (s.date === date ? s : { date })),
     set_forecast: (forecast) => set((s) => (s.forecast === forecast ? s : { forecast })),
     set_ensemble: (ensemble) => set((s) => (s.ensemble === ensemble ? s : { ensemble })),
@@ -37,19 +55,19 @@ const useDataStreamStore = create((set) => ({
     set_model: (model) => set((s) => (s.model === model ? s : { model })),
     set_outputFile: (outputFile) =>
         set((s) => (s.outputFile === outputFile ? s : { outputFile })),
-    set_nexus_pmtiles: (nexus_pmtiles) =>
-        set((s) => (s.nexus_pmtiles === nexus_pmtiles ? s : { nexus_pmtiles })),
     set_community_pmtiles: (community_pmtiles) =>
         set((s) => (s.community_pmtiles === community_pmtiles ? s : { community_pmtiles })),
     set_hydrofabric_index: (hydrofabric_index) =>
         set((s) => (s.hydrofabric_index === hydrofabric_index ? s : { hydrofabric_index })),
+    set_index_status: (index_status) =>
+      set((s) => (s.index_status === index_status ? s : { index_status })),
+
     set_variables: (variables) =>
         set((s) => (sameArrayValues(s.variables, variables) ? s : { variables })),
     reset: () =>
         set((s) => {
             const already =
                 s.bucket === DEFAULTS.bucket &&
-                s.nexus_pmtiles === DEFAULTS.nexus_pmtiles &&
                 s.community_pmtiles === DEFAULTS.community_pmtiles &&
                 s.hydrofabric_index === DEFAULTS.hydrofabric_index &&
                 s.cache_key === DEFAULTS.cache_key &&
@@ -65,6 +83,5 @@ const useDataStreamStore = create((set) => ({
             return already ? s : { ...DEFAULTS };
         }),
 }));
-
 
 export default useDataStreamStore;

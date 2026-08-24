@@ -1,139 +1,134 @@
-// --- Read CSS variables for map styles/colors ---
-const rootStyles = getComputedStyle(document.documentElement);
+import PropTypes from 'prop-types';
+import { NO_DATA_VALUE } from 'features/DataStream/lib/valueRamp';
+import { readMapTheme } from './mapTheme';
+import { quantiseZoom } from 'features/DataStream/lib/flowpaths';
+/** The lowest zoom at which flowpath geometry exists. */
+export const FLOWPATHS_MIN_ZOOM = 1;
 
-export const mapStyleUrl =
-  rootStyles.getPropertyValue('--map-style-url').trim() ||
-  'https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/styles/light-style.json';
+/** The lowest zoom at which catchment geometry exists. */
+export const DIVIDES_MIN_ZOOM = 7;
 
-export const dividesOutlineColor =
-  rootStyles.getPropertyValue('--map-divides-outline-color').trim() ||
-  'rgba(91, 44, 111, 0.5)';
-export const dividesHighlightFillColor =
-  rootStyles.getPropertyValue('--map-divides-highlight-fill').trim() ||
-  'rgba(5, 49, 243, 0.32)';
-export const dividesHighlightOutlineColor =
-  rootStyles.getPropertyValue('--map-divides-highlight-outline').trim() ||
-  'rgba(253, 0, 253, 0.7)';
+/** Our flowpaths layer, and the one in the basemap style it stands in for. */
+export const FLOWPATHS_LAYER_ID = 'flowpaths-line';
+export const FLOWPATHS_HIGHLIGHT_LAYER_ID = 'flowpaths-highlight';
+const STYLE_FLOWPATHS_LAYER_ID = 'flowpaths';
 
-export const flowpathsLineColor =
-  rootStyles.getPropertyValue('--map-flowpaths-color').trim() || '#000000';
+/** The vpu boundary layer, which belongs to the basemap style. */
+const STYLE_VPU_LAYER_ID = 'vpu';
 
-export const gaugesCircleColor =
-  rootStyles.getPropertyValue('--map-gauges-color').trim() || '#646464';
+/** Show or hide the style's vpu boundaries. */
+export const setVpuVisibility = (map, visible) => {
+  if (!map?.getLayer?.(STYLE_VPU_LAYER_ID)) return;
+  map.setLayoutProperty(STYLE_VPU_LAYER_ID, 'visibility', visible ? 'visible' : 'none');
+};
 
-export const nexusCircleColor =
-  rootStyles.getPropertyValue('--map-nexus-circle-color').trim() || '#1f78b4';
-export const nexusStrokeColor =
-  rootStyles.getPropertyValue('--map-nexus-stroke-color').trim() || '#ffffff';
-export const nexusHighlightCircleColor =
-  rootStyles.getPropertyValue('--map-nexus-highlight-circle-color').trim() ||
-  nexusCircleColor;
+/** The layers a click acts on, given what is currently shown. */
+export const clickableLayerIds = ({ isCatchmentsVisible = false } = {}) => {
+  const ids = [];
+  if (isCatchmentsVisible) ids.push('divides');
+  return ids;
+};
+
+/** Hide the basemap style's own flowpaths, so it neither double-draws nor answers queries. */
+export const hideStyleFlowpaths = (map) => {
+  if (!map?.getLayer?.(STYLE_FLOWPATHS_LAYER_ID)) return;
+  map.setLayoutProperty(STYLE_FLOWPATHS_LAYER_ID, 'visibility', 'none');
+};
 
 export const reorderLayers = (map) => {
   if (!map) return;
-  // Draw order from bottom → top
   const LAYER_ORDER = [
-    'flowpaths',
+    FLOWPATHS_LAYER_ID,
+    FLOWPATHS_HIGHLIGHT_LAYER_ID,
     'conus-gauges',
     'divides',
     'divides-highlight',
-    'nexus-points',
-    'nexus-highlight',
   ];
 
   LAYER_ORDER.forEach((id) => {
     if (map.getLayer(id)) {
-      // moveLayer with no beforeId = move to top
       map.moveLayer(id);
     }
   });
 };
 
-export const getCentroid = (feature) => {
-  
-    const { type, coordinates } = feature.geometry;
-    let lon = null;
-    let lat = null;
-    if (type === 'Point' && Array.isArray(coordinates)) {
-      // GeoJSON Point: [lon, lat]
-      lon = coordinates[0];
-      lat = coordinates[1];
-      return { lon, lat };
-    } else if (type === 'Polygon' && Array.isArray(coordinates)) {
-      // Use outer ring to compute a simple centroid
-      const outerRing = coordinates[0] || [];
-      if (outerRing.length > 0) {
-        let sumLon = 0;
-        let sumLat = 0;
-        let count = 0;
-        for (const coord of outerRing) {
-          if (!Array.isArray(coord) || coord.length < 2) continue;
-          sumLon += coord[0];
-          sumLat += coord[1];
-          count += 1;
-        }
-        if (count > 0) {
-          lon = sumLon / count;
-          lat = sumLat / count;
-          return { lon, lat };
-        }
-      }
-    }
+const isPosition = (c) =>
+  Array.isArray(c) && c.length >= 2 && Number.isFinite(c[0]) && Number.isFinite(c[1]);
 
-    return {lon, lat};
-  }
-export const symbologyColors = (theme) => ({
-      nexusFill: theme === 'dark' ? '#4f5b67' : '#1f78b4',
-      nexusStroke: theme === 'dark' ? '#e9ecef' : '#ffffff',
-      catchmentFill:
-        theme === 'dark'
-          ? 'rgba(238, 51, 119, 0.32)'
-          : 'rgba(91, 44, 111, 0.32)',
-      catchmentStroke:
-        theme === 'dark'
-          ? 'rgba(238, 51, 119, 0.9)'
-          : 'rgba(91, 44, 111, 0.9)',
-      flowStroke: theme === 'dark' ? '#0077bb' : '#000000',
-      gaugeFill: theme === 'dark' ? '#c8c8c8' : '#646464',
-      gaugeStroke: theme === 'dark' ? '#111827' : '#ffffff',
-})
-
-export const getSymbology = (typeSymbol, colors) => {
-  switch (typeSymbol) {
-    case 'nexus':
-      return (
-        <NexusSymbol fill={colors.nexusFill} stroke={colors.nexusStroke} />
-      );
-    case 'catchments':
-      return (
-        <CatchmentSymbol
-          fill={colors.catchmentFill}
-          stroke={colors.catchmentStroke}
-        />
-      );
-    case 'flowpaths':
-      return <FlowPathSymbol stroke={colors.flowStroke} />;
-    case 'conus_gauges':
-      return (
-        <GaugeSymbol fill={colors.gaugeFill} stroke={colors.gaugeStroke} />
-      );
+/** The positions that describe a geometry's outline. */
+const positionsOf = (geometry) => {
+  const { type, coordinates } = geometry ?? {};
+  if (!Array.isArray(coordinates)) return [];
+  switch (type) {
+    case 'Point':
+      return [coordinates];
+    case 'MultiPoint':
+    case 'LineString':
+      return coordinates;
+    case 'MultiLineString':
+      return coordinates.flat();
+    case 'Polygon':
+      return coordinates[0] ?? [];
+    case 'MultiPolygon':
+      return coordinates.flatMap((polygon) => polygon?.[0] ?? []);
     default:
-      return null;
+      return [];
   }
+};
+
+/** Where a selected feature sits, as [lon, lat], or null when it cannot be placed. */
+export const selectionLngLat = (feature) => {
+  const lat = feature?.lat ?? feature?.latitude;
+  const lon = feature?.lon ?? feature?.longitude;
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  return [lon, lat];
+};
+
+/** The mean of a geometry's outline positions, or nulls when it has none to average. */
+export const getCentroid = (feature) => {
+  const positions = positionsOf(feature?.geometry).filter(isPosition);
+  if (positions.length === 0) return { lon: null, lat: null };
+
+  let sumLon = 0;
+  let sumLat = 0;
+  for (const [lon, lat] of positions) {
+    sumLon += lon;
+    sumLat += lat;
+  }
+  return { lon: sumLon / positions.length, lat: sumLat / positions.length };
+};
+
+/** Colours for the legend symbols, read from the same tokens the map layers use. */
+export const symbologyColors = () => {
+  const map = readMapTheme();
+  return {
+    cursorFill: map.cursorSymbolFill,
+    cursorStroke: map.pointStroke,
+    catchmentFill: map.dividesHighlightFill,
+    catchmentStroke: map.dividesOutline,
+    flowStroke: map.flowpaths,
+    gaugeFill: map.gauges,
+    gaugeStroke: map.pointStroke,
+    vpuStroke: map.vpuBoundary,
+  };
 }
 
 // --- Small SVG legend symbols ----------------------------------
 
-export const NexusSymbol = ({ fill, stroke }) => (
-  <svg
-    width="18"
-    height="18"
-    viewBox="0 0 18 18"
-    style={{ marginRight: '8px' }}
-  >
-    <circle cx="9" cy="9" r="5" fill={fill} stroke={stroke} strokeWidth="2" />
+export const VpuSymbol = ({ stroke }) => (
+  <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+    <path
+      d="M2 13 L6 5 L11 9 L16 3"
+      fill="none"
+      stroke={stroke}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
   </svg>
 );
+
+VpuSymbol.propTypes = { stroke: PropTypes.string };
 
 export const CatchmentSymbol = ({ fill, stroke }) => (
   <svg
@@ -186,7 +181,7 @@ export const GaugeSymbol = ({ fill, stroke }) => (
 
 export const CursorSymbol = ({
   fill = '#1f78b4',
-  stroke = '#ffffff',
+  stroke = '#f7fafe',
 }) => (
   <svg
     width="18"
@@ -195,7 +190,6 @@ export const CursorSymbol = ({
     style={{ marginRight: '6px' }}
     xmlns="http://www.w3.org/2000/svg"
   >
-    {/* Arrow body */}
     <path
       d="M4 3 L4 18 L8.5 14.5 L11 20 L13 19 L10.5 13.5 L15 13 Z"
       fill={fill}
@@ -207,64 +201,6 @@ export const CursorSymbol = ({
   </svg>
 );
 
-export const BasinSymbol = ({
-  fill = 'rgba(91, 44, 111, 0.32)',
-  stroke = 'rgba(91, 44, 111, 0.9)',
-}) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="20"
-    height="20"
-    viewBox="0 0 20 20"
-    fill="none"
-    className="Eo3Yub"
-  >
-    <path
-      d="M2.0975 7.12551L10.878 1.1499L18.5 13.8414L13.378 18.8502L1 16.5158L2.0975 7.12551Z"
-      fill={fill}
-      stroke={stroke}
-      strokeWidth="1.5"
-    />
-  </svg>
-);
-
-export const DeleteDataIcon = (props) => (
-  <svg
-    width={24}
-    height={24}
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    aria-hidden="true"
-    {...props}
-  >
-    <rect x="6" y="4" width="12" height="2" rx="1" fill="currentColor" />
-    <rect x="7" y="6" width="10" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" />
-    <line x1="10" y1="8" x2="10" y2="16" stroke="currentColor" strokeWidth="1.2" />
-    <line x1="14" y1="8" x2="14" y2="16" stroke="currentColor" strokeWidth="1.2" />
-
-    <ellipse cx="18" cy="17" rx="3" ry="1.3" fill="currentColor" opacity="0.15" />
-    <ellipse cx="18" cy="17" rx="3" ry="1.3" stroke="currentColor" strokeWidth="1" />
-    <path
-      d="M15 17v2.2c0 .7 1.3 1.3 3 1.3s3-.6 3-1.3V17"
-      fill="currentColor"
-      opacity="0.05"
-    />
-    <path
-      d="M15 17v2.2c0 .7 1.3 1.3 3 1.3s3-.6 3-1.3V17"
-      stroke="currentColor"
-      strokeWidth="1"
-    />
-    <path
-      d="M15 18.1c0 .7 1.3 1.3 3 1.3s3-.6 3-1.3"
-      stroke="currentColor"
-      strokeWidth="0.8"
-      opacity="0.7"
-    />
-  </svg>
-);
-
-
 const baseProps = {
   width: 20,
   height: 20,
@@ -273,136 +209,6 @@ const baseProps = {
   xmlns: 'http://www.w3.org/2000/svg',
   'aria-hidden': 'true',
 };
-
-// Model: small cube / block
-export const ModelIcon = (props) => (
-  <svg {...baseProps} {...props}>
-    <path
-      d="M7 9L12 6L17 9L12 12L7 9Z"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M7 9V15L12 18L17 15V9"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-// Date: calendar
-export const DateIcon = (props) => (
-  <svg {...baseProps} {...props}>
-    <rect
-      x="4"
-      y="6"
-      width="16"
-      height="14"
-      rx="2"
-      stroke="currentColor"
-      strokeWidth="1.5"
-    />
-    <path
-      d="M8 4V7M16 4V7"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-    />
-    <path
-      d="M4 10H20"
-      stroke="currentColor"
-      strokeWidth="1.5"
-    />
-  </svg>
-);
-
-// Forecast: horizon + forward arrow
-export const ForecastIcon = (props) => (
-  <svg {...baseProps} {...props}>
-    {/* horizon */}
-    <path
-      d="M4 16H14"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-    />
-    {/* rising curve */}
-    <path
-      d="M4 16C6.5 12 9 10 12 10"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    {/* forward arrow */}
-    <path
-      d="M13 7L18 12L13 17"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-// Cycle: circular arrows
-export const CycleIcon = (props) => (
-  <svg {...baseProps} {...props}>
-    <path
-      d="M7 8H12.5C14.9853 8 17 10.0147 17 12.5C17 13.3284 16.7893 14.1074 16.4189 14.7816"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-    />
-    <path
-      d="M9 5L7 8L9 11"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M17 16H11.5C9.01472 16 7 13.9853 7 11.5C7 10.6716 7.21075 9.89257 7.58107 9.21835"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-    />
-    <path
-      d="M15 19L17 16L15 13"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-export const EnsembleIcon = (props) => (
-  <svg {...baseProps} {...props}>
-    <path
-      d="M4 9C5.2 8.4 6.4 8 8 8C10.5 8 11.5 10 14 10C15.6 10 16.8 9.6 18 9"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-    />
-    <path
-      d="M4 12C5.2 11.4 6.4 11 8 11C10.5 11 11.5 13 14 13C15.6 13 16.8 12.6 18 12"
-      stroke="currentColor"
-      strokeWidth="1.2"
-      strokeLinecap="round"
-      opacity="0.85"
-    />
-    <path
-      d="M4 15C5.2 14.4 6.4 14 8 14C10.5 14 11.5 16 14 16C15.6 16 16.8 15.6 18 15"
-      stroke="currentColor"
-      strokeWidth="1"
-      strokeLinecap="round"
-      opacity="0.7"
-    />
-  </svg>
-);
 
 export const FileIcon = (props) => (
   <svg {...baseProps} {...props}>
@@ -421,33 +227,6 @@ export const FileIcon = (props) => (
   </svg>
 );
 
-// Variable: axes + curve
-export const VariableIcon = (props) => (
-  <svg {...baseProps} {...props}>
-    {/* axes */}
-    <path
-      d="M5 18V7"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-    />
-    <path
-      d="M5 18H18"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-    />
-    {/* curve */}
-    <path
-      d="M7 15C9 12 10 10 12 10C14 10 15 12 17 9"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
 export function getValueAtTimeFlat(varData, numTimes, featureIndex, timeIndex) {
   if (!varData || featureIndex === undefined || featureIndex === null) return null;
   const idx = featureIndex * numTimes + timeIndex;
@@ -455,45 +234,115 @@ export function getValueAtTimeFlat(varData, numTimes, featureIndex, timeIndex) {
   return varData[idx];
 }
 
-export function valueToColor(value, bounds) {
-  const colorScale = [
-    [0, 119, 187],
-    [0, 180, 216],
-    [144, 224, 239],
-    [255, 186, 8],
-    [255, 107, 53],
-    [208, 0, 0],
-  ];
-  if (value === null || value === undefined || value <= -9998) return [100, 100, 100, 150];
-  if (!bounds || bounds.max === bounds.min) return colorScale[0];
-  const t = Math.pow((value - bounds.min) / (bounds.max - bounds.min), 0.5)
-  // const t = Math.max(0, Math.min(1, (value - bounds.min) / (bounds.max - bounds.min)));
-  const idx = t * (colorScale.length - 1);
-  const lower = Math.floor(idx);
-  const upper = Math.ceil(idx);
-  const frac = idx - lower;
-  if (lower === upper) return colorScale[lower];
-  return colorScale[lower].map((c, i) => Math.round(c + (colorScale[upper][i] - c) * frac));
-}
+// Sampling keeps the sort cheap: a vpu's flat array runs to millions of values, and every
+// hundredth one is plenty to find a percentile.
+const BOUNDS_SAMPLE_CAP = 100000;
+const LOW_PERCENTILE = 0.02;
+const HIGH_PERCENTILE = 0.98;
 
+/** The range the ramp spans, trimmed at both ends. */
 export function computeBounds(varData) {
-  let min = Infinity, max = -Infinity;
-  for (let i = 0; i < varData.length; i++) {
+  const length = varData?.length ?? 0;
+  const stride = Math.max(1, Math.ceil(length / BOUNDS_SAMPLE_CAP));
+  const sample = [];
+  for (let i = 0; i < length; i += stride) {
     const v = varData[i];
-    if (v <= -9998) continue;
-    if (v < min) min = v;
-    if (v > max) max = v;
+    if (v > NO_DATA_VALUE && Number.isFinite(v)) sample.push(v);
   }
-  if (!isFinite(min) || !isFinite(max)) return { min: 0, max: 1 };
-  return { min, max };
+  if (!sample.length) return { min: 0, max: 1 };
+
+  sample.sort((a, b) => a - b);
+  const last = sample.length - 1;
+  const min = sample[Math.floor(last * LOW_PERCENTILE)];
+  const high = sample[Math.ceil(last * HIGH_PERCENTILE)];
+  const max = high > min ? high : min + 1;
+  const median = sample[Math.round(last * 0.5)];
+  return { min, max, curve: fitCurve(median - min, max - min) };
 }
 
+/** How hard to bend the ramp, so the median reach lands in the middle of it. */
+function fitCurve(medianOffset, span) {
+  if (!(medianOffset > 0) || !(span > medianOffset)) return 1;
+  let low = 1e-6;
+  let high = 1e9;
+  for (let i = 0; i < 60; i++) {
+    const k = Math.sqrt(low * high);
+    if (Math.log1p(k * medianOffset) / Math.log1p(k * span) < 0.5) low = k;
+    else high = k;
+  }
+  return Math.sqrt(low * high);
+}
 
-export function convertFeaturesToPaths(features, featureIdToIndex) {
+/** computeBounds, remembered for the array it was computed from. */
+let lastValues;
+let lastBounds = null;
+
+export const boundsFor = (values) => {
+  if (values === lastValues) return lastBounds;
+  lastValues = values;
+  lastBounds = values ? computeBounds(values) : null;
+  return lastBounds;
+};
+
+/** Where a value sits on the ramp, 0 to 1. */
+export function normalizeValue(value, bounds) {
+  if (!Number.isFinite(value) || !bounds) return 0;
+  const span = bounds.max - bounds.min;
+  if (!(span > 0)) return 0;
+  const offset = Math.min(Math.max(value - bounds.min, 0), span);
+  const curve = bounds.curve > 0 ? bounds.curve : 1;
+  return Math.log1p(curve * offset) / Math.log1p(curve * span);
+}
+
+/** The value at a given position on the ramp, the inverse of normalizeValue. */
+export function valueAtRampPosition(t, bounds) {
+  if (!bounds) return 0;
+  const span = bounds.max - bounds.min;
+  if (!(span > 0)) return bounds.min;
+  const curve = bounds.curve > 0 ? bounds.curve : 1;
+  const clamped = Math.min(Math.max(t, 0), 1);
+  const offset = (Math.exp(clamped * Math.log1p(curve * span)) - 1) / curve;
+  return bounds.min + Math.min(Math.max(offset, 0), span);
+}
+
+/** A fresh store for collected paths. */
+export const createPathStore = () => new Map();
+
+/** The id a rendered map feature is known by. */
+export const mapFeatureId = (feature) =>
+  feature?.id ?? feature?.properties?.id ?? feature?.properties?.divide_id ?? null;
+
+/** Collect paths, keeping the most detailed version of each, and report how many changed. */
+export function addPaths(store, features, featureIdToIndex, rawZoom = 0) {
+  const zoom = quantiseZoom(rawZoom);
+  let changed = 0;
+  for (const path of convertFeaturesToPaths(features, featureIdToIndex)) {
+    const held = store.get(path.id);
+    const minZoom = held ? Math.min(held.minZoom ?? held.zoom ?? zoom, zoom) : zoom;
+
+    if (held && held.zoom >= zoom && held.minZoom === minZoom) continue;
+
+    const geometry = held && held.zoom >= zoom ? held : path;
+    store.set(path.id, { ...geometry, zoom: Math.max(held?.zoom ?? zoom, zoom), minZoom });
+    changed += 1;
+  }
+  return changed;
+}
+
+/** The reaches worth drawing at a given zoom. */
+export const pathIsVisibleAt = (path, zoom) => (path.minZoom ?? -Infinity) <= zoom;
+
+export const pathsVisibleAt = (paths, zoom) => {
+  if (!paths?.length) return [];
+  if (!Number.isFinite(zoom)) return paths;
+  return paths.filter((p) => pathIsVisibleAt(p, zoom));
+};
+
+function convertFeaturesToPaths(features, featureIdToIndex) {
   const out = [];
 
   for (const f of features) {
-    const rawId = f.id ?? f.properties?.id;
+    const rawId = mapFeatureId(f);
     if (rawId == null) continue;
 
     const id = String(rawId);
@@ -515,26 +364,3 @@ export function convertFeaturesToPaths(features, featureIdToIndex) {
   return out;
 }
 
-export function flowpathsSignature(features) {
-  const parts = [];
-
-  for (const f of features) {
-    const rawId = f.id ?? f.properties?.id;
-    if (rawId == null) continue;
-
-    const id = String(rawId);
-    const g = f.geometry;
-    if (!g) continue;
-
-    if (g.type === "LineString") {
-      parts.push(`${id}:L:${g.coordinates.length}`);
-    } else if (g.type === "MultiLineString") {
-      const lines = g.coordinates.length;
-      const totalPts = g.coordinates.reduce((sum, line) => sum + line.length, 0);
-      parts.push(`${id}:M:${lines}:${totalPts}`);
-    }
-  }
-
-  parts.sort(); // make stable regardless of render order
-  return parts.join("|");
-}

@@ -1,12 +1,11 @@
-import React, { Fragment } from 'react';
+import { Fragment } from 'react';
 import ForecastMenu from 'features/DataStream/components/menus/ForecastMenu';
-import { CacheMenu } from './CacheMenu';
 
+/** What sits over the map. */
 const MainMenu = () => {
   return (
     <Fragment>
-        <ForecastMenu />
-        <CacheMenu />
+      <ForecastMenu />
     </Fragment>
   );
 };

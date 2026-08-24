@@ -39,10 +39,15 @@ build/*
 # Node/React
 node_modules*
 tethysapp/nrds/public/frontend/
+tethysapp/nrds/public/data/
 reactapp/config/production.env
 coverage
 reactapp/wdyr.js
 
+docs
+.impeccable
+.context
+DESIGN.md
 
 # singularity
 

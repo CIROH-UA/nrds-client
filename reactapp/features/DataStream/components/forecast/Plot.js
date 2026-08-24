@@ -1,7 +1,10 @@
+import PropTypes from 'prop-types';
 import React, { useCallback, useMemo, useEffect, useRef, useId } from 'react';
+import { useIsNarrowViewport } from './useIsNarrowViewport';
 import { Group } from '@visx/group';
 import { scaleLinear, scaleTime } from '@visx/scale';
-import { AxisBottom } from '@visx/axis';
+import { AxisBottom, AxisLeft } from '@visx/axis';
+import { GridRows } from '@visx/grid';
 import { LinePath, Line } from '@visx/shape';
 import { extent, bisector } from 'd3-array';
 import { useTooltip, TooltipWithBounds, defaultStyles } from '@visx/tooltip';
@@ -10,18 +13,31 @@ import { GlyphCircle } from '@visx/glyph';
 import { timeFormat } from 'd3-time-format';
 import { RectClipPath } from '@visx/clip-path';
 import { getVariableUnits } from '../../lib/data';
-import useDataStreamStore from '../../store/Datastream';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import { ChartContainer, NoData } from '../styles/Styles';
+import { distinctTickFormat } from 'features/DataStream/lib/utils';
 
 const MARGIN = Object.freeze({ top: 40, right: 20, bottom: 30, left: 50 });
 const axisLabelColor = 'var(--chart-axis-label-color, #111827)';
 const axisTickTextColor = 'var(--chart-axis-tick-text-color, #111827)';
+const gridColor = 'var(--chart-grid-color, #e4e7eb)';
+
+/** Axis values, short enough to sit in a 50px margin. */
+export const formatAxisValue = (v) => {
+  if (v === null || v === undefined || v === '') return '';
+
+  const n = Number(v);
+  if (!Number.isFinite(n)) return '';
+  if (Math.abs(n) >= 1000) return `${Math.round(n / 1000)}k`;
+  if (Math.abs(n) >= 10) return String(Math.round(n));
+  if (Math.abs(n) >= 1) return n.toFixed(1);
+  return n.toFixed(2);
+};
 const tooltipBg = 'var(--chart-tooltip-bg, rgba(255, 255, 255, 0.95))';
 const tooltipTextColor = 'var(--chart-tooltip-text, #111827)';
 const tooltipBorderColor = 'var(--chart-tooltip-border-color, rgba(148, 163, 184, 0.6))';
 const crosshairColor = 'var(--chart-crosshair-color, #4b5563)';
-const glyphStrokeColor = 'var(--chart-glyph-stroke-color, #ffffff)';
+const glyphStrokeColor = 'var(--chart-glyph-stroke-color, #f7fafe)';
 
 const StaticSvgLayer = React.memo(function StaticSvgLayer({
   width,
@@ -43,6 +59,7 @@ const StaticSvgLayer = React.memo(function StaticSvgLayer({
   getDate,
   getYValue,
   axisLabelProps,
+  leftTickLabelProps,
   bottomTickLabelProps,
 }) {
   return (
@@ -56,6 +73,24 @@ const StaticSvgLayer = React.memo(function StaticSvgLayer({
       <RectClipPath id={clipId} x={0} y={0} width={innerWidth} height={innerHeight} />
 
       <Group left={margin.left} top={margin.top}>
+
+        <GridRows
+          scale={yScale}
+          width={innerWidth}
+          numTicks={4}
+          stroke={gridColor}
+          strokeDasharray="2,3"
+          pointerEvents="none"
+        />
+
+        <AxisLeft
+          scale={yScale}
+          numTicks={4}
+          tickFormat={formatAxisValue}
+          tickLabelProps={leftTickLabelProps}
+          hideAxisLine
+          hideTicks
+        />
 
         <AxisBottom
           scale={xScale}
@@ -108,7 +143,6 @@ const TooltipSvgLayer = React.memo(function TooltipSvgLayer({
       style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
     >
       <Group left={margin.left} top={margin.top} clipPath={`url(#${clipId})`}>
-        {/* Crosshair */}
         <Line
           from={{ x: tooltipLeft - margin.left, y: 0 }}
           to={{ x: tooltipLeft - margin.left, y: innerHeight }}
@@ -117,7 +151,6 @@ const TooltipSvgLayer = React.memo(function TooltipSvgLayer({
           strokeDasharray="6,3"
         />
 
-        {/* Glyphs */}
         {tooltipData.map((d, i) => (
           <GlyphCircle
             key={`glyph-${i}`}
@@ -134,8 +167,7 @@ const TooltipSvgLayer = React.memo(function TooltipSvgLayer({
   );
 });
 
-const LineChart = React.memo(function LineChart({ width, height, data, layout }) {
-  const forecast = useDataStreamStore((s) => s.forecast);
+const LineChart = React.memo(function LineChart({ width, height, data, layout, emptyMessage }) {
   const isPlayingRef = useRef(false);
 
   useEffect(() => {
@@ -147,15 +179,12 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout })
     return () => { unsub?.(); };
   }, []);
 
-  const clipId = useId(); // avoids collisions if multiple charts
+  const clipId = useId();
   const overlayRef = useRef(null);
 
-  // --- theme vars ---
-  const screenWidth = window.innerWidth;
-  const fontSize = screenWidth <= 1300 ? 13 : 18;
-  const fontWeight = screenWidth <= 1300 ? 600 : 500;
-
-
+  const isNarrow = useIsNarrowViewport();
+  const fontSize = isNarrow ? 13 : 18;
+  const fontWeight = isNarrow ? 600 : 500;
 
   const colors = useMemo(
     () => [
@@ -168,7 +197,6 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout })
     []
   );
 
-  // axis props (stable references)
   const axisLabelProps = useMemo(
     () => ({
       style: { fill: axisLabelColor, fontSize, fontWeight },
@@ -248,7 +276,7 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout })
       backgroundColor: tooltipBg,
       color: tooltipTextColor,
       fontSize: 14,
-      boxShadow: '0 6px 16px rgba(0, 0, 0, 0.25)',
+      boxShadow: 'none',
       borderRadius: 6,
       border: `1px solid ${tooltipBorderColor}`,
       padding: '8px 10px',
@@ -256,13 +284,10 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout })
     [tooltipBg, tooltipTextColor, tooltipBorderColor]
   );
 
-  const formatDate = useCallback(
-    (date) => {
-      const fmt = forecast === 'short_range' ? '%H:%M' : '%m/%d';
-      return timeFormat(fmt)(date);
-    },
-    [forecast]
-  );
+  const formatDate = useMemo(() => {
+    const fmt = distinctTickFormat(xTickValues, timeFormat);
+    return (date) => timeFormat(fmt)(date);
+  }, [xTickValues]);
 
   const formatTooltipDate = useMemo(() => timeFormat('%Y-%m-%d %H:%M:%S'), []);
   const bisectDate = useMemo(() => bisector((d) => getDate(d)).left, [getDate]);
@@ -273,10 +298,10 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout })
 
   const lastTooltipKeyRef = useRef('');
 
+  /** The tooltip for the nearest point to a date, pinned to the top of the plot area. */
   const buildTooltipAtDate = useCallback(
     (x0, leftPx) => {
       const tooltipDataArray = [];
-      // const indices = [];
       const keyParts = [];
 
       data.forEach((series, seriesIndex) => {
@@ -284,7 +309,6 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout })
         if (!seriesData.length) return;
 
         const index = bisectDate(seriesData, x0, 1);
-        // indices.push(index);
 
         const d0 = seriesData[index - 1];
         const d1 = seriesData[index];
@@ -295,7 +319,6 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout })
 
         if (d) {
           tooltipDataArray.push({ dataPoint: d, seriesIndex, seriesLabel: series.label });
-          // key by *actual selected point*, not bisect index (prevents equal-data new-object updates)
           keyParts.push(`${seriesIndex}:${+getDate(d)}:${getYValue(d) ?? ''}`);
         }
       });
@@ -304,18 +327,17 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout })
 
       
       
-      // Only re-show when selected points change (not pixels / object identity)
       const key = keyParts.join('|');
       if (key === lastTooltipKeyRef.current) return;
       lastTooltipKeyRef.current = key;
 
-      // compute top from y positions (static yScale)
-      const yPositions = tooltipDataArray.map((d) => yScale(getYValue(d.dataPoint)));
-      const top = Math.min(...yPositions) + margin.top;
-
-      showTooltip({ tooltipData: tooltipDataArray, tooltipLeft: leftPx, tooltipTop: top });
+      showTooltip({
+        tooltipData: tooltipDataArray,
+        tooltipLeft: leftPx,
+        tooltipTop: margin.top,
+      });
     },
-    [data, bisectDate, getDate, getYValue, yScale, margin.top, showTooltip]
+    [data, bisectDate, getDate, margin.top, showTooltip]
   );
 
   const snapToNearestDate = useCallback(
@@ -377,7 +399,6 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout })
       r.buildTooltipAtDate(x0, r.marginLeft + xPx);
     };
 
-    // initial sync (in case we're already playing)
     sync(useTimeSeriesStore.getState());
 
     const unsub = useTimeSeriesStore.subscribe((state, prev) => {
@@ -395,13 +416,9 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout })
   return (
     <ChartContainer style={{ width, height }}>
       {noData ? (
-        <NoData
-        >
-          🛠 No data to display
-        </NoData>
+        <NoData>{emptyMessage || 'Select a catchment to see its timeseries'}</NoData>
       ) : (
         <>
-          {/* STATIC layer (won't rerender on tooltip changes) */}
           <StaticSvgLayer
             width={width}
             height={height}
@@ -424,7 +441,6 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout })
             bottomTickLabelProps={bottomTickLabelProps}
           />
 
-          {/* TOOLTIP svg layer (rerenders only when tooltip changes) */}
           <TooltipSvgLayer
             margin={margin}
             innerHeight={innerHeight}
@@ -440,7 +456,6 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout })
             colors={colors}
           />
 
-          {/* interaction overlay (captures mouse events) */}
           <svg
             width={width}
             height={height}
@@ -467,7 +482,6 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout })
             </Group>
           </svg>
 
-          {/* HTML tooltip (rerenders only when tooltip changes) */}
           {tooltipData && (
             <TooltipWithBounds top={tooltipTop} left={tooltipLeft} style={tooltipStyles}>
               <div style={{ marginBottom: 4 }}>
@@ -489,5 +503,19 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout })
     </ChartContainer>
   );
 });
+
+LineChart.propTypes = {
+  width: PropTypes.number,
+  height: PropTypes.number,
+  data: PropTypes.arrayOf(
+    PropTypes.shape({ label: PropTypes.string, data: PropTypes.array })
+  ),
+  layout: PropTypes.shape({
+    title: PropTypes.string,
+    xaxis: PropTypes.string,
+    yaxis: PropTypes.string,
+  }),
+  emptyMessage: PropTypes.string,
+};
 
 export default LineChart;

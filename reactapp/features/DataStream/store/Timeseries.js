@@ -1,6 +1,13 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 
+import { useLayersStore } from 'features/DataStream/store/Layers';
+import { useVPUStore } from 'features/DataStream/store/VPU';
+import { animationIsOnMap } from 'features/DataStream/lib/flowpaths';
+
+/** How many steps the time cursor may take. */
+const stepCount = (series) => useVPUStore.getState().times.length || series?.length || 0;
+
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
 const EMPTY_SERIES = [];
@@ -10,15 +17,7 @@ const DEFAULT_LAYOUT = Object.freeze({
   title: 'TimeSeries',
 });
 
-function seriesFingerprint(arr) {
-  if (!Array.isArray(arr) || arr.length === 0) return 'empty';
-  const first = arr[0];
-  const last = arr[arr.length - 1];
-  const fx = first?.x instanceof Date ? first.x.getTime() : first?.x;
-  const lx = last?.x instanceof Date ? last.x.getTime() : last?.x;
-  return `${arr.length}|${fx}|${first?.y}|${lx}|${last?.y}`;
-}
-
+/** The charted series and the clock the animation runs on. */
 const useTimeSeriesStore = create(
   subscribeWithSelector((set, get ) => ({
       series: EMPTY_SERIES,
@@ -27,7 +26,12 @@ const useTimeSeriesStore = create(
       layout: DEFAULT_LAYOUT,
       
       loading: false,
+      /** Work promised but not yet begun. */
+      pending: false,
       loadingText: '' ,
+      last_loaded_key: null,
+      last_answered_key: null,
+      last_error: null,
       currentTimeIndex: 0,
 
       isPlaying: false,
@@ -37,17 +41,16 @@ const useTimeSeriesStore = create(
         set((s) => {
           const prev = s.series;
 
-          // same ref => no update
           if (prev === nextSeries) return s;
 
-          // both empty => no update (this is the one your screenshot screams about)
           const prevEmpty = !prev || prev.length === 0;
           const nextEmpty = !nextSeries || nextSeries.length === 0;
           if (prevEmpty && nextEmpty) return s;
 
-          // "equal by value" guard (cheap)
-          if (seriesFingerprint(prev) === seriesFingerprint(nextSeries)) return s;
-
+          const maxIdx = Math.max(0, stepCount(nextSeries) - 1);
+          if (s.currentTimeIndex > maxIdx) {
+            return { series: nextSeries, currentTimeIndex: maxIdx };
+          }
           return { series: nextSeries };
         });
       },
@@ -65,9 +68,9 @@ const useTimeSeriesStore = create(
         }),    
       setCurrentTimeIndex: (idx) => {
         set((s) => {
-          const maxIdx = Math.max(0, (s.series?.length || 0) - 1);
+          const maxIdx = Math.max(0, stepCount(s.series) - 1);
           const next = clamp(Number(idx) || 0, 0, maxIdx);
-          if (next === s.currentTimeIndex) return s;   // IMPORTANT
+          if (next === s.currentTimeIndex) return s;
           return { currentTimeIndex: next };
         });
       },
@@ -79,52 +82,81 @@ const useTimeSeriesStore = create(
 
       toggleIsPlaying: () => set((s) => ({ isPlaying: !s.isPlaying })),
 
-      // --- stepping used by back/forward buttons + autoplay ---
       stepForward: () => {
         const { series, currentTimeIndex } = get();
-        const maxIdx = series.length - 1;
+        const maxIdx = stepCount(series) - 1;
         if (maxIdx < 0) return;
         set({ currentTimeIndex: (currentTimeIndex + 1) % (maxIdx + 1) });
       },
 
       stepBackward: () => {
         const { series, currentTimeIndex } = get();
-        const maxIdx = series.length - 1;
+        const maxIdx = stepCount(series) - 1;
         if (maxIdx < 0) return;
         set({ currentTimeIndex: currentTimeIndex === 0 ? maxIdx : currentTimeIndex - 1 });
       },
 
-      // returns "T+Nh" assuming 1-hour timesteps;
       getCurrentTimeLabel: () => {
         const { series, currentTimeIndex } = get();
         const t0 = series?.[0]?.time;
         const t = series?.[currentTimeIndex]?.time;
         if (typeof t0 !== "number" || typeof t !== "number") return "T+0h";
-        const hours = Math.round((t - t0) / 3600000); // ms -> hours
+        const hours = Math.round((t - t0) / 3600000);
         return `T+${hours}h`;
       },
       set_loading: (isLoading) => set({ loading: isLoading }),
       set_loading_text: (newLoadingText) => set({ loadingText: newLoadingText }),
-      set_feature_id: (newFeatureId) => set({ feature_id: newFeatureId }),
       
       set_chart_layout: (newLayout) => set({ chart_layout: newLayout }),
       set_variable: (newVariable) => set({ variable: newVariable }),
       reset_series: () =>
         set((s) => {
-          if (s.series === EMPTY_SERIES && s.currentTimeIndex === 0 && s.isPlaying === false) return s;
-          return { series: EMPTY_SERIES, currentTimeIndex: 0, isPlaying: false};
+          if (
+            s.series === EMPTY_SERIES &&
+            s.currentTimeIndex === 0 &&
+            s.isPlaying === false &&
+            s.last_loaded_key === null &&
+            s.last_answered_key === null
+          ) {
+            return s;
+          }
+          return {
+            series: EMPTY_SERIES,
+            currentTimeIndex: 0,
+            isPlaying: false,
+            last_loaded_key: null,
+            last_answered_key: null,
+          };
         }),
 
       reset: () =>
         set((s) => ({
           ...s,
           series: EMPTY_SERIES,
+          pending: false,
+          loadingText: '',
           feature_id: null,
           variable: '',
           layout: DEFAULT_LAYOUT,
           currentTimeIndex: 0,
           isPlaying: false,
+          last_loaded_key: null,
+          last_answered_key: null,
+          last_error: null,
         })),
   }))
 );
+/** Playback stops when there is nothing left to play. */
+const stopPlaybackWithNothingToPlay = () => {
+  if (!useTimeSeriesStore.getState().isPlaying) return;
+  const onMap = animationIsOnMap({
+    times: useVPUStore.getState().times,
+    flowpathsVisible: useLayersStore.getState().flowpaths.visible,
+  });
+  if (!onMap) useTimeSeriesStore.setState({ isPlaying: false });
+};
+
+useVPUStore.subscribe((s) => s.times, stopPlaybackWithNothingToPlay);
+useLayersStore.subscribe((s) => s.flowpaths.visible, stopPlaybackWithNothingToPlay);
+
 export default useTimeSeriesStore;

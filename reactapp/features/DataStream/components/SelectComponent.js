@@ -1,6 +1,7 @@
 import React, { Component, useMemo } from 'react';
 import Select, { createFilter } from 'react-select';
 import { FixedSizeList as List } from 'react-window';
+import PropTypes from 'prop-types';
 
 const ROW_HEIGHT = 28;
 const LIST_STYLE = { overflowX: "hidden" };
@@ -15,7 +16,6 @@ const MenuList = React.memo(function MenuList(props) {
   const childArray = useMemo(() => React.Children.toArray(children), [children]);
   const itemCount = childArray.length;
 
-  // Compute initial scroll offset based on selected option
   const initialOffset = useMemo(() => {
     const [value] = getValue();
     const selected = value?.value;
@@ -53,19 +53,19 @@ const customStyles = (width = 150) => {
     }),
     control: (base, state) => ({
       ...base,
-      minHeight: 28,
-      height: 28,
-      fontSize: 12,
+      minHeight: 44,
+      height: 44,
+      fontSize: 'var(--text-sm)',
       borderRadius: 4,
       paddingTop: 0,
       paddingBottom: 0,
       backgroundColor: 'var(--select-control-bg)',
       borderColor: state.isFocused
-        ? '#2684ff'
+        ? 'var(--nav-pill-active-bg)'
         : 'var(--select-control-border)',
-      boxShadow: state.isFocused ? '0 0 0 1px #2684ff' : 'none',
+      boxShadow: state.isFocused ? '0 0 0 2px var(--nav-pill-active-bg)' : 'none',
       '&:hover': {
-        borderColor: '#2684ff',
+        borderColor: 'var(--nav-pill-active-bg)',
       },
     }),
     valueContainer: (base) => ({
@@ -74,7 +74,7 @@ const customStyles = (width = 150) => {
     }),
     indicatorsContainer: (base) => ({
       ...base,
-      height: 28,
+      height: 44,
     }),
     dropdownIndicator: (base) => ({
       ...base,
@@ -120,10 +120,9 @@ const customStyles = (width = 150) => {
       fontSize: 12,
       padding: '4px 8px',
       width: '100%',
-      whiteSpace: 'nowrap',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      color: state.isSelected ? '#ffffff' : 'var(--select-text-color)',
+      whiteSpace: 'normal',
+      overflowWrap: 'break-word',
+      color: state.isSelected ? 'var(--nav-pill-active-text-color)' : 'var(--select-text-color)',
       backgroundColor: state.isSelected
         ? 'var(--select-option-selected-bg)'
         : state.isFocused
@@ -138,6 +137,8 @@ const SelectComponent = ({
   onChangeHandler,
   value,
   width = 150,
+  inputId,
+  isLoading = false,
 }) => {
 
   const components = useMemo(() => ({ MenuList }), []);
@@ -153,17 +154,28 @@ const SelectComponent = ({
   );
   return (
     <Select
+      inputId={inputId}
       components={components}
       styles={styles}
       filterOption={filterOption}
       options={optionsList}
       value={value}
       onChange={onChange}
+      isLoading={isLoading}
       menuPortalTarget={document.body}
       menuShouldScrollIntoView={false}
       menuPosition="fixed"
     />
   );
+};
+
+SelectComponent.propTypes = {
+  optionsList: PropTypes.array,
+  onChangeHandler: PropTypes.func,
+  value: PropTypes.any,
+  width: PropTypes.number,
+  isLoading: PropTypes.bool,
+  inputId: PropTypes.string,
 };
 
 export default React.memo(SelectComponent);

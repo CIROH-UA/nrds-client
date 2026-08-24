@@ -1,21 +1,18 @@
 // DataMenu.js
-import React, { Fragment, useMemo } from 'react';
-import { Spinner } from 'react-bootstrap';
-import { XButton, LoadingMessage, Row, IconLabel } from '../styles/Styles';
+import React, { Fragment, useMemo, useRef, useState } from 'react';
+import { abandonSelectionWithNoOutput } from 'features/DataStream/actions/noOutputFile';
+import { XButton, Row, IconLabel, Notice, PanelSectionHeading } from '../styles/Styles';
 import SelectComponent from '../SelectComponent';
-import { getOptionsFromURL, makePrefix } from 'features/DataStream/lib/s3Utils';
-import { getCacheKey } from 'features/DataStream/lib/opfsCache';
+import { getOptionsFromURL, readableDatesNewestFirst, makePrefix } from 'features/DataStream/lib/s3Utils';
+import { getCacheKey } from 'features/DataStream/lib/utils';
+import { loadVpu } from 'features/DataStream/actions/loadVpu';
+import { beginSelection, isCurrentSelection } from 'features/DataStream/actions/selectionGeneration';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
 import useS3DataStreamBucketStore from 'features/DataStream/store/s3Store';
 import { useFeatureStore } from 'features/DataStream/store/Layers';
 import { useShallow } from 'zustand/react/shallow';
 import {
-  ModelIcon,
-  DateIcon,
-  ForecastIcon,
-  CycleIcon,
-  EnsembleIcon,
   FileIcon
 } from 'features/DataStream/lib/layers';
 
@@ -30,33 +27,7 @@ function useEvent(fn) {
   return React.useCallback((...args) => ref.current(...args), []);
 }
 
-const DataMenuLoading = React.memo(function DataMenuLoading() {
-  const { loading, loadingText } = useTimeSeriesStore(
-    useShallow((s) => ({
-      loading: s.loading,
-      loadingText: s.loadingText,
-    }))
-  );
-
-  return (
-    <LoadingMessage>
-      {loading && (
-        <>
-          <Spinner
-            as="span"
-            size="sm"
-            animation="border"
-            role="status"
-            aria-hidden="true"
-          />
-          &nbsp; {loadingText}
-        </>
-      )}
-    </LoadingMessage>
-  );
-});
-
-const DataMenuControls = React.memo(function DataMenuControls() {
+export const DataMenuControls = React.memo(function DataMenuControls() {
   const { vpu, date, forecast, ensemble, cycle, model, outputFile } =
     useDataStreamStore(
       useShallow((state) => ({
@@ -70,7 +41,6 @@ const DataMenuControls = React.memo(function DataMenuControls() {
       }))
     );
 
-  // setters
   const {
     set_date,
     set_forecast,
@@ -131,29 +101,59 @@ const DataMenuControls = React.memo(function DataMenuControls() {
     }))
   );
 
+  const chainsRunning = useRef(0);
+  const [selecting, setSelecting] = useState(false);
+
+  /** Run one selection chain: claim it, show the controls as working, and hand the chain its number so it can check before every write. */
+  const runSelection = useEvent(async (chain) => {
+    const selection = beginSelection();
+    chainsRunning.current += 1;
+    setSelecting(true);
+    try {
+      await chain(selection);
+    } finally {
+      chainsRunning.current -= 1;
+      if (chainsRunning.current === 0) setSelecting(false);
+    }
+  });
+
+  /** Apply an output-file listing, and stop showing stale data when it is empty. */
+  const applyOutputFiles = useEvent((options) => {
+    setAvailableOutputFiles(options);
+    set_outputFile(options[0]?.value ?? '');
+    if (options.length) return;
+
+    abandonSelectionWithNoOutput();
+  });
+
   const handleVisulization = useEvent(async () => {
     const { loading, set_loading_text } = useTimeSeriesStore.getState();
+    set_loading_text('');
     if (!selected_feature_id || !vpu) {
-      set_loading_text('Please select a feature on the map first');
-      set_loading_text('');
+      useTimeSeriesStore.setState({
+        loadingText: 'Select a feature on the map first',
+        last_error: { kind: 'no-selection' },
+      });
       return;
     }
     if (!outputFile) {
-      set_loading_text('No Output File selected');
-      set_loading_text('');
+      useTimeSeriesStore.setState({
+        loadingText: 'This model run has no output file to read',
+        last_error: { kind: 'no-output-file' },
+      });
       return;
     }
     if (loading) {
-      set_loading_text('Data is already loading, please wait...');
-      set_loading_text('');
+      set_loading_text('Data is already loading, please wait');
       return;
     }
-    // reset();
     const cacheKey = getCacheKey(model, date, forecast, cycle, ensemble, vpu, outputFile);
     set_cache_key(cacheKey);
 
     const _prefix = makePrefix(model, date, forecast, cycle, ensemble, vpu, outputFile);
     set_prefix(_prefix);
+
+    await loadVpu();
   });
 
   const handleChangeModel = useEvent(async (v) => {
@@ -162,49 +162,53 @@ const DataMenuControls = React.memo(function DataMenuControls() {
 
     set_model(opt.value);
 
-    const datesOptions = await getOptionsFromURL(`outputs/${opt.value}/v2.2_hydrofabric/`);
-    const nextDate = datesOptions[0]?.value ?? '';
-    setAvailableDatesList(datesOptions);
-    set_date(nextDate);
+    await runSelection(async (selection) => {
+      const datesOptions = await readableDatesNewestFirst(opt.value);
+      if (!isCurrentSelection(selection)) return;
+      const nextDate = datesOptions[0]?.value ?? '';
+      setAvailableDatesList(datesOptions);
+      set_date(nextDate);
 
+      const forecastOptions = await getOptionsFromURL(`outputs/${opt.value}/v2.2_hydrofabric/${nextDate}/`);
+      if (!isCurrentSelection(selection)) return;
+      const nextForecast = forecastOptions[0]?.value ?? '';    
+      setForecastOptions(forecastOptions);
+      set_forecast(nextForecast);
 
-    const forecastOptions = await getOptionsFromURL(`outputs/${opt.value}/v2.2_hydrofabric/${nextDate}/`);
-    const nextForecast = forecastOptions[0]?.value ?? '';    
-    setForecastOptions(forecastOptions);
-    set_forecast(nextForecast);
-
-    const cycleOptions = await getOptionsFromURL(
-      `outputs/${opt.value}/v2.2_hydrofabric/${nextDate}/${nextForecast}/`
-    );
-    setAvailableCyclesList(cycleOptions);
-
-    const nextCycle = cycleOptions[0]?.value ?? '';
-    set_cycle(nextCycle);
-
-    if (nextForecast === 'medium_range') {
-      const ensembleOptions = await getOptionsFromURL(
-        `outputs/${opt.value}/v2.2_hydrofabric/${nextDate}/${nextForecast}/${nextCycle}/`
+      const cycleOptions = await getOptionsFromURL(
+        `outputs/${opt.value}/v2.2_hydrofabric/${nextDate}/${nextForecast}/`
       );
-      setAvailableEnsembleList(ensembleOptions);
-      const nextEns = ensembleOptions[0]?.value ?? '';
-      set_ensemble(nextEns);
+      if (!isCurrentSelection(selection)) return;
+      setAvailableCyclesList(cycleOptions);
 
-      const outputFileOptions = await getOptionsFromURL(
-        `outputs/${opt.value}/v2.2_hydrofabric/${nextDate}/${nextForecast}/${nextCycle}/${nextEns}/${vpu}/ngen-run/outputs/troute/`
-      );
-      setAvailableOutputFiles(outputFileOptions);
-      set_outputFile(outputFileOptions[0]?.value ?? '');
-    } else {
-      setAvailableEnsembleList([]);
-      set_ensemble('');
+      const nextCycle = cycleOptions[0]?.value ?? '';
+      set_cycle(nextCycle);
 
-      const outputFileOptions = await getOptionsFromURL(
-        `outputs/${opt.value}/v2.2_hydrofabric/${nextDate}/${nextForecast}/${nextCycle}/${vpu}/ngen-run/outputs/troute/`
-      );
-      setAvailableOutputFiles(outputFileOptions);
-      set_outputFile(outputFileOptions[0]?.value ?? '');
-    }
+      if (nextForecast === 'medium_range') {
+        const ensembleOptions = await getOptionsFromURL(
+          `outputs/${opt.value}/v2.2_hydrofabric/${nextDate}/${nextForecast}/${nextCycle}/`
+        );
+        if (!isCurrentSelection(selection)) return;
+        setAvailableEnsembleList(ensembleOptions);
+        const nextEns = ensembleOptions[0]?.value ?? '';
+        set_ensemble(nextEns);
 
+        const outputFileOptions = await getOptionsFromURL(
+          `outputs/${opt.value}/v2.2_hydrofabric/${nextDate}/${nextForecast}/${nextCycle}/${nextEns}/${vpu}/ngen-run/outputs/troute/`
+        );
+        if (!isCurrentSelection(selection)) return;
+        applyOutputFiles(outputFileOptions);
+      } else {
+        setAvailableEnsembleList([]);
+        set_ensemble('');
+
+        const outputFileOptions = await getOptionsFromURL(
+          `outputs/${opt.value}/v2.2_hydrofabric/${nextDate}/${nextForecast}/${nextCycle}/${vpu}/ngen-run/outputs/troute/`
+        );
+        if (!isCurrentSelection(selection)) return;
+        applyOutputFiles(outputFileOptions);
+      }
+    });
   });
 
   const handleChangeDate = useEvent(async (v) => {
@@ -213,43 +217,47 @@ const DataMenuControls = React.memo(function DataMenuControls() {
 
     set_date(opt.value);
 
-    const forecastOptions = await getOptionsFromURL(`outputs/${model}/v2.2_hydrofabric/${opt.value}/`);
-    const nextForecast = forecastOptions[0]?.value ?? '';    
-    setForecastOptions(forecastOptions);
-    set_forecast(nextForecast);
+    await runSelection(async (selection) => {
+      const forecastOptions = await getOptionsFromURL(`outputs/${model}/v2.2_hydrofabric/${opt.value}/`);
+      if (!isCurrentSelection(selection)) return;
+      const nextForecast = forecastOptions[0]?.value ?? '';    
+      setForecastOptions(forecastOptions);
+      set_forecast(nextForecast);
 
-    const cycleOptions = await getOptionsFromURL(
-      `outputs/${model}/v2.2_hydrofabric/${opt.value}/${nextForecast}/`
-    );
-    setAvailableCyclesList(cycleOptions);
-
-    const nextCycle = cycleOptions[0]?.value ?? '';
-    set_cycle(nextCycle);
-
-    if (nextForecast === 'medium_range') {
-      const ensembleOptions = await getOptionsFromURL(
-        `outputs/${model}/v2.2_hydrofabric/${opt.value}/${nextForecast}/${nextCycle}/`
+      const cycleOptions = await getOptionsFromURL(
+        `outputs/${model}/v2.2_hydrofabric/${opt.value}/${nextForecast}/`
       );
-      setAvailableEnsembleList(ensembleOptions);
-      const nextEns = ensembleOptions[0]?.value ?? '';
-      set_ensemble(nextEns);
+      if (!isCurrentSelection(selection)) return;
+      setAvailableCyclesList(cycleOptions);
 
-      const outputFileOptions = await getOptionsFromURL(
-        `outputs/${model}/v2.2_hydrofabric/${opt.value}/${nextForecast}/${nextCycle}/${nextEns}/${vpu}/ngen-run/outputs/troute/`
-      );
-      setAvailableOutputFiles(outputFileOptions);
-      set_outputFile(outputFileOptions[0]?.value ?? '');
-    } else {
-      setAvailableEnsembleList([]);
-      set_ensemble('');
+      const nextCycle = cycleOptions[0]?.value ?? '';
+      set_cycle(nextCycle);
 
-      const outputFileOptions = await getOptionsFromURL(
-        `outputs/${model}/v2.2_hydrofabric/${opt.value}/${nextForecast}/${nextCycle}/${vpu}/ngen-run/outputs/troute/`
-      );
-      setAvailableOutputFiles(outputFileOptions);
-      set_outputFile(outputFileOptions[0]?.value ?? '');
-    }
+      if (nextForecast === 'medium_range') {
+        const ensembleOptions = await getOptionsFromURL(
+          `outputs/${model}/v2.2_hydrofabric/${opt.value}/${nextForecast}/${nextCycle}/`
+        );
+        if (!isCurrentSelection(selection)) return;
+        setAvailableEnsembleList(ensembleOptions);
+        const nextEns = ensembleOptions[0]?.value ?? '';
+        set_ensemble(nextEns);
 
+        const outputFileOptions = await getOptionsFromURL(
+          `outputs/${model}/v2.2_hydrofabric/${opt.value}/${nextForecast}/${nextCycle}/${nextEns}/${vpu}/ngen-run/outputs/troute/`
+        );
+        if (!isCurrentSelection(selection)) return;
+        applyOutputFiles(outputFileOptions);
+      } else {
+        setAvailableEnsembleList([]);
+        set_ensemble('');
+
+        const outputFileOptions = await getOptionsFromURL(
+          `outputs/${model}/v2.2_hydrofabric/${opt.value}/${nextForecast}/${nextCycle}/${vpu}/ngen-run/outputs/troute/`
+        );
+        if (!isCurrentSelection(selection)) return;
+        applyOutputFiles(outputFileOptions);
+      }
+    });
   });
 
   const handleChangeForecast = useEvent(async (v) => {
@@ -258,36 +266,40 @@ const DataMenuControls = React.memo(function DataMenuControls() {
 
     set_forecast(opt.value);
 
-    const cycleOptions = await getOptionsFromURL(
-      `outputs/${model}/v2.2_hydrofabric/${date}/${opt.value}/`
-    );
-    setAvailableCyclesList(cycleOptions);
-    const nextCycle = cycleOptions[0]?.value ?? '';
-    set_cycle(nextCycle);
-
-    if (opt.value === 'medium_range') {
-      const ensembleOptions = await getOptionsFromURL(
-        `outputs/${model}/v2.2_hydrofabric/${date}/${opt.value}/${nextCycle}/`
+    await runSelection(async (selection) => {
+      const cycleOptions = await getOptionsFromURL(
+        `outputs/${model}/v2.2_hydrofabric/${date}/${opt.value}/`
       );
-      setAvailableEnsembleList(ensembleOptions);
-      const nextEns = ensembleOptions[0]?.value ?? '';
-      set_ensemble(nextEns);
+      if (!isCurrentSelection(selection)) return;
+      setAvailableCyclesList(cycleOptions);
+      const nextCycle = cycleOptions[0]?.value ?? '';
+      set_cycle(nextCycle);
 
-      const outputFileOptions = await getOptionsFromURL(
-        `outputs/${model}/v2.2_hydrofabric/${date}/${opt.value}/${nextCycle}/${nextEns}/${vpu}/ngen-run/outputs/troute/`
-      );
-      setAvailableOutputFiles(outputFileOptions);
-      set_outputFile(outputFileOptions[0]?.value ?? '');
-    } else {
-      setAvailableEnsembleList([]);
-      set_ensemble('');
+      if (opt.value === 'medium_range') {
+        const ensembleOptions = await getOptionsFromURL(
+          `outputs/${model}/v2.2_hydrofabric/${date}/${opt.value}/${nextCycle}/`
+        );
+        if (!isCurrentSelection(selection)) return;
+        setAvailableEnsembleList(ensembleOptions);
+        const nextEns = ensembleOptions[0]?.value ?? '';
+        set_ensemble(nextEns);
 
-      const outputFileOptions = await getOptionsFromURL(
-        `outputs/${model}/v2.2_hydrofabric/${date}/${opt.value}/${nextCycle}/${vpu}/ngen-run/outputs/troute/`
-      );
-      setAvailableOutputFiles(outputFileOptions);
-      set_outputFile(outputFileOptions[0]?.value ?? '');
-    }
+        const outputFileOptions = await getOptionsFromURL(
+          `outputs/${model}/v2.2_hydrofabric/${date}/${opt.value}/${nextCycle}/${nextEns}/${vpu}/ngen-run/outputs/troute/`
+        );
+        if (!isCurrentSelection(selection)) return;
+        applyOutputFiles(outputFileOptions);
+      } else {
+        setAvailableEnsembleList([]);
+        set_ensemble('');
+
+        const outputFileOptions = await getOptionsFromURL(
+          `outputs/${model}/v2.2_hydrofabric/${date}/${opt.value}/${nextCycle}/${vpu}/ngen-run/outputs/troute/`
+        );
+        if (!isCurrentSelection(selection)) return;
+        applyOutputFiles(outputFileOptions);
+      }
+    });
   });
 
   const handleChangeCycle = useEvent(async (v) => {
@@ -296,29 +308,32 @@ const DataMenuControls = React.memo(function DataMenuControls() {
 
     set_cycle(opt.value);
 
-    if (forecast === 'medium_range') {
-      const ensembleOptions = await getOptionsFromURL(
-        `outputs/${model}/v2.2_hydrofabric/${date}/${forecast}/${opt.value}/`
-      );
-      setAvailableEnsembleList(ensembleOptions);
-      const nextEns = ensembleOptions[0]?.value ?? '';
-      set_ensemble(nextEns);
+    await runSelection(async (selection) => {
+      if (forecast === 'medium_range') {
+        const ensembleOptions = await getOptionsFromURL(
+          `outputs/${model}/v2.2_hydrofabric/${date}/${forecast}/${opt.value}/`
+        );
+        if (!isCurrentSelection(selection)) return;
+        setAvailableEnsembleList(ensembleOptions);
+        const nextEns = ensembleOptions[0]?.value ?? '';
+        set_ensemble(nextEns);
 
-      const outputFileOptions = await getOptionsFromURL(
-        `outputs/${model}/v2.2_hydrofabric/${date}/${forecast}/${opt.value}/${nextEns}/${vpu}/ngen-run/outputs/troute/`
-      );
-      setAvailableOutputFiles(outputFileOptions);
-      set_outputFile(outputFileOptions[0]?.value ?? '');
-    } else {
-      setAvailableEnsembleList([]);
-      set_ensemble('');
+        const outputFileOptions = await getOptionsFromURL(
+          `outputs/${model}/v2.2_hydrofabric/${date}/${forecast}/${opt.value}/${nextEns}/${vpu}/ngen-run/outputs/troute/`
+        );
+        if (!isCurrentSelection(selection)) return;
+        applyOutputFiles(outputFileOptions);
+      } else {
+        setAvailableEnsembleList([]);
+        set_ensemble('');
 
-      const outputFileOptions = await getOptionsFromURL(
-        `outputs/${model}/v2.2_hydrofabric/${date}/${forecast}/${opt.value}/${vpu}/ngen-run/outputs/troute/`
-      );
-      setAvailableOutputFiles(outputFileOptions);
-      set_outputFile(outputFileOptions[0]?.value ?? '');
-    }
+        const outputFileOptions = await getOptionsFromURL(
+          `outputs/${model}/v2.2_hydrofabric/${date}/${forecast}/${opt.value}/${vpu}/ngen-run/outputs/troute/`
+        );
+        if (!isCurrentSelection(selection)) return;
+        applyOutputFiles(outputFileOptions);
+      }
+    });
   });
 
   const handleChangeEnsemble = useEvent(async (v) => {
@@ -327,11 +342,13 @@ const DataMenuControls = React.memo(function DataMenuControls() {
 
     set_ensemble(opt.value);
 
-    const outputFileOptions = await getOptionsFromURL(
-      `outputs/${model}/v2.2_hydrofabric/${date}/${forecast}/${cycle}/${opt.value}/${vpu}/ngen-run/outputs/troute/`
-    );
-    setAvailableOutputFiles(outputFileOptions);
-    set_outputFile(outputFileOptions[0]?.value ?? '');
+    await runSelection(async (selection) => {
+      const outputFileOptions = await getOptionsFromURL(
+        `outputs/${model}/v2.2_hydrofabric/${date}/${forecast}/${cycle}/${opt.value}/${vpu}/ngen-run/outputs/troute/`
+      );
+      if (!isCurrentSelection(selection)) return;
+      applyOutputFiles(outputFileOptions);
+    });
   });
 
   const handleChangeOutputFile = useEvent((v) => {
@@ -340,7 +357,6 @@ const DataMenuControls = React.memo(function DataMenuControls() {
     set_outputFile(opt.value);
   });
 
-  // -------------------- selected values --------------------
   const selectedDateOption = useMemo(
     () =>
       availableDatesList.find((opt) => opt.value === date) ??
@@ -397,7 +413,7 @@ const DataMenuControls = React.memo(function DataMenuControls() {
         key: 'model',
         label: (
           <>
-            <ModelIcon /> Model
+            Model
           </>
         ),
         options: availableModelsList,
@@ -411,7 +427,7 @@ const DataMenuControls = React.memo(function DataMenuControls() {
         key: 'date',
         label: (
           <>
-            <DateIcon /> Date
+            Date
           </>
         ),
         options: availableDatesList,
@@ -425,7 +441,7 @@ const DataMenuControls = React.memo(function DataMenuControls() {
         key: 'forecast',
         label: (
           <>
-            <ForecastIcon /> Forecast
+            Forecast
           </>
         ),
         options: availableForecastList,
@@ -439,7 +455,7 @@ const DataMenuControls = React.memo(function DataMenuControls() {
         key: 'cycle',
         label: (
           <>
-            <CycleIcon /> Cycle
+            Cycle
           </>
         ),
         options: availableCyclesList,
@@ -453,7 +469,7 @@ const DataMenuControls = React.memo(function DataMenuControls() {
         key: 'ensemble',
         label: (
           <>
-            <EnsembleIcon /> Ensembles
+            Ensembles
           </>
         ),
         options: availableEnsembleList,
@@ -467,7 +483,7 @@ const DataMenuControls = React.memo(function DataMenuControls() {
         key: 'outputFile',
         label: (
           <>
-            <FileIcon/> Output File
+            Output File
           </>
         ),
        options: availableOutputFiles,
@@ -498,36 +514,49 @@ const DataMenuControls = React.memo(function DataMenuControls() {
     handleChangeOutputFile,
   ]);
 
+  const selectionTitle = selecting
+    ? 'Still reading this selection'
+    : (outputFile ? 'Load this selection' : 'No output file to load');
+
   return (
     <Fragment>
+      <PanelSectionHeading>Change the run</PanelSectionHeading>
+
       {rows.map((r) => (
         <Row key={r.key}>
-          <IconLabel>{r.label}</IconLabel>
+          <IconLabel as="label" htmlFor={`select-${r.key}`}>{r.label}</IconLabel>
           <SelectComponent
+            inputId={`select-${r.key}`}
             optionsList={r.options}
             value={r.value}
             onChangeHandler={r.onChange}
+            isLoading={selecting}
           />
         </Row>
       ))}
 
-      {availableOutputFiles?.length > 0 ? null : <p>No Outputs Available</p>}
+      {availableOutputFiles?.length > 0 ? null : (
+        <Notice role="alert">
+          <FileIcon aria-hidden="true" />
+          <span>No output file for this selection</span>
+        </Notice>
+      )}
 
-      <div style={{ marginTop: '10px', paddingLeft: '100px', paddingRight: '100px' }}>
-        <XButton onClick={handleVisulization}>Update</XButton>
+      <div style={{ marginTop: '10px' }}>
+        <XButton
+          onClick={handleVisulization}
+          disabled={selecting || !outputFile}
+          title={selectionTitle}
+        >
+          Update
+        </XButton>
       </div>
     </Fragment>
   );
 });
 
-
 function DataMenu() {
-  return (
-    <>
-      <DataMenuControls />
-      <DataMenuLoading />
-    </>
-  );
+  return <DataMenuControls />;
 }
 
 export default React.memo(DataMenu);

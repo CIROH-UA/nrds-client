@@ -22,3 +22,5 @@ launchApp.sh
 docker-compose.yaml
 .github
 scripts
+# the slim-index generator runs during the build, so it has to be in the context
+!scripts/build_slim_index.py

@@ -1,4 +1,4 @@
-import { Routes, Route, NavLink } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import Nav            from 'react-bootstrap/Nav';
 import PropTypes      from 'prop-types';
 import { useState, useContext, startTransition } from 'react';
@@ -8,37 +8,37 @@ import Header   from 'features/Tethys/components/layout/Header';
 import NavMenu  from 'features/Tethys/components/layout/NavMenu';
 import NotFound from 'features/Tethys/components/error/NotFound';
 import { AppContext } from 'features/Tethys/context/context';
+import { SkipLink, VisuallyHidden } from 'features/DataStream/components/styles/Styles';
+import { ExperimentalNoticeModal } from 'features/DataStream/components/Modals';
+import {
+  acknowledgeExperimental,
+  hasAcknowledgedExperimental,
+} from 'features/DataStream/lib/firstRun';
 
 const isExternal = (to, externalFlag) =>
-  externalFlag ?? /^https?:\/\//i.test(to);      // auto-detect absolute URLs
+  externalFlag ?? /^https?:\/\//i.test(to);
 
+/** The page around the map: header, off-canvas nav, and the first-run notice. */
 export default function Layout({ navLinks = [], routes = [], children }) {
   const { tethysApp } = useContext(AppContext);
   const [navVisible, setNavVisible] = useState(false);
-  const [bannerVisible, setBannerVisible] = useState(true);
+  const [noticeOpen, setNoticeOpen] = useState(() => !hasAcknowledgedExperimental());
+
+  const acknowledgeNotice = () => {
+    acknowledgeExperimental();
+    setNoticeOpen(false);
+  };
 
   /** Close the off-canvas smoothly */
   const closeNav = () => startTransition(() => setNavVisible(false));
 
   return (
-    <div className="h-100">
-      <Header onNavChange={setNavVisible} />
+    <div className="h-100 d-flex flex-column">
+      <ExperimentalNoticeModal show={noticeOpen} onAcknowledge={acknowledgeNotice} />
 
-      {bannerVisible && (
-        <div className="experimental-banner" role="status" aria-live="polite">
-          <div className="experimental-banner__content">
-            <strong>Experimental Streamflow Predictions:</strong> These results are preliminary and may not represent accurate forecasts.
-          </div>
-          <button
-            type="button"
-            className="experimental-banner__close"
-            aria-label="Dismiss experimental streamflow warning"
-            onClick={() => setBannerVisible(false)}
-          >
-            ×
-          </button>
-        </div>
-      )}
+      <SkipLink href="#main-content">Skip to the map</SkipLink>
+
+      <Header onNavChange={setNavVisible} />
 
       <NavMenu navTitle="Main Menu" navVisible={navVisible} onNavChange={setNavVisible}>
         <Nav variant="pills"
@@ -70,10 +70,14 @@ export default function Layout({ navLinks = [], routes = [], children }) {
 
       </NavMenu>
 
-      <Routes>
-        {routes}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      <main id="main-content" className="h-100 d-flex flex-column" style={{ minHeight: 0 }}>
+        <VisuallyHidden>{tethysApp.title}</VisuallyHidden>
+
+        <Routes>
+          {routes}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </main>
 
       {children}
     </div>
@@ -87,7 +91,7 @@ Layout.propTypes = {
       title:     PropTypes.string.isRequired,
       to:        PropTypes.string.isRequired,
       eventKey:  PropTypes.string,
-      external:  PropTypes.bool,          // <- NEW (optional)
+      external:  PropTypes.bool,
     })
   ),
   routes:   PropTypes.arrayOf(PropTypes.node),

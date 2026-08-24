@@ -1,40 +1,65 @@
 import React, { useEffect, useCallback, useRef, useMemo, useState } from 'react';
+import PropTypes from 'prop-types';
 import { useShallow } from 'zustand/react/shallow';
 import maplibregl from 'maplibre-gl';
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import { PathLayer } from "@deck.gl/layers";
-import Map, { Source, useControl } from 'react-map-gl/maplibre';
+import Map, {
+  NavigationControl,
+  ScaleControl,
+  Source,
+  useControl,
+  useMap,
+} from 'react-map-gl/maplibre';
 import { Protocol } from 'pmtiles';
 import useTimeSeriesStore from '../../store/Timeseries';
 import useDataStreamStore from '../../store/Datastream';
-import { useVPUStore } from '../../store/Layers';
+import { useVPUStore } from '../../store/VPU';
 import { useLayersStore, useFeatureStore } from '../../store/Layers';
 import CustomPopUp from './Popup';
-import { 
-  dividesOutlineColor, 
-  dividesHighlightFillColor, 
-  dividesHighlightOutlineColor, 
-  flowpathsLineColor, 
-  gaugesCircleColor, 
-  nexusCircleColor, 
-  nexusStrokeColor, 
-  nexusHighlightCircleColor,
-  reorderLayers, 
-  computeBounds, 
-  convertFeaturesToPaths, 
-  valueToColor, 
-  getValueAtTimeFlat 
+import { SelectedFeaturePopup } from './SelectedFeaturePopup';
+import {
+  DIVIDES_MIN_ZOOM,
+  FLOWPATHS_LAYER_ID,
+  FLOWPATHS_MIN_ZOOM,
+  addPaths,
+  boundsFor,
+  clickableLayerIds,
+  createPathStore,
+  hideStyleFlowpaths,
+  reorderLayers,
+  selectionLngLat,
+  setVpuVisibility,
 } from '../../lib/layers';
-import { layerIdToFeatureType } from '../../lib/utils';
-import { getCentroid, flowpathsSignature } from '../../lib/layers';
+import { useMapTheme } from '../../lib/mapTheme';
+import { createPointerCursor } from '../../lib/mapCursor';
+import {
+  animationIsOnMap,
+  onMapSettled,
+  quantiseZoom,
+  useVisiblePaths,
+} from '../../lib/flowpaths';
+import { releaseMapHandle, setMapHandle } from '../../lib/mapHandle';
+import { useShowSelectionOnChange } from '../../actions/showSelection';
+import { flowPathLayerProps, shouldPromptZoom } from './flowPathLayer';
+import { TimeSlider } from '../forecast/TimeSlider';
+import { selectMapFeature } from '../../actions/selectFeature';
+import { hoveredFeatureOf, pickHoverFeature } from '../../actions/hoverFeature';
 
 import {
   useCatchmentLayers,
   useFlowPathsLayer,
+  useFlowPathsHighlightLayer,
   useConusGaugesLayer,
-  useNexusLayers,
 } from './MapLayers';
+import { MapHint, TimeSliderDock } from '../styles/Styles';
 
+const INITIAL_VIEW = { longitude: -96, latitude: 40, zoom: 4 };
+
+// Half-width of the hover hit box. A flowpath renders two pixels wide, so an exact-pixel query
+// is a target most people cannot hit, and one react-map-gl's own query missed outright.
+const HOVER_TOLERANCE_PX = 4;
+const EMPTY_PATHS = [];
 
 function DeckGLOverlay(props) {
   const overlay = useControl(() => new MapboxOverlay(props));
@@ -42,61 +67,112 @@ function DeckGLOverlay(props) {
   return null;
 }
 
+const NO_LAYERS = [];
+
+/** The flowpath animation, isolated so that stepping through time re-renders only this. */
+/** Zoom is read here rather than passed down, so only this component re-renders as it changes, and it is quantised because maplibre's 'zoom' fires per frame of a gesture for a width that has barely moved. */
+const FlowPathsOverlay = React.memo(function FlowPathsOverlay({
+  visible,
+  valuesByVar,
+  timesArr,
+  variable,
+  bounds,
+  pathDataRef,
+  pathTick,
+  getCursor,
+  ramp,
+}) {
+  const currentTimeIndex = useTimeSeriesStore((s) => s.currentTimeIndex);
+
+  const { current: mapRef } = useMap();
+  const [zoom, setZoom] = useState(() => quantiseZoom(mapRef?.getZoom?.() ?? 0));
+
+  useEffect(() => {
+    const map = mapRef?.getMap?.();
+    if (!map) return undefined;
+    const onZoom = () => setZoom(quantiseZoom(map.getZoom()));
+    onZoom();
+    map.on('zoom', onZoom);
+    return () => map.off('zoom', onZoom);
+  }, [mapRef]);
+
+  const visiblePaths = useVisiblePaths(pathDataRef, zoom, pathTick);
+
+  const layers = useMemo(() => {
+    const props = flowPathLayerProps({
+      visible,
+      valuesByVar,
+      timesArr,
+      variable,
+      bounds,
+      pathData: visiblePaths,
+      currentTimeIndex,
+      pathTick,
+      zoom,
+      ramp,
+    });
+    return props ? [new PathLayer(props)] : NO_LAYERS;
+  }, [visible, valuesByVar, bounds, variable, timesArr, currentTimeIndex, visiblePaths, zoom, ramp]);
+
+  return <DeckGLOverlay layers={layers} interleaved getCursor={getCursor} />;
+});
+
+FlowPathsOverlay.propTypes = {
+  getCursor: PropTypes.func,
+  visible: PropTypes.bool,
+  valuesByVar: PropTypes.object,
+  timesArr: PropTypes.array,
+  variable: PropTypes.string,
+  bounds: PropTypes.shape({ min: PropTypes.number, max: PropTypes.number }),
+  pathDataRef: PropTypes.shape({ current: PropTypes.array }).isRequired,
+  pathTick: PropTypes.number,
+  ramp: PropTypes.arrayOf(PropTypes.array),
+};
+
+/** The map and everything docked to it. */
 const MainMap = () => {
   const { 
-    isNexusVisible, 
     isCatchmentsVisible, 
     isFlowPathsVisible, 
     isConusGaugesVisible, 
+    isVpuVisible,
     enabledHovering 
   } = useLayersStore(
     useShallow((s) => ({
-      isNexusVisible: s.nexus.visible,
       isCatchmentsVisible: s.catchments.visible,
       isFlowPathsVisible: s.flowpaths.visible,
       isConusGaugesVisible: s.conus_gauges.visible,
+      isVpuVisible: s.vpu.visible,
       enabledHovering: s.hovered_enabled,
     }))
   );
-   const { selectedFeatureId, loading, set_feature_id } = useTimeSeriesStore(
-    useShallow((s) => ({
-      selectedFeatureId: s.feature_id,
-      loading: s.loading,
-      set_feature_id: s.set_feature_id,
-    }))
-  );
-
+  const selectedFeatureId = useTimeSeriesStore((s) => s.feature_id);
 
   const {
-    nexus_pmtiles,
     conus_pmtiles,
-    vpu,
-    set_vpu,
+    flowpaths_pmtiles,
   } = useDataStreamStore(
     useShallow((s) => ({
-      nexus_pmtiles: s.nexus_pmtiles,
       conus_pmtiles: s.community_pmtiles,
-      vpu: s.vpu,
-      set_vpu: s.set_vpu,
+      flowpaths_pmtiles: s.flowpaths_pmtiles,
     }))
   );
 
-  const { set_hovered_feature, set_selected_feature, selectedMapFeature, hovered_feature } = useFeatureStore(
+  const animationTimes = useVPUStore((s) => s.times);
+  const sliderDocked = animationIsOnMap({
+    times: animationTimes,
+    flowpathsVisible: isFlowPathsVisible,
+  });
+
+  const { set_hovered_feature, selectedMapFeature, hovered_feature } = useFeatureStore(
     useShallow((s) => ({
       set_hovered_feature: s.set_hovered_feature,
-      set_selected_feature: s.set_selected_feature,
       selectedMapFeature: s.selected_feature,
       hovered_feature: s.hovered_feature,
     }))
   );
 
-
-  const { currentTimeIndex, variable } = useTimeSeriesStore(
-    useShallow((s) => ({
-      currentTimeIndex: s.currentTimeIndex,
-      variable: s.variable,
-    }))
-  );
+  const variable = useTimeSeriesStore((s) => s.variable);
 
   const { featureIdToIndex, timesArr, valuesByVar } = useVPUStore(
     useShallow((s) => ({
@@ -106,64 +182,50 @@ const MainMap = () => {
     }))
   );
 
-  const EMPTY_LAYERS = useMemo(() => [], []);
+  const mapTheme = useMapTheme();
 
   const mapRef = useRef(null);
   const hoverMapRef = useRef(null);
-  const lastSigRef = useRef("");
-  const pathDataRef = useRef([]);
+  const pathsByIdRef = useRef(createPathStore());
+  const pathDataRef = useRef(EMPTY_PATHS);
 
   const [pathTick, setPathTick] = useState(0);
-  const mapStyleUrl = getComputedStyle(document.documentElement).getPropertyValue('--map-style-url').trim();
+  const [zoom, setZoom] = useState(INITIAL_VIEW.zoom);
+  const [mapReady, setMapReady] = useState(false);
 
+  const colorBounds = useMemo(() => boundsFor(valuesByVar), [valuesByVar]);
 
-  const deckLayers = useMemo(() => {
-    if (!isFlowPathsVisible) return EMPTY_LAYERS;
-    const varData = valuesByVar;
-    const numTimes = timesArr?.length || 0;
+  const belowFlowpathZoom = useMemo(
+    () => shouldPromptZoom({
+      visible: isFlowPathsVisible,
+      valuesByVar,
+      timesArr,
+      zoom,
+      paths: pathDataRef.current,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- pathTick stands in for the ref
+    [isFlowPathsVisible, valuesByVar, timesArr, zoom, pathTick],
+  );
 
-    const pathData = pathDataRef.current;
-    
-    if (!varData || !numTimes || !pathData?.length) return EMPTY_LAYERS;
-    const bounds = computeBounds(varData);
-    return [
-      new PathLayer({
-        id: "flowpaths-anim",
-        data: pathData,
-        getPath: (d) => d.path,
-        getColor: (d) => {
-          const v = getValueAtTimeFlat(varData, numTimes, d.featureIndex, currentTimeIndex);
-          return valueToColor(v, bounds);
-        },
-        getWidth: (d) => {
-          const v = getValueAtTimeFlat(varData, numTimes, d.featureIndex, currentTimeIndex);
-          if (v === null || v <= -9998) return 2;
-          const t = Math.max(0, Math.min(1, (v - bounds.min) / (bounds.max - bounds.min)));
-          return 3 + t * 8;
-        },
-        widthUnits: "pixels",
-        widthMinPixels: 2,
-        widthMaxPixels: 12,
-        capRounded: true,
-        jointRounded: true,
-        pickable: false,
-        updateTriggers: {
-          getColor: [currentTimeIndex, variable, pathTick],
-          getWidth: [currentTimeIndex, variable, pathTick],
-        },
-      }),
-    ];
-  }, [
-    isFlowPathsVisible,
-    valuesByVar,
-    variable,
-    timesArr,
-    currentTimeIndex,
-    pathTick,
-  ]);
+  const selectionAt = useMemo(() => selectionLngLat(selectedMapFeature), [selectedMapFeature]);
 
+  const zoomToFlowpaths = useCallback(() => {
+    const map = mapRef.current?.getMap?.() ?? mapRef.current;
+    if (!map) return;
 
-  const hoverLayers = useMemo(() => ["divides", "nexus-points"], []);
+    if (selectionAt) {
+      map.flyTo({ center: selectionAt, zoom: FLOWPATHS_MIN_ZOOM + 1, essential: true });
+      return;
+    }
+    map.easeTo({ zoom: FLOWPATHS_MIN_ZOOM + 1, essential: true });
+  }, [selectionAt, mapRef]);
+
+  useShowSelectionOnChange();
+
+  const clickableLayers = useMemo(
+    () => clickableLayerIds({ isCatchmentsVisible }),
+    [isCatchmentsVisible]
+  );
 
   const isMapUsable = useCallback((map) => {
     if (!map || typeof map.on !== "function" || typeof map.off !== "function") return false;
@@ -175,55 +237,77 @@ const MainMap = () => {
     }
   }, []);
 
-  const setPointerCursor = useCallback((e) => {
-    const canvas = e?.target?.getCanvas?.();
-    if (canvas?.style) canvas.style.cursor = "pointer";
-  }, []);
+  const pointerCursor = useRef(null);
+  if (!pointerCursor.current) pointerCursor.current = createPointerCursor();
 
-  const resetPointerCursor = useCallback((e) => {
-    const canvas = e?.target?.getCanvas?.();
-    if (canvas?.style) canvas.style.cursor = "";
-  }, []);
+  const getCursor = useCallback((info) => pointerCursor.current.cursorFor(info), []);
+  const setPointerCursor = useCallback((e) => pointerCursor.current.enter(e), []);
+  const resetPointerCursor = useCallback((e) => pointerCursor.current.leave(e), []);
 
-  const removeHoverListeners = useCallback((map) => {
+  const removeHoverListeners = useCallback((map, layers) => {
     if (!isMapUsable(map)) return;
-    hoverLayers.forEach((layer) => {
+    layers.forEach((layer) => {
       map.off("mouseenter", layer, setPointerCursor);
       map.off("mouseleave", layer, resetPointerCursor);
     });
-  }, [hoverLayers, isMapUsable, setPointerCursor, resetPointerCursor]);
+  }, [isMapUsable, setPointerCursor, resetPointerCursor]);
 
   const handleMapLoad = useCallback((event) => {
     const map = event.target;
     if (!isMapUsable(map)) return;
 
-    if (hoverMapRef.current && hoverMapRef.current !== map) {
-      removeHoverListeners(hoverMapRef.current);
-    }
+    hoverMapRef.current = map;
+    setMapHandle(map);
+    hideStyleFlowpaths(map);
+    setVpuVisibility(map, useLayersStore.getState().vpu.visible);
+    reorderLayers(map);
+    setMapReady(true);
+  }, [isMapUsable]);
 
-    // De-dupe in case onLoad fires multiple times for the same map instance.
-    removeHoverListeners(map);
-    hoverLayers.forEach((layer) => {
+  useEffect(() => () => releaseMapHandle(hoverMapRef.current), []);
+
+  useEffect(() => {
+    const map = hoverMapRef.current;
+    if (!mapReady || !isMapUsable(map)) return undefined;
+
+    removeHoverListeners(map, clickableLayers);
+    pointerCursor.current.reset(map);
+    clickableLayers.forEach((layer) => {
       map.on("mouseenter", layer, setPointerCursor);
       map.on("mouseleave", layer, resetPointerCursor);
     });
-    hoverMapRef.current = map;
+    return () => removeHoverListeners(map, clickableLayers);
+  }, [mapReady, clickableLayers, isMapUsable, removeHoverListeners, setPointerCursor, resetPointerCursor]);
 
-    reorderLayers(map);
+  const hoverableLayerIds = useMemo(() => {
+    const ids = [];
+    if (isCatchmentsVisible) ids.push('divides');
+    if (isFlowPathsVisible) ids.push(FLOWPATHS_LAYER_ID);
+    if (isConusGaugesVisible) ids.push('conus-gauges');
+    return ids;
+  }, [isCatchmentsVisible, isFlowPathsVisible, isConusGaugesVisible]);
 
-  }, [hoverLayers, isMapUsable, removeHoverListeners, resetPointerCursor, setPointerCursor]);
-
-  useEffect(() => {
-    return () => {
-      removeHoverListeners(hoverMapRef.current);
-      hoverMapRef.current = null;
-    };
-  }, [removeHoverListeners]);
+  const featuresUnder = useCallback((point) => {
+    const map = mapRef.current?.getMap?.() ?? mapRef.current;
+    if (!map?.getLayer || !point) return [];
+    const ids = hoverableLayerIds.filter((id) => map.getLayer(id));
+    if (!ids.length) return [];
+    const box = [
+      [point.x - HOVER_TOLERANCE_PX, point.y - HOVER_TOLERANCE_PX],
+      [point.x + HOVER_TOLERANCE_PX, point.y + HOVER_TOLERANCE_PX],
+    ];
+    try {
+      return map.queryRenderedFeatures(box, { layers: ids });
+    } catch {
+      return [];
+    }
+  }, [hoverableLayerIds]);
 
   const onHover = useCallback((event) => {
     if (!enabledHovering) return;
 
-    const { features, lngLat } = event;
+    const { lngLat } = event;
+    const features = featuresUnder(event.point);
 
     const prev = useFeatureStore.getState().hovered_feature;
 
@@ -232,56 +316,38 @@ const MainMap = () => {
       return;
     }
 
-    const feature = features[0];
-    const layerId = feature.layer.id;
-
-    const hoverId =
-      layerId === "divides"
-        ? feature.properties?.divide_id
-        : feature.properties?.id;
-
-    if (!hoverId) {
+    const next = hoveredFeatureOf(pickHoverFeature(features), lngLat);
+    if (!next) {
       if (prev !== null) set_hovered_feature(null);
       return;
     }
 
-    if (prev?.hoverId === hoverId) return;
-
-    const next = {
-      ...feature.properties,
-      hoverId,
-      longitude: lngLat.lng,
-      latitude: lngLat.lat,
-    };
-
+    if (prev?.hoverId === next.hoverId) return;
     set_hovered_feature(next);
-  }, [enabledHovering, set_hovered_feature]);
-
+  }, [enabledHovering, featuresUnder, set_hovered_feature]);
 
   const catchmentLayer = useCatchmentLayers({
     isCatchmentsVisible,
     selectedFeatureId,
-    dividesOutlineColor,
-    dividesHighlightFillColor,
-    dividesHighlightOutlineColor,
+    dividesOutlineColor: mapTheme.dividesOutline,
+    dividesHighlightFillColor: mapTheme.dividesHighlightFill,
+    dividesHighlightOutlineColor: mapTheme.dividesHighlightOutline,
   });
 
   const flowPathsLayer = useFlowPathsLayer({
     isFlowPathsVisible,
-    flowpathsLineColor,
+    flowpathsLineColor: mapTheme.flowpaths,
+  });
+
+  const flowPathsHighlightLayer = useFlowPathsHighlightLayer({
+    isFlowPathsVisible,
+    selectedFeatureId,
+    color: mapTheme.dividesHighlightOutline,
   });
 
   const conusGaugesLayer = useConusGaugesLayer({
     isConusGaugesVisible,
-    gaugesCircleColor,
-  });
-
-  const nexusLayers = useNexusLayers({
-    isNexusVisible,
-    selectedFeatureId,
-    nexusCircleColor,
-    nexusStrokeColor,
-    nexusHighlightCircleColor,
+    gaugesCircleColor: mapTheme.gauges,
   });
 
   useEffect(() => {
@@ -305,9 +371,20 @@ const MainMap = () => {
     if (!map) return;
 
     reorderLayers(map);
-  }, [isNexusVisible, isCatchmentsVisible, isFlowPathsVisible, isConusGaugesVisible]);
+  }, [isCatchmentsVisible, isFlowPathsVisible, isConusGaugesVisible]);
+
+  useEffect(() => {
+    const map = mapRef.current?.getMap?.() ?? mapRef.current;
+    setVpuVisibility(map, isVpuVisible);
+  }, [isVpuVisible]);
 
  
+  useEffect(() => {
+    pathsByIdRef.current = createPathStore();
+    pathDataRef.current = EMPTY_PATHS;
+    setPathTick((t) => t + 1);
+  }, [featureIdToIndex]);
+
   useEffect(() => {
     const map = mapRef.current?.getMap?.() ?? mapRef.current;
     if (!map) return;
@@ -321,72 +398,34 @@ const MainMap = () => {
       if (raf) cancelAnimationFrame(raf);
 
       raf = requestAnimationFrame(() => {
+        raf = null;
         if (!isFlowPathsVisible) return;
 
-        const feats = map.queryRenderedFeatures({ layers: ["flowpaths"] });
+        const feats = map.queryRenderedFeatures({ layers: [FLOWPATHS_LAYER_ID] });
 
-        const matched = feats.filter(
-          (f) => featureIdToIndex[f.properties?.id] !== undefined
-        );
+        const added = addPaths(pathsByIdRef.current, feats, featureIdToIndex, map.getZoom());
+        if (!added) return;
 
-        const sig = flowpathsSignature(matched);
-        if (sig === lastSigRef.current) {
-          raf = null;
-          return;
-        }
-        lastSigRef.current = sig;
-
-        pathDataRef.current = convertFeaturesToPaths(matched, featureIdToIndex);
+        pathDataRef.current = [...pathsByIdRef.current.values()];
         setPathTick((t) => t + 1);
-
-        raf = null;
       });
     };
 
-    map.once("idle", run);
-    map.on("moveend", run);
-    map.on("zoomend", run);
+    const unsubscribe = onMapSettled(map, run);
 
     return () => {
       if (raf) cancelAnimationFrame(raf);
-      map.off("moveend", run);
-      map.off("zoomend", run);
+      unsubscribe();
     };
   }, [featureIdToIndex, isFlowPathsVisible]);
 
+  const layersToQuery = clickableLayers;
 
   useEffect(() => {
-    if (!selectedMapFeature) return;
-
-    const map =
-      mapRef.current && mapRef.current.getMap
-        ? mapRef.current.getMap()
-        : mapRef.current;
-
-    if (!map) return;
-
-    const lat = selectedMapFeature.lat || selectedMapFeature.latitude;
-    const lon = selectedMapFeature.lon || selectedMapFeature.longitude;
-    map.flyTo({
-      center: [lon, lat],
-      zoom: 11,
-      essential: true,
-    });
-  }, [selectedMapFeature]);
-
-
-  const layersToQuery = useMemo(() => {
-    const layers = [];
-    if (isNexusVisible) layers.push('nexus-points');
-    if (isCatchmentsVisible) layers.push('divides');
-    return layers;
-  }, [isNexusVisible, isCatchmentsVisible]);
+    if (useFeatureStore.getState().hovered_feature !== null) set_hovered_feature(null);
+  }, [hoverableLayerIds, set_hovered_feature]);
 
   const handleMapClick = async (event) => {
-   if (loading) {
-      return;
-    }
-
     const map = event.target;
 
     if (layersToQuery.length === 0) return;
@@ -394,57 +433,75 @@ const MainMap = () => {
     const features = map.queryRenderedFeatures(event.point, {
       layers: layersToQuery,
     });
-    if (!features || !features.length) return;
-
-    for (const feature of features) {
-      const layerId = feature.layer.id;
-      const featureIdProperty = layerIdToFeatureType(layerId);
-      const unbiased_id = feature.properties[featureIdProperty];
- 
-      const {lon, lat} = getCentroid(feature);
-      set_selected_feature({
-        latitude: lat,
-        longitude: lon,
-        layerId: layerId,
-        _id: unbiased_id,
-        ...feature.properties,
-      });
-      const vpu_str = `VPU_${feature.properties.vpuid}`;
-      if (vpu_str === vpu){
-        set_feature_id(unbiased_id);
+    if (!features || !features.length) {
+      if (map.getZoom() < DIVIDES_MIN_ZOOM) {
+        useTimeSeriesStore.setState({
+          loadingText: `Zoom in past ${DIVIDES_MIN_ZOOM} to select a catchment`,
+          last_error: { kind: 'zoom-required' },
+        });
       }
-      set_vpu(vpu_str);
-      break;
+      return;
     }
+
+    const [feature] = features;
+    selectMapFeature(feature, feature.layer.id);
   };
 
   return (
     <Map
       ref={mapRef}
-      initialViewState={{ longitude: -96, latitude: 40, zoom: 4 }}
+      initialViewState={INITIAL_VIEW}
       style={{ width: '100%', height: '100%' }}
       mapLib={maplibregl}
-      mapStyle={mapStyleUrl}
+      mapStyle={mapTheme.styleUrl}
       onClick={handleMapClick}
       onLoad={handleMapLoad}
       onMouseMove={onHover}
-      interactiveLayerIds={['divides', 'nexus-points', 'flowpaths', 'conus-gauges']}
+      onZoomEnd={(e) => setZoom(e.viewState.zoom)}
     >
+      <Source
+        key="flowpath-geometry"
+        id="flowpath-geometry"
+        type="vector"
+        url={`pmtiles://${flowpaths_pmtiles}`}
+      >
+        {flowPathsLayer}
+        {flowPathsHighlightLayer}
+      </Source>
+
       <Source key="conus" id="conus" type="vector" url={`pmtiles://${conus_pmtiles}`}>
         {catchmentLayer}
-        {flowPathsLayer}
         {conusGaugesLayer}
       </Source>
 
-      <Source key="nexus" id="nexus" type="vector" url={`pmtiles://${nexus_pmtiles}`}>
-        {nexusLayers}
-      </Source>
-      <DeckGLOverlay layers={deckLayers} interleaved />
+      <FlowPathsOverlay
+        getCursor={getCursor}
+        ramp={mapTheme.ramp}
+        visible={isFlowPathsVisible}
+        valuesByVar={valuesByVar}
+        timesArr={timesArr}
+        variable={variable}
+        bounds={colorBounds}
+        pathDataRef={pathDataRef}
+        pathTick={pathTick}
+      />
+      {sliderDocked && (
+        <TimeSliderDock>
+          <TimeSlider />
+        </TimeSliderDock>
+      )}
+      <NavigationControl position="bottom-right" showCompass={false} />
+      <ScaleControl position="bottom-right" unit="metric" />
+      <SelectedFeaturePopup />
       <CustomPopUp hovered_feature={hovered_feature} enabledHovering={enabledHovering} />
+      {belowFlowpathZoom && (
+        <MapHint type="button" $raised={sliderDocked} onClick={zoomToFlowpaths}>
+          Flowpaths are only mapped from zoom {FLOWPATHS_MIN_ZOOM}. Zoom in to see the animation.
+        </MapHint>
+      )}
     </Map>
   );
 };
-
 
 const MapComponent = React.memo(MainMap);
 

@@ -9,8 +9,8 @@ This app was created using an experimental Tethys + React app scaffold. It uses 
 
 ![GeoSpatial Visualization](static/imgs/nrds-fig-1.png)
 
-- **Geospatial visualization** of catchments, nexus points, flowpaths, and conus gauges
-- **Time series analysis** of catchments and nexus points
+- **Geospatial visualization** of catchments, flowpaths, and conus gauges
+- **Time series analysis** of catchments
 
 Built on the Tethys Platform [(Swain et al., 2015)](https://doi.org/10.1016/j.envsoft.2015.01.014), it enables web-based exploration of model outputs [(CIROH, 2025)](https://github.com/CIROH-UA/ngiab-client).
 
@@ -62,14 +62,13 @@ Access at: http://localhost:80
 
 ###  Visualization Features 
 
-**Nexus** points can be visualized when the user selects the output that wants to visualize. Time series can be retrieved by clicking on any of the **Nexus** points, or by changing the select dropdown assigned to the Nexus. 
+**Catchments** time series can be retrieved by clicking on any of the **Catchments** polygons, or by changing the select dropdown assigned to the Catchments. Clicking a catchment also highlights the reach that runs through it.
 
-![Figure 2: NRDS Visualizer time series visualization from Nexus points](static/imgs/nrds-fig-2.png)
-**Catchments** time series can be retrieved by clicking on any of the **Catchments** polygons, or by changing the select dropdown assigned to the Catchments.
+![Figure 2: NRDS Visualizer time series visualization](static/imgs/nrds-fig-2.png)
 
 ![Figure 3: NRDS Visualizer time series visualization from Catchments ](static/imgs/nrds-fig-3.png)
 
-Data from CFE_NOM and LSTM can be retrieved for the avaialble forecasts for the **Nexus** and **Catcments**
+Data from CFE_NOM and LSTM can be retrieved for the available forecasts for the **Catchments**
 
 
 This functionality allows the user to be able to quicklu search the data they want from the [S3 bucket](https://datastream.ciroh.org/index.html) containing the output of the [NextGen DataStream](https://github.com/CIROH-UA/ngen-datastream). They can explore and download as needed.
@@ -80,6 +79,16 @@ This functionality allows the user to be able to quicklu search the data they wa
 You need to install both the Tethys dependencies and the node dependencies.
 
 The webpack dev server is configured to proxy the Tethys development server (see `webpack.config.js`). The app endpoint will be handled by the webpack development server and all other endpoints will be handled by the Tethys (Django) development server. As such, you will need to start both in separate terminals.
+
+### The search index
+
+The search box reads a slim hydrofabric index that the Docker build generates. A dev server has no image build, so build it once by hand:
+
+```bash
+python3 scripts/build_slim_index.py       # see --help for options and a local-copy shortcut
+```
+
+Without it the app falls back to the full 103 MB upstream index, so search still works but is slower to become available.
 
 
 0. First create a Virtual Environment with the tool of your choice and then run the following commands

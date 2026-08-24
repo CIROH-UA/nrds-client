@@ -1,14 +1,15 @@
 // TimeSlider.jsx
 import React, { useEffect, useMemo, useRef, useCallback } from "react";
 import useTimeSeriesStore from "features/DataStream/store/Timeseries";
+import { formatFrameTime } from "features/DataStream/lib/utils";
+import { useVPUStore } from "features/DataStream/store/VPU";
 import "./TimeSlider.css";
 
 export const TimeSlider = React.memo(() => {
-  const series = useTimeSeriesStore((s) => s.series);
+  const times = useVPUStore((s) => s.times);
   const currentTimeIndex = useTimeSeriesStore((s) => s.currentTimeIndex);
   const setCurrentTimeIndex = useTimeSeriesStore((s) => s.setCurrentTimeIndex);
   const stepForward = useTimeSeriesStore((s) => s.stepForward);
-  const stepBackward = useTimeSeriesStore((s) => s.stepBackward);
 
   const isPlaying = useTimeSeriesStore((s) => s.isPlaying);
   const toggleIsPlaying = useTimeSeriesStore((s) => s.toggleIsPlaying);
@@ -20,24 +21,13 @@ export const TimeSlider = React.memo(() => {
 
   const intervalRef = useRef(null);
 
-  const timeSteps = Array.isArray(series) ? series.length : 0;
+  const timeSteps = Array.isArray(times) ? times.length : 0;
 
-  const currentLabel = useMemo(() => {
-     if (!timeSteps) return "T+0h";
-    const t0 = series?.[0]?.x;
-    const t = series?.[currentTimeIndex]?.x;
-    if (typeof t0 !== "object" || typeof t !== "object") return "T+0h";
-    const hours = Math.round((t - t0) / 3600000); // ms -> hours
-    return `T+${hours}h`;
-  }, [series, currentTimeIndex, timeSteps]);
+  const currentLabel = useMemo(
+    () => (timeSteps ? formatFrameTime(times[Math.min(currentTimeIndex, timeSteps - 1)]) : ''),
+    [times, currentTimeIndex, timeSteps]
+  );
 
-  // Keep index in range if series changes
-  useEffect(() => {
-    if (!timeSteps) return;
-    if (currentTimeIndex > timeSteps - 1) setCurrentTimeIndex(timeSteps - 1);
-  }, [timeSteps, currentTimeIndex, setCurrentTimeIndex]);
-
-  // Start/stop autoplay
   useEffect(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
@@ -46,7 +36,6 @@ export const TimeSlider = React.memo(() => {
 
     if (!isPlaying) return;
     if (!timeSteps) return;
-    // get ids
     const ms = Math.max(1, Math.floor(baseFrameMs / Math.max(1, playSpeed)));
 
     intervalRef.current = setInterval(() => {
@@ -75,31 +64,15 @@ export const TimeSlider = React.memo(() => {
   const safeIdx = Math.min(currentTimeIndex, maxIdx);
 
   return (
-    <div className="panel" id="timePanel">
-      <div className="time-control">
-        <div className="time-display">
-          <span className="time-label">Current Time</span>
-          <span className="time-value" id="currentTime">{currentLabel}</span>
-        </div>
-
-        <input
-          type="range"
-          id="timeSlider"
-          min="0"
-          max={maxIdx}
-          value={safeIdx}
-          onChange={onSliderChange}
-          disabled={!timeSteps}
-        />
-      </div>
-
-      <div className="play-controls">
+    <div className="panel time-dock" id="timePanel">
+      <div className="dock-row">
         <button
           className={`play-btn ${isPlaying ? "active" : ""}`}
           id="playBtn"
           onClick={toggleIsPlaying}
           disabled={!timeSteps}
           type="button"
+          aria-label={isPlaying ? "Pause the animation" : "Play the animation"}
         >
           {isPlaying ? (
             <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
@@ -113,32 +86,30 @@ export const TimeSlider = React.memo(() => {
           )}
         </button>
 
-        <button className="play-btn" onClick={stepBackward} disabled={!timeSteps} type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polygon points="19 20 9 12 19 4 19 20" fill="currentColor" />
-            <line x1="5" y1="19" x2="5" y2="5" />
-          </svg>
-        </button>
-
-        <button className="play-btn" onClick={stepForward} disabled={!timeSteps} type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polygon points="5 4 15 12 5 20 5 4" fill="currentColor" />
-            <line x1="19" y1="5" x2="19" y2="19" />
-          </svg>
-        </button>
-      </div>
-
-      <div className="speed-control">
-        <label htmlFor="speed-slider">Speed</label>
         <input
           type="range"
-          id="speed-slider"
-          min="1"
-          max="20"
+          id="timeSlider"
+          min="0"
+          max={maxIdx}
+          value={safeIdx}
+          onChange={onSliderChange}
+          disabled={!timeSteps}
+          aria-label="Animation time"
+        />
+
+        <span className="time-value" id="currentTime">{currentLabel}</span>
+
+        <select
+          className="speed-select"
           value={playSpeed}
           onChange={onSpeedChange}
-        />
-        <span className="speed-value" id="speed-value">{playSpeed}x</span>
+          disabled={!timeSteps}
+          aria-label="Playback speed"
+        >
+          {[1, 2, 4, 8, 16].map((x) => (
+            <option key={x} value={x}>{`${x}\u00d7`}</option>
+          ))}
+        </select>
       </div>
     </div>
   );

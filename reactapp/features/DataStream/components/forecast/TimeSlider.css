@@ -1,116 +1,112 @@
-/* TimeSlider.css */
+/* TimeSlider.css
+ *
+ * Brought into the token system. This file predated it and was the source of most of what an
+ * audit found: five tokens referenced but never defined, so their hard-coded fallbacks were the
+ * live values in both themes (a dark navy border and a cyan glow rendering in the light theme);
+ * a hover pair at 2.31:1; transport buttons at 34px; a font that was never loaded; and bare
+ * element selectors that reached every range input in the app rather than the two here.
+ */
 
 .panel {
- color: var(--map-panel-text);
-}
-
-.panel-title {
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm, 8px);
-}
-
-.panel-title svg {
-  width: var(--space-md, 16px);
-  height: var(--space-md, 16px);
-}
-
-/* Time slider block */
-.time-control {
-  margin-top: 12px;
-}
-
-.time-display {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--space-sm, 8px);
-}
-
-.time-label {
-  font-size: 12px;
-  color: var(--accent-text,#009989);
+  color: var(--map-panel-text);
 }
 
 .time-value {
-  /* font-family: "IBM Plex Mono", monospace; */
-  font-size: 14px;
-  color: var(--accent-text, #00d4ff);
+  /* Tabular alignment was the only reason this was monospace, and Public Sans has tabular
+     figures, so the readout can use the interface face and still hold its columns still. */
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-sm);
+  color: var(--map-panel-text);
 }
 
-/* Range slider styling */
-input[type="range"] {
+/* Scoped to this panel. These were bare element selectors, so they styled every range input in
+   the app, including any added later by something unrelated. */
+/* The input is finger-height and transparent; the visible bar is the track pseudo-element.
+   Styling the input's own background made the whole control 6px tall, so the only way to scrub
+   was to land on a six-pixel line -- possible with a mouse, not with a thumb. */
+.dock-row input[type='range'] {
   width: 100%;
-  height: 6px;
+  height: 44px;
   -webkit-appearance: none;
   appearance: none;
-  background: var(--accent-text);
-  border-radius: var(--radius-sm, 4px);
+  background: transparent;
   outline: none;
 }
 
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: var(--space-md, 16px);
-  height: var(--space-md, 16px);
-  background: var(--select-option-selected-bg);
-  border-radius: 50%;
-  cursor: pointer;
-  box-shadow: 0 0 10px var(--dropshadow-color, rgba(0, 212, 255, 0.15));
+.dock-row input[type='range']::-webkit-slider-runnable-track {
+  height: 6px;
+  background: var(--panel-border-color);
+  border-radius: var(--radius-sm);
 }
 
-/* Firefox */
-input[type="range"]::-moz-range-thumb {
-  width: var(--space-md, 16px);
-  height: var(--space-md, 16px);
-  background: var(--select-option-selected-bg);
+.dock-row input[type='range']:focus-visible {
+  outline: 2px solid var(--nav-pill-active-bg);
+  outline-offset: 2px;
+}
+
+.dock-row input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: var(--space-md);
+  height: var(--space-md);
+  /* Half the track's height less half the thumb's, so it rides the centre of the bar rather
+     than sitting on top of it. webkit measures the thumb from the track, unlike moz. */
+  margin-top: -5px;
+  background: var(--nav-pill-active-bg);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.dock-row input[type='range']::-moz-range-thumb {
+  width: var(--space-md);
+  height: var(--space-md);
+  background: var(--nav-pill-active-bg);
   border: 0;
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 0 10px var(--dropshadow-color, rgba(0, 212, 255, 0.15));
 }
 
-input[type="range"]::-moz-range-track {
+.dock-row input[type='range']::-moz-range-track {
   height: 6px;
-  background: var(--select-option-selected-bg, #0a0e14);
-  border-radius: var(--radius-sm, 4px);
+  background: var(--panel-border-color);
+  border-radius: var(--radius-sm);
 }
 
-/* Play controls row */
-.play-controls {
-  display: flex;
-  gap: var(--space-sm, 8px);
-  margin-top: 12px;
-  justify-content: center;
-}
-
+/* The same shape as every other button in the app, rather than a set of its own. It used
+   --accent-text as a background with --primary-color on it, and on hover put --text-color over
+   --select-option-selected-bg, which measured 2.31:1 in the dark theme. */
 .play-btn {
-  /* flex: 1; */
-  padding: var(--space-sm, 8px);
-  background: var(--accent-text, #0a0e14);
-  border: 1px solid var(--border-color, #2a3a4a);
-  border-radius: var(--radius-sm, 4px);
-  color: var(--primary-color);
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: var(--space-sm);
+  background: var(--button-primary-bg);
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-sm);
+  color: var(--button-primary-text);
+  cursor: pointer;
 }
 
-.play-btn:hover {
-  background-color: var(--select-option-selected-bg);
-  color: var(--text-color);
+.play-btn:hover:not(:disabled) {
+  background-color: var(--button-primary-hover-bg);
+  color: var(--button-primary-text-hover);
+}
+
+.play-btn:focus-visible {
+  outline: 2px solid var(--nav-pill-active-bg);
+  outline-offset: 2px;
+}
+
+.play-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .play-btn.active {
-  background: var(--select-option-selected-bg);
-  border-color: var(--select-option-selected-bg);
-  color: var(--bg-primary, #0a0e14);
+  background: var(--nav-pill-active-bg);
+  border-color: transparent;
+  color: var(--nav-pill-active-text-color);
 }
 
 .play-btn svg {
@@ -118,28 +114,60 @@ input[type="range"]::-moz-range-track {
   height: 18px;
 }
 
-/* Speed control row */
-.speed-control {
+/* One row on the map, rather than the stacked panel this was when it lived in the sidebar.
+ *
+ * Stacked, it was a title, a readout, a track, a row of transport buttons and a speed slider --
+ * around 200px tall over the map it drives. Everything is on a single line now and the speed
+ * slider is a select, which is the widest thing here for the least said.
+ *
+ * The buttons stay at 44px. An audit set them there as a touch target and the comment above
+ * says so; the height saved by shrinking them is not worth undoing that, and the row is bounded
+ * by them rather than by anything else.
+ */
+.time-dock {
+  container-type: inline-size;
+}
+
+.dock-row {
   display: flex;
   align-items: center;
-  gap: var(--space-sm, 8px);
-  margin-top: 12px;
+  gap: var(--space-sm);
 }
 
-.speed-control label {
-  font-size: 11px;
-  color: var(--accent-text);
-  text-transform: uppercase;
+.dock-row input[type='range'] {
+  flex: 1 1 auto;
+  min-width: 60px;
 }
 
-.speed-control input {
-  flex: 1;
-}
-
-.speed-value {
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 12px;
-  color: var(--accent-text);
-  min-width: 40px;
+.dock-row .time-value {
+  flex: 0 0 auto;
+  min-width: 132px;
   text-align: right;
+  white-space: nowrap;
+}
+
+.speed-select {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 var(--space-xs);
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-sm);
+  background: var(--map-panel-bg);
+  color: var(--map-panel-text);
+  font-size: var(--text-xs);
+}
+
+.speed-select:focus-visible {
+  outline: 2px solid var(--nav-pill-active-bg);
+  outline-offset: 2px;
+}
+
+.speed-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* The transport buttons are the row's height; nothing else needs a top margin here. */
+.time-dock .play-btn {
+  flex: 0 0 auto;
 }

@@ -2,25 +2,22 @@ import { useLayersStore } from '../../store/Layers';
 import { Fragment, useMemo, useState } from 'react';
 import { Switch } from  '../styles/Styles';
 import { IoLayers } from "react-icons/io5";
-import { MdInfoOutline } from "react-icons/md";
-import { IconLabel, Row, Title, SButton} from '../styles/Styles';
-import { NexusSymbol, CatchmentSymbol, FlowPathSymbol, GaugeSymbol, symbologyColors, CursorSymbol } from '../../lib/layers';
-import { LayerInfoModal } from '../Modals';
-import { useTheme } from 'styled-components';
+import { IconLabel, Row, Title, InfoPanel } from '../styles/Styles';
+import { CatchmentSymbol, FlowPathSymbol, GaugeSymbol, VpuSymbol, symbologyColors, CursorSymbol } from '../../lib/layers';
+import { usePrefersDark } from '../../lib/mapTheme';
+import { InfoToggle } from '../InfoDisclosure';
+import { LayerInfoContent } from '../InfoContent';
+import { ValueLegendPanel } from './ValueLegend';
 
+/** The legend reads the same signal the map layers do, so the two cannot describe different themes. It was branching on styled-components' useTheme, and nothing installs a ThemeProvider, so that value was always undefined and the legend was always the light branch. */
 export const LayerControl = () => {
-  const theme = useTheme()
-  const [modalLayerInfoShow, setModalLayerInfoShow] = useState(false);
+  const [layerInfoOpen, setLayerInfoOpen] = useState(false);
   
-  const nexusLayer = useLayersStore((state) => state.nexus);
   const catchmentLayer = useLayersStore((state) => state.catchments);
   const flowpathsLayer = useLayersStore((state) => state.flowpaths);
   const conusGaugesLayer = useLayersStore((state) => state.conus_gauges);
   const layerHoveredEnabled = useLayersStore((state) => state.hovered_enabled);
   
-  const set_nexus_visibility = useLayersStore(
-    (state) => state.set_nexus_visibility
-  );
   const set_catchments_visibility = useLayersStore(
     (state) => state.set_catchments_visibility
   );
@@ -35,14 +32,12 @@ export const LayerControl = () => {
     (state) => state.set_hovered_enabled
   );
 
-  const colors = useMemo(
-    () => {return symbologyColors(theme)},
-    [theme]
-  );
+  const vpuLayer = useLayersStore((state) => state.vpu);
+  const set_vpu_visibility = useLayersStore((state) => state.set_vpu_visibility);
 
-  const handleToggleNexusLayer = () => {
-    set_nexus_visibility(!nexusLayer.visible);
-  };
+  const prefersDark = usePrefersDark();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const colors = useMemo(() => symbologyColors(), [prefersDark]);
 
   const handleToggleCatchmentLayer = () => {
     set_catchments_visibility(!catchmentLayer.visible);
@@ -65,32 +60,22 @@ export const LayerControl = () => {
       <IconLabel>
         <IoLayers />
         <Title>Layer Options</Title>
-        <SButton bsPrefix='btn2' onClick={() => setModalLayerInfoShow(true)}>
-          <MdInfoOutline size={15} />
-        </SButton>
-
+        <InfoToggle
+          open={layerInfoOpen}
+          onToggle={setLayerInfoOpen}
+          controls="layer-info"
+          label="layer information"
+        />
       </IconLabel>
 
-
-      {/* <Content> */}
-      <Row>
-        <IconLabel>
-          <NexusSymbol
-            fill={colors.nexusFill}
-            stroke={colors.nexusStroke}
-          />
-          Nexus
-        </IconLabel>
-        <Switch
-          id="nexus-layer-switch"
-          checked={nexusLayer.visible}
-          onChange={handleToggleNexusLayer}
-          title="Toggle Nexus Layer visualization"
-        />
-      </Row>
+      {layerInfoOpen && (
+        <InfoPanel id="layer-info">
+          <LayerInfoContent />
+        </InfoPanel>
+      )}
 
       <Row>
-        <IconLabel>
+        <IconLabel as="label" htmlFor="catchment-layer-switch">
           <CatchmentSymbol
             fill={colors.catchmentFill}
             stroke={colors.catchmentStroke}
@@ -106,7 +91,7 @@ export const LayerControl = () => {
       </Row>
 
       <Row>
-        <IconLabel>
+        <IconLabel as="label" htmlFor="flowpaths-layer-switch">
           <FlowPathSymbol stroke={colors.flowStroke} />
           FlowPaths
         </IconLabel>
@@ -119,7 +104,7 @@ export const LayerControl = () => {
       </Row>
 
       <Row>
-        <IconLabel>
+        <IconLabel as="label" htmlFor="conus-gauges-layer-switch">
           <GaugeSymbol
             fill={colors.gaugeFill}
             stroke={colors.gaugeStroke}
@@ -133,15 +118,29 @@ export const LayerControl = () => {
           title="Toggle Conus Gauges Layer visualization"
         />
       </Row>
-      {/* </Content> */}
+
+      <Row>
+        <IconLabel as="label" htmlFor="vpu-layer-switch">
+          <VpuSymbol stroke={colors.vpuStroke} />
+          VPU Boundaries
+        </IconLabel>
+        <Switch
+          id="vpu-layer-switch"
+          checked={vpuLayer.visible}
+          onChange={() => set_vpu_visibility(!vpuLayer.visible)}
+          title="Toggle VPU boundaries"
+        />
+      </Row>
+
+      <ValueLegendPanel />
 
       <IconLabel $fontSize={14}>
         <span style={{ fontWeight: 600 }}>Map Interactions</span>
       </IconLabel>
 
       <Row>
-        <IconLabel>
-          <CursorSymbol/>
+        <IconLabel as="label" htmlFor="enable-hovering-switch">
+          <CursorSymbol fill={colors.cursorFill} stroke={colors.cursorStroke} />
           Enable Hovering 
         </IconLabel>
         <Switch
@@ -151,10 +150,6 @@ export const LayerControl = () => {
           title="Toggle Conus Gauges Layer visualization"
         />
       </Row>
-      <LayerInfoModal
-        show={modalLayerInfoShow}
-        onHide={() => setModalLayerInfoShow(false)}
-      />
     </Fragment>
   );
 };

@@ -1,10 +1,14 @@
 // mapLayers.js
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Layer } from 'react-map-gl/maplibre';
+import {
+  FLOWPATHS_LAYER_ID,
+  FLOWPATHS_HIGHLIGHT_LAYER_ID,
+} from 'features/DataStream/lib/layers';
+import { FLOWPATHS_WIDTH_STOPS } from 'features/DataStream/lib/flowpaths';
+import { numericPartOf } from 'features/DataStream/lib/utils';
 
-/**
- * Catchment (divides) layers
- */
+/** Catchment (divides) layers */
 export function useCatchmentLayers({
   isCatchmentsVisible,
   selectedFeatureId,
@@ -61,35 +65,53 @@ export function useCatchmentLayers({
   ]);
 }
 
-/**
- * Flowpaths layer
- */
+/** Flowpaths layer. */
 export function useFlowPathsLayer({ isFlowPathsVisible, flowpathsLineColor }) {
   return useMemo(() => {
     if (!isFlowPathsVisible) return null;
 
     return (
-      // null
       <Layer
-        key="flowpaths"
-        id="flowpaths"
+        key={FLOWPATHS_LAYER_ID}
+        id={FLOWPATHS_LAYER_ID}
         type="line"
-        source="hydrofabric"
-        source-layer="conus_flowpaths"
+        source="flowpath-geometry"
+        source-layer="flowpaths"
         paint={{
           'line-color': flowpathsLineColor,
-          'line-width': { stops: [[7, 1], [10, 2]] },
-          // 'line-opacity': 0,
-          'line-opacity': { stops: [[7, 0], [11, 1]] },
+          'line-width': { stops: FLOWPATHS_WIDTH_STOPS },
+          'line-opacity': { stops: [[2, 0.45], [7, 0.7], [10, 1]] },
         }}
       />
     );
   }, [isFlowPathsVisible, flowpathsLineColor]);
 }
 
-/**
- * CONUS gauges layer
- */
+/** The selected reach, drawn over the flowpaths. */
+export function useFlowPathsHighlightLayer({ isFlowPathsVisible, selectedFeatureId, color }) {
+  return useMemo(() => {
+    if (!isFlowPathsVisible) return null;
+
+    const numeric = numericPartOf(selectedFeatureId);
+    return (
+      <Layer
+        key={FLOWPATHS_HIGHLIGHT_LAYER_ID}
+        id={FLOWPATHS_HIGHLIGHT_LAYER_ID}
+        type="line"
+        source="flowpath-geometry"
+        source-layer="flowpaths"
+        filter={numeric ? ['==', ['get', 'divide_id'], Number(numeric)] : ['==', ['get', 'divide_id'], -1]}
+        paint={{
+          'line-color': color,
+          'line-width': { stops: [[2, 2], [7, 3], [10, 5]] },
+          'line-opacity': 0.9,
+        }}
+      />
+    );
+  }, [isFlowPathsVisible, selectedFeatureId, color]);
+}
+
+/** CONUS gauges layer */
 export function useConusGaugesLayer({
   isConusGaugesVisible,
   gaugesCircleColor,
@@ -112,72 +134,4 @@ export function useConusGaugesLayer({
       />
     );
   }, [isConusGaugesVisible, gaugesCircleColor]);
-}
-
-/**
- * Nexus point + highlight layers
- */
-export function useNexusLayers({
-  isNexusVisible,
-  selectedFeatureId,
-  nexusCircleColor,
-  nexusStrokeColor,
-  nexusHighlightCircleColor,
-}) {
-  return useMemo(() => {
-    if (!isNexusVisible) return null;
-
-    const pointsLayer = (
-      <Layer
-        key="nexus-points"
-        id="nexus-points"
-        type="circle"
-        source="nexus"
-        source-layer="nexus"
-        filter={['!', ['has', 'point_count']]} // do not show the clusters
-        minzoom={5}
-        paint={{
-          'circle-radius': 7,
-          'circle-color': nexusCircleColor,
-          'circle-stroke-width': 1,
-          'circle-stroke-color': nexusStrokeColor,
-        }}
-      />
-    );
-
-    const nexusHighlightLayer = (
-      <Layer
-        key="nexus-highlight"
-        id="nexus-highlight"
-        type="circle"
-        source="nexus"
-        source-layer="nexus"
-        minzoom={5}
-        beforeId="nexus-points"
-        filter={
-          selectedFeatureId
-            ? [
-                'all',
-                ['!', ['has', 'point_count']],
-                ['==', ['get', 'id'], selectedFeatureId],
-              ]
-            : ['boolean', false]
-        }
-        paint={{
-          'circle-radius': 10,
-          'circle-stroke-width': 3,
-          'circle-stroke-color': '#ffffff',
-          'circle-color': nexusHighlightCircleColor,
-        }}
-      />
-    );
-
-    return [pointsLayer, nexusHighlightLayer];
-  }, [
-    isNexusVisible,
-    selectedFeatureId,
-    nexusCircleColor,
-    nexusStrokeColor,
-    nexusHighlightCircleColor,
-  ]);
 }

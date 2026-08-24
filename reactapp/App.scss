@@ -26,33 +26,159 @@ $theme-colors: (
 /* Import Bootstrap SCSS */
 @import "../node_modules/bootstrap/scss/bootstrap";
 
+/* === TYPEFACE === */
+
+/*
+ * Public Sans, self-hosted.
+ *
+ * The app had no font-family at all, so it ran on Bootstrap's system-ui stack and changed
+ * personality between macOS, Windows and Linux. Public Sans is the USWDS face, which suits a
+ * NOAA/CIROH-funded tool, and it is served from here rather than from Google Fonts: the app
+ * already ships its own static assets, and a third-party request is a dependency and a privacy
+ * footnote for nothing.
+ *
+ * Licence: OFL-1.1 in practice, and assets/fonts/LICENSE.md ships with it. GSA's modifications
+ * are CC0, but the Libre Franklin base they derive from is OFL, and the licence says the more
+ * restrictive terms govern the combined work.
+ *
+ * Three weights, not nine: 400, 500 and 600 are what the interface actually asks for. There is
+ * no variable build in the distribution, which is why --weight-strong is 600 rather than 650 --
+ * 650 was never a weight any system font had either, so it silently rounded to 700 on Windows
+ * and Linux while rendering true on macOS. Italics are not shipped and nothing declares them.
+ */
+@font-face {
+  font-family: 'Public Sans';
+  src: url('./assets/fonts/PublicSans-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Public Sans';
+  src: url('./assets/fonts/PublicSans-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Public Sans';
+  src: url('./assets/fonts/PublicSans-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* === THEME VARIABLES === */
 
 /* Base (light) theme */
 :root {
   color-scheme: light dark;
   /* core */
-  --background-color: #{$primary};
-  --text-color: #212121;
-   --primary-color: #{$primary};
+  --background-color: oklch(0.985 0.006 249);
+  --text-color: oklch(0.248 0.006 249);
+   --primary-color: oklch(0.985 0.006 249);
   --title-text-color: #5f6368;
   --ts-header-height: 56px;
+  --sheet-height: min(58dvh, calc(100dvh - var(--ts-header-height) - 120px));
+  --sheet-offset: 0px;
+  --modal-scrim: oklch(0.248 0.006 249);
+
+  // Referenced by name before they existed: TimeSlider.css asked for --space-sm, --space-md and
+  // --radius-sm, so its hard-coded fallbacks were what actually rendered, in both themes.
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 20px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-pill: 999px;
+
+  /* Elevation for things floating over the map.
+     One shadow was copied into all three overlays: 0 2px 8px rgba(0,0,0,0.25), pure black at 25%
+     in both themes. On the dark panel a black shadow is invisible; on the light one it is heavy
+     and muddy. These are tinted with the family hue and split into two levels, so the control
+     the reader operates sits above the readouts that only report. */
+  /* The standing caveat, worn as a badge beside the app name. Amber because it qualifies rather
+     than fails: --status-failed-* is red and reserved for something that actually went wrong. */
+  --notice-bg: oklch(0.945 0.070 85);
+  --notice-border: oklch(0.620 0.070 85);
+  --notice-text: oklch(0.390 0.070 85);
+
+  --elevation-map-readout: 0 1px 3px oklch(0.248 0.006 249 / 0.10), 0 4px 12px oklch(0.248 0.006 249 / 0.10);
+  --elevation-map-control: 0 2px 6px oklch(0.248 0.006 249 / 0.14), 0 10px 28px oklch(0.248 0.006 249 / 0.16);
+
+  /* Muted panel text. The panel used a hard-coded #666, which measures 1.91:1 on the dark
+     surface; both of these clear 5:1 against their own theme. */
+  --panel-text-muted: oklch(0.542 0.012 249);
+
+  /* Type scale, fixed rem at a 1.2 ratio. Every label in the panel was the same size and
+     weight, which is what made it read as an undifferentiated stack. */
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-md: 0.9375rem;
+  --text-lg: 1.125rem;
+  --weight-normal: 400;
+  --weight-medium: 500;
+  /* 600, because that is a weight the face has. 650 rounded to 700 on Windows and Linux while
+     rendering true on macOS SF, so "strong" meant two different things depending on the reader. */
+  --weight-strong: 600;
+
+  /* The stacks, declared once. Every fallback is a real face rather than a generic, so a blocked
+     font request degrades to the system UI face and not to a serif. */
+  --font-ui: 'Public Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+
+  /* Header status strip. Values chosen against this theme's header background: the text
+     reaches 14.1:1 normally and 5.8:1 when reporting a failure. $danger itself only makes
+     4.5:1 on white, so failure text is a shade darker than it. */
+  --status-text: #1e2125;
+  /* Tinted and a little stronger. At rgba(0,0,0,0.06) the pill was barely a shape, which is
+     part of why a load in progress went unnoticed -- and an untinted black besides. */
+  --status-bg: oklch(0.248 0.006 249 / 0.10);
+  --status-failed-text: #b42318;
+  --status-failed-bg: rgba(214, 37, 24, 0.08);
   --map-style-url: #{'https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/styles/light-style.json'};
   
 
   --map-divides-outline-color: rgba(91, 44, 111, 0.5);
-  --map-divides-highlight-fill: rgba(5, 49, 243, 0.32);
-  --map-divides-highlight-outline: rgba(253, 0, 253, 0.7);
+  /* The app's accent, which is what ties the map to the rest of the interface. The outline was
+     #fd00fd -- a pure magenta picked to be unmissable rather than designed, and the only place
+     that colour appeared anywhere. Both are the same teal as the focus ring and the active nav
+     pill; the fill is the same hue at low alpha so a selected catchment reads as filled rather
+     than obscured.
 
-  --map-flowpaths-color: #000000;
+     Written as rgba, not oklch. These are handed to maplibre as paint values, and its colour
+     parser is CSS Color 3 only -- oklch() returns undefined and the layer draws nothing at all.
+     That is oklch(0.520 0.090 175) to three decimals. */
+  --map-divides-highlight-fill: rgba(27, 122, 102, 0.28);
+  --map-divides-highlight-outline: rgba(27, 122, 102, 0.95);
+
+  /* The static network, in water's own colour. It was #0b0e10, ink on paper; then a blue-grey,
+     which measured well and still read grey. A stream should look like water.
+
+     It clears the basemap by hue rather than by lightness -- 1.9:1 in WCAG terms, which sounds
+     wrong until you notice WCAG contrast is a lightness ratio and cannot see hue at all. In
+     OKLab it sits 0.199 from the nearest basemap surface, about ten times a just-noticeable
+     difference, and 0.199 from the basemap's own water fill, so a stream still reads as separate
+     from the lake it runs into. Lightness is the right instrument for the value ramp, where
+     lightness is what carries the value. It is the wrong one here. */
+  --map-flowpaths-color: #1f9ec7;
 
 
-  --map-gauges-color: #646464;
+  --map-gauges-color: #616569;
+
+  /* Mirrors the boundary colour in the basemap style document, which this app toggles but does
+     not draw. It cannot be read from the map, so it is declared here and the legend symbol reads
+     it -- one value to correct if that style ever changes, instead of a literal in a component. */
+  --map-vpu-boundary-color: #009988;
 
   
-  --map-nexus-circle-color: #1f78b4;
-  --map-nexus-stroke-color: #ffffff;
-  --map-nexus-highlight-circle-color: #1f78b4;
+  // Shared by the gauge outline and the cursor legend symbol. Named for the nexus layer
+  // until that layer was removed; the colours are unchanged.
+  --map-cursor-symbol-fill: #1f78b4;
+  --map-point-stroke-color: #f7fafe;
 
   --button-primary-bg: #{$light};
   --button-primary-hover-bg: #{$light};
@@ -69,32 +195,34 @@ $theme-colors: (
  
 
   /* extras used in components */
-  --panel-background: #{$primary};
-  --panel-border-color: #{$primary};
-  --muted-text: #212121;
+  --panel-background: oklch(0.985 0.006 249);
+  --panel-border-color: oklch(0.645 0.008 249);   // 3.15:1 on --panel-background, 3.13:1 on --map-panel-bg
+  --muted-text: #1e2125;
 
-  --offcanvas-bg: #ffffff;
+  --offcanvas-bg: oklch(0.985 0.006 249);
   --offcanvas-border-color: #dee2e6;
 
-  --popup-bg: #ffffff;
+  --popup-bg: oklch(0.985 0.006 249);
   --popup-text-color: #212529;
 
   --map-panel-bg: #{$light};
-  --map-panel-text: #212121;
+  --map-panel-text: #1e2125;
 
-  --select-control-bg: #ffffff;
-  --select-control-border: #cccccc;
-  --select-text-color: #000000;
-  --select-placeholder-color: #666666;
-  --select-menu-bg: #ffffff;
+  --select-control-bg: oklch(0.985 0.006 249);
+  --select-control-border: #c8cdd1;
+  --select-text-color: oklch(0.160 0.006 249);
+  --select-placeholder-color: #63676b;
+  --select-menu-bg: oklch(0.985 0.006 249);
   --select-option-hover-bg: rgba(38,132,255,0.1);
-  --select-option-selected-bg: #2684ff;
+  --select-option-selected-bg: var(--nav-pill-active-bg);   // was #2684ff, 3.44:1 under white
 
-  --modal-bg: #{$primary};
-  --modal-text-color: #111827;
-  --modal-border-color: #e5e7eb;
+  --modal-bg: oklch(0.985 0.006 249);
+  --modal-text-color: #13191f;
+  --modal-border-color: #e4e7eb;
 
-  --link-color: #0b74de;
+  --link-color: #0a6ccf;                              // 4.94:1 on the app background; #0b74de was 4.39:1
+  /* Not the accent: this is the muted grey used for secondary labels, and it has never been
+     $accent. Renaming it is a wider change than this pass; the comment is the fix for now. */
   --accent-text: #5f6368;
   --hover-text: #{$secondary};
 
@@ -104,26 +232,26 @@ $theme-colors: (
   --nav-button-hover-bg: rgba(0, 0, 0, 0.1);
 
   /* error overlay / box */
-  --error-overlay-bg: #ffffff;
-  --error-box-bg: #ffffff;
-  --error-box-text-color: #111827;
+  --error-overlay-bg: oklch(0.985 0.006 249);
+  --error-box-bg: oklch(0.985 0.006 249);
+  --error-box-text-color: #13191f;
 
   /* nav pills active state */
-  --nav-pill-active-bg: #009989;
-  --nav-pill-active-text-color: #ffffff;
+  --nav-pill-active-bg: oklch(0.540 0.090 175);
+  --nav-pill-active-text-color: oklch(0.985 0.006 249);
 
   /* line chart colors - light */
-  --chart-axis-label-color: #111827;
-  --chart-axis-stroke-color: #111827;
-  --chart-axis-tick-color: #111827;
-  --chart-axis-tick-text-color: #111827;
-  --chart-grid-color: #e5e7eb;
+  --chart-axis-label-color: #13191f;
+  --chart-axis-stroke-color: #13191f;
+  --chart-axis-tick-color: #13191f;
+  --chart-axis-tick-text-color: #13191f;
+  --chart-grid-color: #e4e7eb;
   --chart-tooltip-bg: rgba(255, 255, 255, 0.95);
-  --chart-tooltip-text: #111827;
+  --chart-tooltip-text: #13191f;
   --chart-tooltip-border-color: rgba(148, 163, 184, 0.6);
-  --chart-crosshair-color: #4b5563;
-  --chart-glyph-stroke-color: #ffffff;
-  --chart-empty-text-color: #6b7280;
+  --chart-crosshair-color: #4e555c;
+  --chart-glyph-stroke-color: oklch(0.985 0.006 249);
+  --chart-empty-text-color: var(--panel-text-muted);
 
   /* comma-separated line colors */
   --chart-line-colors: #1d4ed8, #f97316, #16a34a, #dc2626, #7c3aed;
@@ -136,26 +264,69 @@ $theme-colors: (
 
 }
 
+@media (max-width: 768px) {
+  body[data-sheet-open='true'] {
+    --sheet-offset: var(--sheet-height);
+    --map-controls-offset: calc(var(--sheet-height) + 96px);
+  }
+
+  .maplibregl-ctrl.maplibregl-ctrl-group button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .maplibregl-ctrl-bottom-right,
+  .maplibregl-ctrl-bottom-left {
+    transform: translateY(calc(-1 * var(--map-controls-offset, 0px)));
+    transition: transform 0.25s ease-out;
+  }
+}
+
+
 /* Dark theme override */
 @media (prefers-color-scheme: dark) {
   :root {
     --primary-color: #{$secondary};
-    --title-text-color: #ffffff;
+    --title-text-color: oklch(0.985 0.006 249);
     --background-color: #{$secondary};
-    --text-color: #ffffff;
-    --hover-text: #{$primary};
+    --text-color: oklch(0.985 0.006 249);
+    --panel-text-muted: oklch(0.753 0.012 249);
+
+    /* 7.2:1 normally and 6.3:1 for failures against the dark header. $danger is far too dark
+       to read on this background, so failure text is lightened rather than reused. */
+    --status-text: oklch(0.985 0.006 249);
+    --status-bg: oklch(0.985 0.006 249 / 0.16);
+
+    /* Deeper and darker on a dark map: a shadow reads there by darkening the basemap, not by
+       adding a grey halo, so the same alpha that works on white disappears entirely. */
+    --notice-bg: oklch(0.330 0.055 85);
+    --notice-border: oklch(0.600 0.060 85);
+    --notice-text: oklch(0.900 0.055 85);
+
+    --elevation-map-readout: 0 1px 3px oklch(0.145 0.006 249 / 0.42), 0 4px 14px oklch(0.145 0.006 249 / 0.38);
+    --elevation-map-control: 0 2px 6px oklch(0.145 0.006 249 / 0.52), 0 12px 32px oklch(0.145 0.006 249 / 0.48);
+    --status-failed-text: #ffb4ab;
+    --status-failed-bg: rgba(214, 37, 24, 0.16);
+    --hover-text: oklch(0.985 0.006 249);
     --map-style-url: #{'https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/styles/dark-style.json'};
     --map-divides-outline-color: rgba(238, 51, 119, 0.5);
-    --map-divides-highlight-fill: rgba(24, 21, 230, 0.32);
-    --map-divides-highlight-outline: rgba(192, 20, 207, 0.7);
+    /* Lightened for the dark basemap; the same hue, so the selection reads as one thing across
+       both themes. oklch(0.700 0.110 175), in a notation maplibre parses. */
+    --map-divides-highlight-fill: rgba(66, 181, 154, 0.30);
+    --map-divides-highlight-outline: rgba(66, 181, 154, 0.95);
 
-    --map-flowpaths-color: #0077bb;
+    /* The same water, for the dark basemap. Dimmer than the light theme's on purpose: the ramp
+       owns the bright blues here, and the static network has to stay a lane below it or the two
+       become the same layer. 0.236 in OKLab from the nearest basemap surface, about twelve times
+       a just-noticeable difference, and 0.111 from the closest ramp stop. */
+    --map-flowpaths-color: #397d9e;
 
-    --map-gauges-color: #c8c8c8;
+    --map-gauges-color: #c4c9cd;
 
-    --map-nexus-circle-color: #2c3e50;
-    --map-nexus-stroke-color: #e9ecef;
-    --map-nexus-highlight-circle-color: #2c3e50;
+    --map-vpu-boundary-color: #33bbee;
+
+    --map-cursor-symbol-fill: #2c3e50;
+    --map-point-stroke-color: #e9ecef;
 
 
     --search-bg: #{$dark};
@@ -168,25 +339,27 @@ $theme-colors: (
 
     --button-primary-bg: #{$dark};
     --button-primary-hover-bg: #{$dark};
-    --button-primary-text-hover: #{$primary};
+    --button-primary-text-hover: oklch(0.985 0.006 249);
     --button-primary-text: #c4fff8;
     
-    // --accent-text: #c4fff8;
-    --accent-text: #cdcdcd;
+      --accent-text: #c9ced2;
 
     --panel-background: #{$secondary};
-    --panel-border-color: #{$secondary};
-    --muted-text: #ffff;
+    /* 3.15:1 on the panel it edges, the same figure the light theme holds. It was 0.619, which
+       measured 2.9979 -- under the 1.4.11 floor and documented as "3.00". A boundary chosen to
+       sit exactly on a threshold has nowhere to go when anything around it moves. */
+    --panel-border-color: oklch(0.630 0.008 249);
+    --muted-text: oklch(0.985 0.006 249);
 
     --offcanvas-bg: #2c3e50;
-    --offcanvas-border-color: #333333;
+    --offcanvas-border-color: #303437;
 
     --popup-bg: #2b333b;
     --popup-text-color: #f8f9fa;
 
     --modal-bg: #{$secondary};
     --modal-text-color: var(--text-color);
-    --modal-border-color: #374151;
+    --modal-border-color: #3b4148;
 
     --link-color: #bfdbfe;
     --map-panel-bg: #1f2933;
@@ -194,36 +367,36 @@ $theme-colors: (
 
     --select-control-bg: #2c3e50;
     --select-control-border: #4f5b67;
-    --select-text-color: #ecf0f1;
-    --select-placeholder-color: #b0bec5;
+    --select-text-color: #edeff2;
+    --select-placeholder-color: #b5bcc4;
     --select-menu-bg: #2c3e50;
     --select-option-hover-bg: #34495e;
-    --select-option-selected-bg: #1abc9c;
+    --select-option-selected-bg: var(--nav-pill-active-bg); // was #1abc9c, 2.30:1 under white
 
     /* navbar buttons */
     --nav-button-text-color: #f9fafb;
     --nav-button-hover-bg: rgba(255, 255, 255, 0.08);
 
     /* error overlay / box for dark mode */
-    --error-overlay-bg: #000000;         // or keep #ffffff if you really want a bright whiteout
-    --error-box-bg: #111827;
+    --error-overlay-bg: oklch(0.160 0.006 249);
+    --error-box-bg: #13191f;
     --error-box-text-color: #f9fafb;
 
     /* nav pills active state */
-    --nav-pill-active-bg: #009989;       // same brand color in dark mode
-    --nav-pill-active-text-color: #ffffff;
+    --nav-pill-active-bg: oklch(0.540 0.090 175);       // same brand color in dark mode
+    --nav-pill-active-text-color: oklch(0.985 0.006 249);
 
-    --chart-axis-label-color: #e5e7eb;
-    --chart-axis-stroke-color: #d1d5db;
-    --chart-axis-tick-color: #9ca3af;
-    --chart-axis-tick-text-color: #e5e7eb;
-    --chart-grid-color: #4b5563;
+    --chart-axis-label-color: #e4e7eb;
+    --chart-axis-stroke-color: #d0d5db;
+    --chart-axis-tick-color: #9ca4ab;
+    --chart-axis-tick-text-color: #e4e7eb;
+    --chart-grid-color: #4e555c;
     --chart-tooltip-bg: rgba(31, 41, 55, 0.95);
     --chart-tooltip-text: #f9fafb;
     --chart-tooltip-border-color: rgba(148, 163, 184, 0.5);
-    --chart-crosshair-color: #9ca3af;
-    --chart-glyph-stroke-color: #0f172a;
-    --chart-empty-text-color: #9ca3af;
+    --chart-crosshair-color: #9ca4ab;
+    --chart-glyph-stroke-color: #13181e;
+    --chart-empty-text-color: var(--panel-text-muted);
 
     --chart-line-colors: #2dd4bf, #f97316, #a855f7, #38bdf8, #facc15;
     --chart-line-0: #2dd4bf;
@@ -239,67 +412,28 @@ html, body, #root {
   height: 100%;
   background-color: var(--background-color);
   color: var(--text-color);
+  font-family: var(--font-ui);
 }
 
 body {
   padding-top: var(--ts-header-height);
 }
 
-.experimental-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  position: sticky;
-  top: var(--ts-header-height);
-  z-index: 1100;
-  padding: 0.85rem 1.25rem;
-  margin: 0;
-  background: linear-gradient(90deg, rgba(255, 193, 7, 0.22), rgba(255, 138, 61, 0.18));
-  border-bottom: 1px solid rgba(214, 165, 0, 0.35);
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
-  color: #5b3d00;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-}
 
-.experimental-banner__content {
-  min-width: 0;
-}
 
-.experimental-banner__close {
-  appearance: none;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  flex: 0 0 auto;
-  font-size: 1.4rem;
-  font-weight: 700;
-  line-height: 1;
-  padding: 0 0.25rem;
-}
-
-.experimental-banner__close:hover {
-  opacity: 0.75;
-}
-
-.experimental-banner__close:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 2px;
-}
-
-@media (prefers-color-scheme: dark) {
-  .experimental-banner {
-    background: linear-gradient(90deg, rgba(245, 158, 11, 0.22), rgba(251, 146, 60, 0.18));
-    border-bottom-color: rgba(251, 191, 36, 0.35);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.24);
-    color: #fff2cc;
-  }
-}
 
 .form-switch .form-check-input {
   width: 3em;
   height: 1.5em;
   margin-right: 10px;
+}
+
+/* Bootstrap 5.1 compiles a pure #000 backdrop. Tinted like every other neutral, and a little
+   lighter, so the map stays legible behind a dialog that is only ever informational. */
+.modal-backdrop {
+  background-color: var(--modal-scrim);
+}
+
+.modal-backdrop.show {
+  opacity: 0.45;
 }

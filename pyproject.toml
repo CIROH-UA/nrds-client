@@ -3,7 +3,15 @@ name = "tethysapp-nrds"
 dynamic = ["version"]
 description = "An application for visualizaing Next gen model data."
 authors = [{ name = "Giovanni Romero", email = "gromero@aquaveo.com" }]
-dependencies = ["geopandas", "xarray", "numpy<2","pandas", "pyarrow>=23.0.1", "fsspec", "pyproj", "h5netcdf", "s3fs"]
+# Only the slim-index generator needs any of this at build time; the app itself serves a static
+# file and renders a template. geopandas, xarray, h5netcdf and pandas went with the NetCDF
+# conversion and the gpkg controller -- the conda base image still carries them, which is why
+# the numpy floor stays: they are built there against numpy 1.x.
+dependencies = ["numpy<2", "pyarrow>=23.0.1", "fsspec", "s3fs",
+    # Declared for its floor, not because the app imports it: s3fs pulls it through
+    # aiobotocore, and 3.14.1 carries GHSA-cq5v-8q36-5273. fsspec also needs it to open https.
+    "aiohttp>=3.14.3",
+]
 requires-python = ">=3.10"
 readme = "README.md"
 license = { text = "" }
@@ -70,7 +78,12 @@ include-package-data = true
 include = ["tethysapp*"]
 
 [tool.setuptools.package-data]
-"*" = ["*.js", "*.png", "*.gif", "*.jpg", "*.html", "*.css", "*.json", "*.svg"]
+# Scoped to public/data on purpose: a bare "*.parquet" would sweep any stray parquet
+# anywhere under tethysapp into the wheel.
+# Fonts are here because webpack emits them next to the images and this list is what
+# survives packaging: without *.woff2 the build succeeded, the stylesheet asked for a
+# font that was never installed, and the browser fell back silently.
+"*" = ["*.js", "*.png", "*.gif", "*.jpg", "*.html", "*.css", "*.json", "*.svg", "*.woff2", "*.woff", "public/data/*.parquet"]
 
 [tool.setuptools_scm]
 # can be empty if no extra settings are needed, presence enables setuptools-scm

@@ -1,40 +1,29 @@
-import React, { useMemo, Fragment, useCallback, useEffect, useRef } from 'react';
+import React, { useMemo, Fragment, useCallback, useRef } from 'react';
 import { Row, IconLabel } from '../styles/Styles';
 import SelectComponent from '../SelectComponent';
-import { getTimeseries, getVpuVariableFlat } from 'features/DataStream/lib/queryData';
+import { getVpuVariableFlat } from 'features/DataStream/lib/queryData';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
+import { loadTimeseries } from 'features/DataStream/actions/loadTimeseries';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
-import { useVPUStore } from 'features/DataStream/store/Layers';
+import { useVPUStore } from 'features/DataStream/store/VPU';
 import { useShallow } from 'zustand/react/shallow';
-import { makeTitle } from 'features/DataStream/lib/utils';
-import {
-  VariableIcon,
-} from 'features/DataStream/lib/layers';
+import { createSequence } from 'features/DataStream/lib/sequence';
 
+/** The variable selector for the charted feature. */
 function VariablesMenu() {
-  const isMountedRef = useRef(true);
-  const requestIdRef = useRef(0);
+  const changes = useRef(createSequence()).current;
 
-  useEffect(() => {
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
-
-  const{ forecast, variables, cacheKey } = useDataStreamStore(
+  const{ variables, cacheKey } = useDataStreamStore(
     useShallow((state) => ({
-      forecast: state.forecast,
       variables: state.variables,
       cacheKey: state.cache_key,
     }))
   );
   
-  const { variable, set_variable, set_series, set_layout, feature_id } = useTimeSeriesStore(
+  const { variable, set_variable, feature_id } = useTimeSeriesStore(
     useShallow((state) => ({
       variable: state.variable,
       set_variable: state.set_variable,
-      set_series: state.set_series,
-      set_layout: state.set_layout,
       feature_id: state.feature_id,
     }))
   );
@@ -55,54 +44,59 @@ function VariablesMenu() {
   }
   , [variables, variable]);
 
+  /** Load a variable's map values and its chart series together. */
   const handleChangeVariable = useCallback(async (evt) => {
     const opt = evt || availableVariablesList?.[0];
     if (!opt || !feature_id) return;
 
-    const requestId = requestIdRef.current + 1;
-    requestIdRef.current = requestId;
-    const id = feature_id.split('-')[1]; 
+    const ticket = changes.next();
+    const requestCacheKey = cacheKey;
 
     try {
-      const flat = await getVpuVariableFlat(cacheKey, opt.value);
-      if (!isMountedRef.current || requestId !== requestIdRef.current) return;
-      setVarData(opt.value, flat);
+      const cached = useVPUStore.getState().getVarData(opt.value);
 
+      const [flatResult] = await Promise.allSettled([
+        cached ?? getVpuVariableFlat(requestCacheKey, opt.value),
+        loadTimeseries({ variable: opt.value }),
+      ]);
+      if (!changes.isCurrent(ticket)) return;
+      if (useDataStreamStore.getState().cache_key !== requestCacheKey) return;
+
+      if (flatResult.status === 'rejected') {
+        useTimeSeriesStore.setState({
+          loadingText: `Failed to load ${opt.value} for the map`,
+          last_error: { kind: 'variable', variable: opt.value },
+        });
+        console.error('Failed to change variable', flatResult.reason);
+        return;
+      }
+
+      setVarData(opt.value, flatResult.value);
       set_variable(opt.value);
-      const series = await getTimeseries(id, cacheKey, opt.value);
-      if (!isMountedRef.current || requestId !== requestIdRef.current) return;
-
-      const xy = series.map((d) => ({
-        x: new Date(d.time),
-        y: d[opt.value],
-      }));
-      set_series(xy);
-      set_layout({
-        yaxis: opt.value,
-        xaxis: 'Time',
-        title: makeTitle(forecast, feature_id),
-      });
     } catch (err) {
-      if (!isMountedRef.current || requestId !== requestIdRef.current) return;
+      if (!changes.isCurrent(ticket)) return;
+      useTimeSeriesStore.setState({
+        loadingText: `Failed to load ${opt.value} for the map`,
+        last_error: { kind: 'variable', variable: opt.value },
+      });
       console.error('Failed to change variable', err);
     }
   }, [
     availableVariablesList,
     cacheKey,
     feature_id,
-    forecast,
     setVarData,
     set_variable,
-    set_series,
-    set_layout,
+    changes,
   ]);
 
   return (
     <Fragment>
          { availableVariablesList.length > 0 && (
           <Row>
-            <IconLabel> <VariableIcon /> Variable</IconLabel>
+            <IconLabel as="label" htmlFor="select-variable">Variable</IconLabel>
             <SelectComponent
+              inputId="select-variable"
               optionsList={availableVariablesList}
               value={selectedVariableOption}
               onChangeHandler={handleChangeVariable}
@@ -112,6 +106,5 @@ function VariablesMenu() {
     </Fragment>
   );
 }
-
 
 export default React.memo(VariablesMenu);
