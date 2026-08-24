@@ -59,6 +59,11 @@ const readToken = (name, fallback) => {
  *
  * The fallbacks are only for a genuinely missing token. They are no longer load-order
  * insurance, so a wrong one is a bug rather than a theme.
+ *
+ * The ramp is the exception: it comes from the media query rather than from a token. Everything
+ * else here is a single value a stylesheet can hold, while the ramp is six stops that only work
+ * as a set, each measured against the basemap surface it is drawn on. Reading the same signal
+ * that switches the tokens keeps it in step with them without a parse step that could half-fail.
  */
 export const readMapTheme = () => {
   return {
@@ -72,10 +77,7 @@ export const readMapTheme = () => {
     cursorSymbolFill: readToken('--map-cursor-symbol-fill', '#1f78b4'),
     // Shared: the gauge outline and the cursor legend symbol both read it.
     pointStroke: readToken('--map-point-stroke-color', '#f7fafe'),
-    // Picked from the media query rather than a token. The other colours here are single values
-    // a stylesheet can hold; the ramp is six stops that only work as a set, measured against the
-    // basemap each one is drawn on. Reading the same signal that switches the tokens keeps it in
-    // step with them without a parse step that could half-fail.
+    // From the media query, not a token: six stops only work as a set. See the docstring.
     ramp: prefersDarkSnapshot() ? DARK_RAMP : LIGHT_RAMP,
   };
 };
@@ -83,8 +85,7 @@ export const readMapTheme = () => {
 /** The map's colours for the current theme, recomputed when the theme changes. */
 export const useMapTheme = () => {
   const prefersDark = usePrefersDark();
-  // prefersDark looks unused to the linter and is the whole point: the tokens are not
-  // observable, so the media query that changes them stands in for them.
+  // prefersDark looks unused and is the whole point: tokens are not observable, this is.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   return useMemo(() => readMapTheme(), [prefersDark]);
 };

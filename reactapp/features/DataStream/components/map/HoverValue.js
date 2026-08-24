@@ -36,8 +36,7 @@ export const HoverValue = ({ hoverId }) => {
     }))
   );
 
-  // The index registers the bare number and the wb- form, so a catchment's cat- id has to be
-  // reduced to its number before it can be looked up.
+  // The index holds the bare number and the wb- form, so a cat- id needs reducing first.
   const featureIndex = useMemo(() => {
     if (hoverId === null || hoverId === undefined) return undefined;
     const direct = featureIdToIndex?.[String(hoverId)];

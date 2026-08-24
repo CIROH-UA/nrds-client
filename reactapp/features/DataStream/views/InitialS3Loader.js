@@ -49,14 +49,9 @@ export function InitialS3Loader() {
 
         const _models = models.filter(m => m.value !== 'test');
 
-        // Nothing to read, so nothing to key. Without this the key was built from an undefined
-        // output file, which names a table that cannot exist, and the previous vpu's chart and
-        // animation stayed on screen as though they belonged to this one. The manual path
-        // through applyOutputFiles already refuses on the same condition.
+        // Nothing to read, so nothing to key; applyOutputFiles refuses on the same condition.
         if (!outputFiles.length) {
-          // The controls still describe this vpu: the lists it can offer, and the first of each
-          // that exists. Leaving them at the previous vpu's values meant every later dropdown
-          // built its s3 url from path segments belonging to somewhere else.
+          // The controls still describe this vpu, or later dropdowns build urls for another.
           setInitialData({
             models: _models, dates, forecasts, cycles, outputFiles, prefix: '',
           });

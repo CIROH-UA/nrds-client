@@ -26,7 +26,6 @@ export const acknowledgeExperimental = () => {
   try {
     window.localStorage.setItem(KEY, '1');
   } catch {
-    // Nothing to do. The dialog closes for this session either way, and comes back next load,
-    // which is the right direction to fail in.
+    // Nothing to do: the dialog closes for this session and comes back next load.
   }
 };

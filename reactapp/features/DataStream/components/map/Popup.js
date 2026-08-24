@@ -8,8 +8,7 @@ import { formatLabel, formatPropertyValue } from 'features/DataStream/lib/utils'
 import HoverValue from './HoverValue';
 
 const CustomPopUp = React.memo(({ hovered_feature, enabledHovering }) => {
-  // hoverId, longitude and latitude are ours, added so the popup can place itself: they were
-  // being listed back to the reader as if they were properties of the feature.
+  // Drops hoverId, longitude and latitude: ours for placement, not the feature's to show.
   const rows = useMemo(() => hoverRows(hovered_feature), [hovered_feature]);
 
     if (!enabledHovering || !hovered_feature?.hoverId) return null;

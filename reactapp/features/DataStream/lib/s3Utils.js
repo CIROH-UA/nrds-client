@@ -72,16 +72,21 @@ async function listPublicS3Files(prefix = "v2.2/", { signal } = {}) {
 
 const byValue = (a, b) => (a.value < b.value ? -1 : a.value > b.value ? 1 : 0);
 
+/**
+ * The choices a prefix offers, as options a select can render.
+ *
+ * Output listings are filtered to parquet, which is the one place a NetCDF output can be kept
+ * out of the interface. The pipeline moved to parquet around March 2026 and every model has
+ * published it since; what is left under .nc is archived runs from before that, which duckdb
+ * cannot read. Filtering here rather than refusing later means nothing offers a choice that
+ * cannot work, and a directory holding only .nc lists nothing -- the existing "no output file"
+ * state rather than a new one.
+ */
 export async function getOptionsFromURL(url, { signal } = {}) {
   try{
     if (url.split('/').includes('troute')){
       const files = await listPublicS3Files(url, { signal });
-      // Parquet only, which is the one place a NetCDF output can be kept out of the interface.
-      // The pipeline moved to parquet around March 2026 and every model has published it since;
-      // what is left under .nc is archived runs from before that, which duckdb cannot read. They
-      // are filtered here rather than refused later, so nothing offers a choice that cannot work.
-      // A selection whose directory holds only .nc lists nothing, which is the existing
-      // "no output file" state rather than a new one.
+      // Parquet only; the docstring says why the archived .nc runs are dropped here.
       const readable = files.filter((f) => f.endsWith('.parquet'));
       const options = readable.map((d) => ({ value: d.split('/').pop(), label: d.split('/').pop() }));
       // byValue, because Array.sort() on objects compares "[object Object]" and orders nothing.
@@ -195,6 +200,13 @@ async function probeForParquet(model, date, { signal } = {}) {
  *
  * Reversed rather than sorted descending: S3 answers in lexicographic order, which for this
  * name shape is oldest first. filter returns a new array, so reversing it mutates nothing shared.
+ *
+ * A failure answers { answered: false } rather than an empty list. getOptionsFromURL, which
+ * every control below this one uses, turns any failure into an empty list -- fine for filling a
+ * dropdown, where an empty control is visible and a reload fixes it, but not for deciding
+ * whether a model exists at all. A network blip while listing a model's runs used to drop that
+ * model from the interface for the rest of the session, silently, which is the very failure the
+ * filter reading this answer was written to prevent.
  */
 const DATED_RUN = /^ngen\.\d{8}$/;
 
@@ -209,12 +221,7 @@ const datedRunsNewestFirst = (model, { signal } = {}) =>
         .reverse();
       return { runs, answered: true };
     } catch {
-      // Distinguished from an empty listing on purpose. getOptionsFromURL, which every control
-      // below this one uses, turns any failure into an empty list -- fine for filling a
-      // dropdown, where an empty control is visible and a reload fixes it, but not for deciding
-      // whether a model exists at all. A network blip while listing a model's runs used to drop
-      // that model from the interface for the rest of the session, silently, which is the very
-      // failure this filter was written to prevent.
+      // answered: false, not an empty list -- see the docstring. A blip is not an absence.
       return { runs: [], answered: false };
     }
   }, ({ answered }) => answered);
@@ -246,8 +253,7 @@ async function modelsWithReadableOutputs(models, { signal } = {}) {
   const checked = await Promise.all(
     models.map(async (model) => {
       const { runs, answered } = await datedRunsNewestFirst(model.value, { signal });
-      // Could not look is not the same as looked and found nothing, and only the second is a
-      // reason to take a model away.
+      // Could not look is not looked and found nothing; only the second hides a model.
       if (!answered) return model;
       if (runs.length === 0) return null;
       for (const run of runs.slice(0, RECENT_RUNS_CHECKED)) {
@@ -340,14 +346,21 @@ export const makeOutputUrl = (prefix) =>
 // listing is retried rather than remembered. A reload picks up newly published dates.
 let cachedBaseOptions = null;
 
+/**
+ * The model, date, forecast and cycle lists the controls open on.
+ *
+ * The default date is dates[0], the newest, which is what the model-change path in dataMenu has
+ * always picked. This used to take dates[1]: harmless back when the list was every date a model
+ * had and arrived oldest-first, where it meant the second-oldest and nobody noticed. Once the
+ * list became newest-first it quietly meant "yesterday" -- in a forecast tool, and disagreeing
+ * with the other path about the same list.
+ */
 const loadBaseOptions = async ({ signal }) => {
   const _models = await getOptionsFromURL(`outputs`, { signal });
   if (_models.length === 0){
     return {models: [], dates: [], forecasts: [], cycles: []};
   }
-  // Only the models with something readable in them. Without this a model that stopped
-  // publishing before the format changed stays in the control and dead-ends on an empty date
-  // list, which reads as a broken app rather than as an archived model.
+  // Only the models with something readable in them, or the control dead-ends on empty dates.
   const models = await modelsWithReadableOutputs(
     _models.filter((m) => m.value !== 'test'), { signal }
   );
@@ -359,11 +372,7 @@ const loadBaseOptions = async ({ signal }) => {
   if (dates.length === 0){
     return {models, dates: [], forecasts: [], cycles: []};
   }
-  // The newest, which is what the model-change path in dataMenu has always picked. This one
-  // used to take dates[1]: harmless back when the list was every date a model had and arrived
-  // oldest-first, where it meant the second-oldest and nobody noticed, but once the list became
-  // newest-first it quietly meant "yesterday" -- in a forecast tool, and disagreeing with the
-  // other path about the same list.
+  // The newest, which is what the model-change path in dataMenu picks; see the docstring.
   const defaultDate = dates[0]?.value;
   const forecasts = (await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${defaultDate}/`, { signal })).reverse();
   if (forecasts.length === 0){
@@ -392,9 +401,7 @@ export const initialS3Data = async(vpu, { signal } = {}) => {
   if (!vpu) {
     return {models, dates, forecasts, cycles, ensembles:[], outputFiles: []};
   }
-  // The same date loadBaseOptions listed the forecasts and cycles under, and the one the
-  // loader selects: these four have to describe one selection or the output listing is for a
-  // combination nothing else on screen is showing.
+  // The same four values the loader selects, or this listing describes another selection.
   const outputFiles = await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${dates[0]?.value}/${forecasts[0]?.value}/${cycles[0]?.value}/${vpu}/ngen-run/outputs/troute/`, { signal });
   return {models, dates, forecasts, cycles, ensembles:[], outputFiles};
 }

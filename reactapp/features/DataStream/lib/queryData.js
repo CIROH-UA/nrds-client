@@ -14,8 +14,7 @@ const debugLog = (...args) => {
 export async function getTimeseries(id, cacheKey, variable) {
   const conn = await getConnection();
   const tableName = tableNameForKey(cacheKey);
-  // feature_id is compared as a number, so it has to be one: it arrives as the numeric part of
-  // an id and anything else belongs nowhere near a query.
+  // feature_id is compared as a number, so anything else belongs nowhere near this query.
   const featureId = Number(id);
   if (!Number.isFinite(featureId)) throw new Error(`Not a feature id: ${id}`);
   try {
@@ -52,9 +51,7 @@ export async function getTimeseries(id, cacheKey, variable) {
     );
     return rows;
   } finally {
-    // Released rather than awaited. Closing is another round trip to the worker, so on one
-    // that has stopped answering the wait for the close outlasted the timeout that was
-    // meant to escape it, and the caller still never settled.
+    // Released, not awaited: closing a worker that stopped answering outlasts the timeout.
     void Promise.resolve(conn.close()).catch(() => {});
   }
 }
@@ -220,8 +217,7 @@ export async function getFeatureProperties({ cacheKey, feature_id }) {
   if (!candidates.length) return [];
 
   const conn = await getConnection();
-  // The same helper the table was created with: splitting on the first dot is a second, quieter
-  // rule for the same thing, and it parts company with it on any key holding more than one.
+  // The same helper the table was created with, so the two cannot part company on a key.
   const tableName = tableNameForKey(cacheKey);
   const inList = candidates.map((id) => `'${id}'`).join(', ');
   // Ranked by the order asked for, so "cat first" is expressed once, at the call site.

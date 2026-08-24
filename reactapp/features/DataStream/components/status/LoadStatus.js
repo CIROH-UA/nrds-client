@@ -29,9 +29,7 @@ export const LoadStatus = React.memo(function LoadStatus() {
     }))
   );
 
-  // The index takes about seven seconds and blocks nothing else, so without saying so here the
-  // map looks ready while the one thing that needs it is not. Yielding to a real load keeps the
-  // strip to one statement at a time.
+  // Yields to a real load, so the strip only ever makes one statement at a time.
   if (indexLoading && !loading && !loadingText) {
     return (
       <StatusStrip role="status" aria-live="polite">

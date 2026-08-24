@@ -122,8 +122,7 @@ const customStyles = (width = 150) => {
       fontSize: 12,
       padding: '4px 8px',
       width: '100%',
-      // Wraps: output-file names differ only in their tail, so truncating them all to
-      // "troute_output_2..." left nothing to choose between.
+      // Wraps: output-file names differ only in their tail, so truncation left nothing to read.
       whiteSpace: 'normal',
       overflowWrap: 'break-word',
       color: state.isSelected ? 'var(--nav-pill-active-text-color)' : 'var(--select-text-color)',

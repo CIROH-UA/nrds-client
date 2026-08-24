@@ -43,6 +43,11 @@ let dbPromise = null;
  * initialisation -- a blocked worker url, a wasm fetch that lost the network -- was replayed to
  * every later caller, so nothing in the app could touch duckdb again until the page reloaded.
  * The cache layer used to do the same thing before it was removed; this is that rule.
+ *
+ * open() is called without an opfs option on purpose. Nothing this app registers comes from a
+ * file handle any more, and leaving the mode on would let a future registerFileHandle reopen the
+ * per-origin locking that removing it exists to retire. A main-thread assertion could not catch
+ * that -- duckdb's handling runs in the worker -- so it is closed off at the source instead.
  */
 export function getDuckDB() {
   if (!dbPromise) {
@@ -62,10 +67,7 @@ export function getDuckDB() {
 
       await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
       
-      // No opfs option: nothing this app registers comes from a file handle any more, and
-      // leaving the mode on would let a future registerFileHandle reopen the per-origin locking
-      // this change exists to retire. A main-thread assertion could not catch that -- duckdb's
-      // handling runs in a worker -- so it is closed off at the source instead.
+      // No opfs option, so a future registerFileHandle cannot reopen per-origin locking.
       await db.open({ accessMode: duckdb.DuckDBAccessMode.READ_WRITE });
 
       // Optional cleanup
@@ -94,9 +96,7 @@ export async function getConnection() {
   const db = await withDeadline(getDuckDB(), INIT_MS, "the database");
   let abandoned = false;
   const pending = db.connect();
-  // Closed if it turns up late. Losing the race does not cancel the connect -- nothing here can
-  // -- so without this a worker that was merely slow hands back a connection nobody holds, once
-  // per timeout, for the life of the session.
+  // Closed if it turns up late: losing the race cannot cancel the connect, only disown it.
   pending.then(
     (conn) => { if (abandoned) Promise.resolve(conn.close()).catch(() => {}); },
     () => {}

@@ -18,11 +18,25 @@ import {
 const isExternal = (to, externalFlag) =>
   externalFlag ?? /^https?:\/\//i.test(to);      // auto-detect absolute URLs
 
+/**
+ * The page around the map: header, off-canvas nav, and the first-run notice.
+ *
+ * The notice is read once at mount rather than on every render. Re-reading it would reopen the
+ * dialog on any re-render that follows a storage failure, which is the one case where the
+ * acknowledgement cannot be recorded -- so the reader who can least escape it would see it most.
+ *
+ * The outer element is a flex column because the map has to take whatever is left rather than a
+ * full 100% of its own. With height: 100% on both, the banner that preceded this modal pushed
+ * the map 52px past the bottom of the window and took the attribution control off screen.
+ *
+ * The skip link comes first in the tab order on purpose: the nav, the notice and its dismiss
+ * button all sit between the header and the map, so without it every page load costs a keyboard
+ * reader three stops before they reach anything they came for.
+ */
 export default function Layout({ navLinks = [], routes = [], children }) {
   const { tethysApp } = useContext(AppContext);
   const [navVisible, setNavVisible] = useState(false);
-  // Read once at mount. Re-reading would reopen the dialog on any re-render that follows a
-  // storage failure, which is the one case where it cannot be recorded.
+  // Read once at mount, for the reason in the docstring.
   const [noticeOpen, setNoticeOpen] = useState(() => !hasAcknowledgedExperimental());
 
   const acknowledgeNotice = () => {
@@ -34,13 +48,7 @@ export default function Layout({ navLinks = [], routes = [], children }) {
   const closeNav = () => startTransition(() => setNavVisible(false));
 
   return (
-    // A flex column, so the map takes what is left rather than a full 100% on top of whatever
-    // the banner occupies. With height: 100% on both, the banner pushed the map 52px past the
-    // bottom of the window and took the attribution control off screen with it.
     <div className="h-100 d-flex flex-column">
-      {/* First in the tab order on purpose: the nav, the banner and its dismiss button sit
-          between the header and the map, and without this every page load costs a keyboard
-          reader three stops before they reach anything they came for. */}
       <ExperimentalNoticeModal show={noticeOpen} onAcknowledge={acknowledgeNotice} />
 
       <SkipLink href="#main-content">Skip to the map</SkipLink>

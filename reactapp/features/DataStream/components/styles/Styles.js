@@ -378,33 +378,6 @@ export const SButton = styled(Button)`
   justify-content: center;
 `;
 
-// Sits in the header, so it must stay compact and never push the search bar around. Failure is
-// styled from last_error rather than by matching the message text. The colours come from the
-// theme because the header is white in one and navy in the other -- a single hardcoded grey
-// measured 1.38:1 against the dark one, which is why nothing could be read.
-/**
- * A prompt on the map, for when the view itself is why nothing is drawn.
- *
- * A button rather than a notice: telling someone to zoom in and making them find the control
- * are different things, and the whole complaint was that the data could not be located.
- */
-/**
- * Where the time slider sits once it is a map control rather than a panel one.
- *
- * Bottom centre, because it drives the animation and belongs near it rather than in a panel the
- * reader has to look away to reach. That slot already had MapHint in it, and the two appear
- * under overlapping conditions -- a vpu loaded with flowpaths on, before the reader has zoomed
- * in far enough for the reaches to be mapped -- so MapHint is raised above this rather than left
- * to collide with it.
- *
- * Shrinks rather than hides on a narrow screen. LegendBox answers that case with display: none,
- * which it can afford because it only explains a ramp; this is the only control that scrubs
- * time, so hiding it would take the animation away with it.
- *
- * pointer-events are on, unlike the legend: it is a control. The box is bounded so it only takes
- * the map interaction underneath itself. touch-action is set because maplibre claims drag
- * gestures on its container, and without it the thumb is not reliably draggable on a touchscreen.
- */
 /**
  * Anything that floats over the map.
  *
@@ -427,6 +400,23 @@ const MapSurface = styled.div`
   box-shadow: var(${(p) => (p.$control ? '--elevation-map-control' : '--elevation-map-readout')});
 `;
 
+/**
+ * Where the time slider sits once it is a map control rather than a panel one.
+ *
+ * Bottom centre, because it drives the animation and belongs near it rather than in a panel the
+ * reader has to look away to reach. That slot already had MapHint in it, and the two appear
+ * under overlapping conditions -- a vpu loaded with flowpaths on, before the reader has zoomed
+ * in far enough for the reaches to be mapped -- so MapHint is raised above this rather than left
+ * to collide with it.
+ *
+ * Shrinks rather than hides on a narrow screen. A readout can afford display: none, as the
+ * legend that used to sit beside this did; this is the only control that scrubs time, so
+ * hiding it would take the animation away with it.
+ *
+ * pointer-events are on, unlike the legend: it is a control. The box is bounded so it only takes
+ * the map interaction underneath itself. touch-action is set because maplibre claims drag
+ * gestures on its container, and without it the thumb is not reliably draggable on a touchscreen.
+ */
 export const TimeSliderDock = styled(MapSurface).attrs({ $control: true })`
   left: 50%;
   transform: translateX(-50%);
@@ -452,6 +442,12 @@ export const PanelCaption = styled.p`
   color: var(--panel-text-muted);
 `;
 
+/**
+ * A prompt on the map, for when the view itself is why nothing is drawn.
+ *
+ * A button rather than a notice: telling someone to zoom in and making them find the control
+ * are different things, and the whole complaint was that the data could not be located.
+ */
 export const MapHint = styled(MapSurface).attrs({ as: 'button' })`
   left: 50%;
   transform: translateX(-50%);
@@ -519,6 +515,14 @@ export const LegendScale = styled.div`
   }
 `;
 
+/**
+ * The load status pill.
+ *
+ * Sits in the header, so it must stay compact and never push the search bar around. Failure is
+ * styled from last_error rather than by matching the message text. The colours come from the
+ * theme because the header is white in one and navy in the other -- a single hardcoded grey
+ * measured 1.38:1 against the dark one, which is why nothing could be read.
+ */
 export const StatusStrip = styled.div`
   display: flex;
   align-items: center;
@@ -996,13 +1000,13 @@ export const LoadProgressBar = styled.div`
     inset: 0 auto 0 0;
     width: 25%;
     background-color: var(--nav-pill-active-bg);
-    animation: ${slide} 1.1s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+    animation: ${slide} 1.1s linear infinite;
   }
 
   @media (prefers-reduced-motion: reduce) {
     &::after {
       width: 100%;
-      animation: ${pulse} 2.4s ease-in-out infinite;
+      animation: ${pulse} 2.4s cubic-bezier(0.25, 1, 0.5, 1) infinite;
     }
   }
 `;

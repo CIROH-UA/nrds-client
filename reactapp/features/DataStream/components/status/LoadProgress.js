@@ -28,8 +28,7 @@ export const LoadProgress = () => {
     }))
   );
 
-  // A failure is not progress. The strip turns red and says so; a bar still running under it
-  // would claim the app was still trying.
+  // A failure is not progress: the strip says so, and a bar under it would disagree.
   if (failed || !(loading || pending || indexLoading)) return null;
 
   return <LoadProgressBar aria-hidden="true" />;

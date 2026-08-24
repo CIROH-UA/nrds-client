@@ -42,6 +42,11 @@ export function pickHoverFeature(features) {
  *
  * Divides stay explicit: divide_id is the catchment the reader means, not whatever the tile
  * happens to identify the polygon by.
+ *
+ * The result carries _id because that is where the feature store looks first for an identity.
+ * Without it the store fell back through id and properties.id, found neither on a flowpath from
+ * this archive, keyed the hover as null, read null as unchanged, and dropped every update --
+ * so hovering a flowpath could never produce a popup while hovering a catchment always could.
  */
 export function hoveredFeatureOf(feature, lngLat) {
   if (!feature) return null;
@@ -52,10 +57,7 @@ export function hoveredFeatureOf(feature, lngLat) {
   if (!hoverId) return null;
 
   return {
-    // _id is where the feature store looks first for an identity. Without it the store fell back
-    // through id and properties.id, found neither on a flowpath from this archive, keyed the
-    // hover as null, read null as unchanged, and dropped every update: hovering a flowpath could
-    // never produce a popup while hovering a catchment always could.
+    // _id is where the feature store looks first; without it a flowpath keys as null.
     _id: hoverId,
     layerId,
     ...feature.properties,

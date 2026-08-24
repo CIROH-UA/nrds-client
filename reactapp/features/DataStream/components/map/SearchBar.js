@@ -125,9 +125,7 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
   }
 
   const loading = indexStatus === 'loading';
-  // The status strip beside it carries "Building the search index" with the spinner, so saying
-  // it here too printed the same sentence twice in one header. Disabled plus aria-busy is the
-  // part only the control can say.
+  // The strip beside it already says so in words; disabled and aria-busy are this one's part.
 
 
   return (

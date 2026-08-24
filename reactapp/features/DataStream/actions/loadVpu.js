@@ -35,6 +35,11 @@ import { useVPUStore } from 'features/DataStream/store/VPU';
  * It lives outside the stores because it spans six of them. Reading each with getState at
  * the point of use also means late steps see current state rather than whatever a render
  * closure captured when the load began.
+ *
+ * The closing chart asks for its feature by name rather than leaving loadTimeseries to fall
+ * back on feature_id. This used to clear feature_id and no longer does, since that is what
+ * holds the panel open -- but the fallback would chart the previous selection when the current
+ * one is gone, and with nothing selected there is nothing to chart.
  */
 export async function loadVpu() {
   const { cache_key: cacheKey, vpu, set_variables } = useDataStreamStore.getState();
@@ -47,9 +52,7 @@ export async function loadVpu() {
 
   // All inside the try: a throw before the finally would defer every later click for good.
   try {
-    // Not a full reset: feature_id is what holds the panel open and the click that asked for
-    // this load is what set it, so clearing it closed the panel mid-load and reopened it once
-    // the series arrived, with the placeholder title in between.
+    // Not a full reset: feature_id holds the panel open, and clearing it closed it mid-load.
     timeseries.reset_series();
     useTimeSeriesStore.setState({ last_error: null });
     useVPUStore.getState().resetVPU();
@@ -67,9 +70,7 @@ export async function loadVpu() {
       } catch (err) {
         if (superseded()) return;
         console.error('No data for VPU', vpu, err);
-        // Named when it can be. Every failure here read as absent data, so a stalled download, a
-        // full cache and a database that stopped answering were all reported as this vpu having
-        // nothing -- and the reasons this app works out were shown only by the search box.
+        // Named when it can be: a stall and a full cache both used to read as absent data.
         const reason = cacheFailureReason(err);
         useTimeSeriesStore.setState({
           loadingText: reason ? `Could not load: ${reason}` : 'No data available for selected VPU',
@@ -99,8 +100,6 @@ export async function loadVpu() {
     useVPUStore.getState().setVarData(currentVariable, flat);
 
     // Read at the point of use: the selection can have moved on while the vpu was loading.
-    // Asked for by name rather than left to loadTimeseries to fall back on feature_id, which
-    // this used to clear and no longer does: with nothing selected there is nothing to chart.
     const { selected_feature } = useFeatureStore.getState();
     const featureId = selected_feature?._id ?? null;
     if (featureId) {
@@ -113,8 +112,7 @@ export async function loadVpu() {
   } catch (err) {
     if (superseded()) return;
     useTimeSeriesStore.setState({
-      // Named by the vpu, not the cache key: the key runs to about a hundred characters and
-      // this message is read in a header pill. Guarded, so a missing vpu is not printed.
+      // The vpu, not the cache key: the key is a hundred characters and this is a pill.
       loadingText: vpu ? `Failed to load data for ${vpu}` : 'Failed to load the selected data',
       last_error: { kind: 'vpu', cacheKey },
     });

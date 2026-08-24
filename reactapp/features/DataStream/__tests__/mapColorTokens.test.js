@@ -50,7 +50,6 @@ describe('the map keeps its contrast promises', () => {
   const {
     DARK_SURFACES,
     LIGHT_SURFACES,
-    MIN_CONTRAST,
   } = require('features/DataStream/lib/basemapSurfaces');
 
   const light = scss.slice(0, scss.indexOf('/* Dark theme override */'));

@@ -24,8 +24,7 @@ export const TimeSlider = React.memo(() => {
 
   const timeSteps = Array.isArray(times) ? times.length : 0;
 
-  // The frame's own time, not its offset: "T+5h" only helps a reader who already knows when the
-  // cycle started, and the question is usually the other way round.
+  // The frame's own time, not its offset from a cycle start the reader may not know.
   const currentLabel = useMemo(
     () => (timeSteps ? formatFrameTime(times[Math.min(currentTimeIndex, timeSteps - 1)]) : ''),
     [times, currentTimeIndex, timeSteps]

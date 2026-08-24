@@ -34,9 +34,7 @@ export const LayerControl = () => {
   const vpuLayer = useLayersStore((state) => state.vpu);
   const set_vpu_visibility = useLayersStore((state) => state.set_vpu_visibility);
 
-  // The legend reads the same tokens the map layers do, so the two cannot disagree. It was
-  // branching on styled-components' useTheme, and nothing here installs a ThemeProvider, so
-  // that value was always undefined and the legend was always the light branch.
+  // The same signal the map layers read, so the legend cannot describe a different theme.
   const prefersDark = usePrefersDark();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const colors = useMemo(() => symbologyColors(), [prefersDark]);

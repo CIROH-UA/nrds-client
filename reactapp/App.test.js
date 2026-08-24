@@ -78,9 +78,7 @@ describe('the app shell', () => {
   it('names itself', async () => {
     renderApp();
 
-    // Its own name: the inherited version of this test looked for a different app entirely.
-    // By role, because the name now appears twice -- once in the brand link and once as the
-    // document's heading, which is the point of the heading.
+    // By role: the name is in the brand link too, and the heading is the one that matters.
     expect(await screen.findByRole('heading', { level: 1, name: /NRDS/i })).toBeInTheDocument();
   });
 
@@ -102,8 +100,7 @@ describe('the app shell', () => {
 
     const skip = await screen.findByRole('link', { name: /skip to the map/i });
     expect(skip).toHaveAttribute('href', '#main-content');
-    // First, or it is not a skip link: the nav, the banner and its dismiss button all sit
-    // between the header and the map.
+    // First, or it is not a skip link: the nav and the notice sit between it and the map.
     const focusable = document.querySelectorAll('a[href], button, input, select, [tabindex]');
     expect(focusable[0]).toBe(skip);
   });
@@ -121,8 +118,7 @@ describe('the app shell', () => {
     renderApp();
 
     await screen.findByTestId('datastream-view');
-    // The index comes from this app's own static files and vpu outputs are fetched into memory,
-    // so the button that used to clear OPFS would have had nothing to act on.
+    // Nothing is persisted any more, so the button that cleared OPFS has nothing to act on.
     expect(screen.queryByRole('button', { name: /cached data/i })).not.toBeInTheDocument();
   });
 
@@ -130,9 +126,7 @@ describe('the app shell', () => {
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
     renderApp();
 
-    // duckdb is the one thing mocked, and it is mocked as unavailable, so the real
-    // loadIndexData runs through the real queryData and fails on it. Asserting that proves the
-    // chain executed rather than merely parsed, which is the whole point of this file.
+    // Proves the chain ran rather than merely parsed: the real loadIndexData fails on duckdb.
     expect(await screen.findByRole('alert')).toHaveTextContent(/search unavailable/i);
     consoleError.mockRestore();
   });

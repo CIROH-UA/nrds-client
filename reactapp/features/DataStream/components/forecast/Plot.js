@@ -300,8 +300,7 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout, e
     [tooltipBg, tooltipTextColor, tooltipBorderColor]
   );
 
-  // Chosen from where the ticks actually fall, not from the forecast's name: a medium-range
-  // chart spanning under two days put two ticks on one day and labelled both "08/31".
+  // From where the ticks fall, not the forecast's name, which mislabels a short span.
   const formatDate = useMemo(() => {
     const fmt = distinctTickFormat(xTickValues, timeFormat);
     return (date) => timeFormat(fmt)(date);
@@ -316,6 +315,15 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout, e
 
   const lastTooltipKeyRef = useRef('');
 
+  /**
+   * The tooltip for the nearest point to a date, pinned to the top of the plot area.
+   *
+   * It used to sit at the value, which put it over the time axis whenever the reader scrubbed
+   * across a low flow -- and on a hydrograph the interesting part is usually the recession, so
+   * that is most of the chart. Following the point also made it jump vertically on every step,
+   * which is motion the reader did not ask for. The crosshair already says where on the line
+   * they are; the tooltip only has to say what it reads there.
+   */
   const buildTooltipAtDate = useCallback(
     (x0, leftPx) => {
       const tooltipDataArray = [];
@@ -352,13 +360,7 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout, e
       if (key === lastTooltipKeyRef.current) return;
       lastTooltipKeyRef.current = key;
 
-      // Pinned to the top of the plot area rather than tracking the point.
-      //
-      // It used to sit at the value, which put it over the time axis whenever the reader scrubbed
-      // across a low flow -- and on a hydrograph the interesting part is usually the recession,
-      // so that is most of the chart. Following the point also made it jump vertically on every
-      // step, which is motion the reader did not ask for. The crosshair already says where on the
-      // line they are; the tooltip only has to say what it reads there.
+      // Pinned to the top of the plot area rather than tracking the point; see the docstring.
       showTooltip({
         tooltipData: tooltipDataArray,
         tooltipLeft: leftPx,

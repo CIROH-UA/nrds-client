@@ -200,8 +200,7 @@ export function cacheFailureReason(err) {
     case 'TypeError':
       return 'could not fetch it';
     default:
-      // null rather than a phrase: a caller that cannot place the failure has a better sentence
-      // of its own, and the reader was being shown "see the console" as if it were a reason.
+      // null rather than a phrase: the caller has a better sentence than "see the console".
       return null;
   }
 }
