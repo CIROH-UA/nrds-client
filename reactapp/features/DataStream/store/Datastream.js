@@ -7,19 +7,7 @@ import { useVPUStore } from 'features/DataStream/store/VPU';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import { getYesterdayDateString } from '../lib/utils';
 
-/**
- * Leave a vpu: stop playback, drop its animation arrays, and disown the load still fetching it.
- *
- * Clearing the arrays is not enough on its own. A loadVpu already in flight for the vpu being
- * left is not superseded by the vpu field changing, so it reaches its next checkpoint, finds the
- * generation unchanged, and writes its animation arrays and variables in after the switch: the
- * data of the vpu just left, under the name of the one now selected. Bumping the generation is
- * how a cache clear disowns a running load, and leaving a vpu is the same act.
- *
- * An earlier version of this reached for the two stores with require() at call time, claiming a
- * static import would close a cycle. There is no cycle: neither store imports anything from
- * this project.
- */
+/** Leave a vpu: stop playback, drop its animation arrays, and disown the load still fetching it. */
 function leaveCurrentVpu() {
   cancelVpuLoads();
   cancelSelections();
@@ -27,21 +15,7 @@ function leaveCurrentVpu() {
   useVPUStore.getState().resetVPU();
 }
 
-/**
- * Where the app reads its data from, before anything is selected.
- *
- * ``flowpaths_pmtiles`` is a separate archive from ``community_pmtiles`` because merged.pmtiles
- * only carries flowpaths from zoom 7, and the animation needs them further out than that.
- *
- * ``hydrofabric_index`` is served from this app's own static files, generated at image build
- * time from the upstream 103 MB index: ten columns instead of 37, which is every column the app
- * reads -- four to resolve and position a search, six the Feature Information panel labels.
- *
- * ``hydrofabric_index_fallback`` is the upstream file, kept as a fallback rather than a default.
- * A portal whose static was collected without the slim index has nothing at the path above, and
- * answers 403 from S3 rather than 404 -- see isMissing in lib/fetchParquet.js. A slow search is
- * a great deal better than none while that is sorted out.
- */
+/** Where the app reads its data from, before anything is selected. */
 const DEFAULTS = {
   bucket: "ciroh-community-ngen-datastream",
   community_pmtiles: "https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/merged.pmtiles",
@@ -59,30 +33,15 @@ const DEFAULTS = {
   cycle: "00",
   outputFile: null,
   variables: [],
-  /**
-   * Whether the id index is loading, ready, or gave up.
-   *
-   * Held here rather than in the search box, and not in loadingText. The box's own state said
-   * "Building the id index" for the rest of the session after the load had failed, and the
-   * failure message went into loadingText where the next vpu load overwrote it, so a permanent
-   * condition was reported by a transient field and then lost.
-   */
+  /** Whether the id index is loading, ready, or gave up. */
   index_status: 'loading',
 };
-
 
 const useDataStreamStore = create((set) => ({
     ...DEFAULTS,
     set_bucket: (bucket) => set((s) => (s.bucket === bucket ? s : { bucket })),
     set_cache_key: (cache_key) => set((s) => (s.cache_key === cache_key ? s : { cache_key })),
-    /**
-     * Move to another vpu, and stop animating the one being left.
-     *
-     * The reset used to wait for loadVpu, which only gets there after the s3 listing chain
-     * resolves: several seconds in which playback kept stepping the old vpu's arrays while the
-     * controls, the title and the map had already moved on. Whoever changes the vpu is the one
-     * who knows it changed, so it happens here rather than at the end of a load.
-     */
+    /** Move to another vpu, and stop animating the one being left. */
     set_vpu: (vpu) =>
       set((s) => {
         if (s.vpu === vpu) return s;
@@ -124,6 +83,5 @@ const useDataStreamStore = create((set) => ({
             return already ? s : { ...DEFAULTS };
         }),
 }));
-
 
 export default useDataStreamStore;

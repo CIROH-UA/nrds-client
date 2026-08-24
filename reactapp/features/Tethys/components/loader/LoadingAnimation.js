@@ -19,12 +19,7 @@ const Screen = styled.div`
   font-weight: var(--weight-medium);
 `;
 
-/**
- * The boot screen, shown while the app asks Tethys who it is and who is using it.
- *
- * ``delay`` exists so a fast answer does not flash an indicator on and off. It is the same
- * spinner the rest of the app uses, drawn larger.
- */
+/** The boot screen, shown while the app asks Tethys who it is and who is using it. */
 const LoadingAnimation = ({ delay }) => {
   const [show, setShow] = useState(false);
 

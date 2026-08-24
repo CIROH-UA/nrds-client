@@ -6,28 +6,7 @@ import { useVPUStore } from 'features/DataStream/store/VPU';
 import { makeFeatureTitle } from 'features/DataStream/lib/utils';
 import { cancelVpuLoads } from 'features/DataStream/actions/loadState';
 
-/**
- * Give up on a selection whose output-file listing is empty.
- *
- * Two places reach this state: changing a control, and the first load of a vpu. Each used to
- * hand-roll the sequence, and the two drifted twice. First the cache key: cleared where a
- * control changed it, left set on the first load, so a click charted the previous output file
- * under this selection's name. Then the title: fixed in one copy, missed in the other, so the
- * header went on naming a forecast this selection has no data for. Both bugs were the same bug,
- * found twice, because the knowledge of what "nothing to read" means lived in two places.
- *
- * What it means: no key, because a key names a table nothing could have created. No animation
- * and no series, because they came from a file this selection does not have. A title naming the
- * catchment but not a forecast, since the catchment is still selected and the forecast is what
- * has nothing behind it. And the reason on screen, as a failure rather than as progress.
- *
- * The selection itself survives: the panel is open because a feature is selected, and closing it
- * mid-interaction would take the reader somewhere they did not ask to go.
- *
- * Loads are cancelled before anything else, for the reason leaving a vpu cancels them. A load
- * already running is not stopped by the selection changing under it, so it reaches its next
- * checkpoint, finds the generation unchanged, and writes its arrays in behind this refusal.
- */
+/** Give up on a selection whose output-file listing is empty. */
 export function abandonSelectionWithNoOutput() {
   cancelVpuLoads();
   const { set_cache_key, set_outputFile } = useDataStreamStore.getState();

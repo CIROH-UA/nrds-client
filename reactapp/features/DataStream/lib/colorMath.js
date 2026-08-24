@@ -1,14 +1,4 @@
-/**
- * Colour arithmetic, so a claim about a colour can be a test rather than an opinion.
- *
- * The ramp is required to be monotonic in lightness and to clear a contrast floor against the
- * basemap it is drawn on. Neither is checkable by eye, and both were got wrong: the shipped ramp
- * rose and fell through the same lightness twice, and its middle sat at 1.04 against the light
- * basemap's own water fill.
- *
- * OKLCH rather than HSL for lightness, because HSL's L is not perceptual -- it calls #ffff00 and
- * #0000ff equally light, which is the mistake this file exists to prevent.
- */
+/** Colour arithmetic, so a claim about a colour can be a test rather than an opinion. */
 
 const srgbToLinear = (c) => {
   const v = c / 255;
@@ -45,12 +35,7 @@ export const oklchToRgb = (L, C, hDeg) => {
   ];
 };
 
-/**
- * [r, g, b] from whatever notation a token happens to use, or null.
- *
- * The palette is written in three: hex, oklch(), and rgba(). Any audit of it has to read all
- * three or it silently skips the ones it cannot parse and reports that everything passed.
- */
+/** [r, g, b] from whatever notation a token happens to use, or null. */
 export const parseColor = (value) => {
   const v = String(value).trim();
   if (/^#[0-9a-f]{6}$/i.test(v)) return hexToRgb(v);
@@ -61,13 +46,7 @@ export const parseColor = (value) => {
   return null;
 };
 
-/**
- * An sRGB colour in OKLab: [L, a, b].
- *
- * The one conversion both lightness and perceptualDistance read. They each had their own copy
- * of these nine coefficients, which is nine chances for the two to disagree about where a
- * colour sits while both look right on their own.
- */
+/** An sRGB colour in OKLab: [L, a, b]. */
 const toOklab = ([r, g, b]) => {
   const lr = srgbToLinear(r);
   const lg = srgbToLinear(g);
@@ -95,30 +74,14 @@ export const contrastRatio = (a, b) => {
   return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
 };
 
-/**
- * How far apart two colours look, in OKLab.
- *
- * The companion to contrastRatio, and the right instrument for a different question. Contrast is
- * a ratio of relative luminance: it measures lightness and is blind to hue, which is correct for
- * anything whose value is read from how light it is -- the animated ramp, and text. It is the
- * wrong measure for a layer that is distinguished by being a different colour. A cyan stream on
- * a pale green-grey basemap can sit near 2:1 and still be unmistakable.
- *
- * Roughly 0.02 is a just-noticeable difference, so these numbers are best read as multiples of
- * one: 0.2 is about ten JNDs apart and could not be confused by anyone.
- */
+/** How far apart two colours look, in OKLab. */
 export const perceptualDistance = (a, b) => {
   const [al, aa, ab] = toOklab(a);
   const [bl, ba, bb] = toOklab(b);
   return Math.hypot(al - bl, aa - ba, ab - bb);
 };
 
-/**
- * Whether a run of lightnesses only ever goes one way.
- *
- * The shipped ramp went 0.55 up to 0.86 and back down to 0.54, so its two ends were the same
- * weight -- and on a line two pixels wide, weight is most of what the eye has to work with.
- */
+/** Whether a run of lightnesses only ever goes one way. */
 export const isMonotonic = (values) =>
   values.every((v, i) => i === 0 || v > values[i - 1]) ||
   values.every((v, i) => i === 0 || v < values[i - 1]);

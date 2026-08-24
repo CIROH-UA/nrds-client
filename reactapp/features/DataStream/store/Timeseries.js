@@ -5,17 +5,7 @@ import { useLayersStore } from 'features/DataStream/store/Layers';
 import { useVPUStore } from 'features/DataStream/store/VPU';
 import { animationIsOnMap } from 'features/DataStream/lib/flowpaths';
 
-/**
- * How many steps the time cursor may take.
- *
- * The animation's clock rather than the chart's. currentTimeIndex drives both the map animation
- * and the chart cursor, but only the chart's series depends on a feature being selected -- with
- * nothing selected it is empty, and bounding the index by it meant every mutator here returned
- * early. The slider would then report the animation's full length and refuse to move a step.
- *
- * The series is the fallback for the case with no animation loaded, which is how the chart
- * behaved on its own before the map had one.
- */
+/** How many steps the time cursor may take. */
 const stepCount = (series) => useVPUStore.getState().times.length || series?.length || 0;
 
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
@@ -27,16 +17,7 @@ const DEFAULT_LAYOUT = Object.freeze({
   title: 'TimeSeries',
 });
 
-/**
- * The charted series and the clock the animation runs on.
- *
- * ``last_loaded_key`` is whose data ``series`` holds, as vpu|variable|feature; null means nothing
- * is loaded. ``last_error`` is what went wrong last, as {kind, ...}, so a failure is readable
- * without parsing prose.
- *
- * set_series compares by reference and by emptiness, and deliberately carries no fingerprint
- * guard beyond that: two features can share endpoints and differ in between.
- */
+/** The charted series and the clock the animation runs on. */
 const useTimeSeriesStore = create(
   subscribeWithSelector((set, get ) => ({
       series: EMPTY_SERIES,
@@ -45,18 +26,7 @@ const useTimeSeriesStore = create(
       layout: DEFAULT_LAYOUT,
       
       loading: false,
-      /**
-       * Work promised but not yet begun.
-       *
-       * A click writes its message before anything starts: naming the next step immediately is
-       * what stops the press looking ignored, and the load itself cannot report for most of a
-       * second while an S3 listing comes back. During that window `loading` is false, so the
-       * status strip drew its text with no spinner beside it -- a static grey pill, which is
-       * exactly what "the wait is not obvious" looks like.
-       *
-       * Cleared by endLoading when the last real load finishes, so the two together cover the
-       * whole span from the press to the answer.
-       */
+      /** Work promised but not yet begun. */
       pending: false,
       loadingText: '' ,
       last_loaded_key: null,
@@ -76,7 +46,6 @@ const useTimeSeriesStore = create(
           const prevEmpty = !prev || prev.length === 0;
           const nextEmpty = !nextSeries || nextSeries.length === 0;
           if (prevEmpty && nextEmpty) return s;
-
 
           const maxIdx = Math.max(0, stepCount(nextSeries) - 1);
           if (s.currentTimeIndex > maxIdx) {
@@ -177,19 +146,7 @@ const useTimeSeriesStore = create(
         })),
   }))
 );
-/**
- * Playback stops when there is nothing left to play.
- *
- * Every path that tears the animation down through resetVPU already calls reset_series, which
- * clears isPlaying -- closing the panel, switching vpu, a selection with no output. Hiding the
- * flowpaths layer is the one that does not: it takes the animation off the map and unmounts the
- * slider without touching any of it, so isPlaying stayed true and playback silently resumed the
- * moment the layer came back.
- *
- * Watched here rather than fixed at that one switch, because the rule is about the clock rather
- * than about any particular way of stopping it, and the next way of emptying it should not have
- * to remember. Timeseries already depends on Layers, so this adds no new edge to the graph.
- */
+/** Playback stops when there is nothing left to play. */
 const stopPlaybackWithNothingToPlay = () => {
   if (!useTimeSeriesStore.getState().isPlaying) return;
   const onMap = animationIsOnMap({

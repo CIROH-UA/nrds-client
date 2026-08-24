@@ -104,16 +104,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
   const chainsRunning = useRef(0);
   const [selecting, setSelecting] = useState(false);
 
-  /**
-   * Run one selection chain: claim it, show the controls as working, and hand the chain its
-   * number so it can check before every write.
-   *
-   * Counted rather than a boolean, following beginLoading/endLoading in actions/loadState.js.
-   * A chain that has been superseded still runs to its finally, so a boolean set by whichever
-   * chain happens to end first would clear the spinner while another was still going -- and a
-   * chain cancelled by a vpu change would leave it stuck on forever, since no later chain
-   * arrives to clear it.
-   */
+  /** Run one selection chain: claim it, show the controls as working, and hand the chain its number so it can check before every write. */
   const runSelection = useEvent(async (chain) => {
     const selection = beginSelection();
     chainsRunning.current += 1;
@@ -126,20 +117,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
     }
   });
 
-  /**
-   * Apply an output-file listing, and stop showing stale data when it is empty.
-   *
-   * An empty listing means nothing in this selection can be read, and pressing Update cannot
-   * change that. Without clearing here, the flowpath animation and chart from the previous
-   * output file stayed on screen indefinitely, presented as if they belonged to the selection
-   * now showing in the controls. The selection itself is left alone: the panel is only open
-   * because a feature is selected, so resetting that would close it mid-interaction.
-   *
-   * The cache key goes too. Clearing the animation and the chart was not enough, because the
-   * previous output file's table outlives the selection that loaded it: with the key still
-   * naming that table, the next catchment click charted it again, titled with the forecast now
-   * showing in the controls. A selection with nothing to read has no key.
-   */
+  /** Apply an output-file listing, and stop showing stale data when it is empty. */
   const applyOutputFiles = useEvent((options) => {
     setAvailableOutputFiles(options);
     set_outputFile(options[0]?.value ?? '');
@@ -190,7 +168,6 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
       const nextDate = datesOptions[0]?.value ?? '';
       setAvailableDatesList(datesOptions);
       set_date(nextDate);
-
 
       const forecastOptions = await getOptionsFromURL(`outputs/${opt.value}/v2.2_hydrofabric/${nextDate}/`);
       if (!isCurrentSelection(selection)) return;
@@ -577,7 +554,6 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
     </Fragment>
   );
 });
-
 
 function DataMenu() {
   return <DataMenuControls />;

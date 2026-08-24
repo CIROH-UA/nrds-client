@@ -6,20 +6,7 @@ import { featureFields } from 'features/DataStream/lib/featureFields';
 import { selectionLngLat } from 'features/DataStream/lib/layers';
 import { PopupContent } from '../styles/Styles';
 
-/**
- * What the selected feature is, shown where the feature is.
- *
- * This was a Feature Information block at the bottom of the side panel, under the chart, the
- * data menu and the variables menu -- far enough down that it needed scrolling to reach, so in
- * practice nobody did. It also repeated what the hover popup already said, and hovering is a
- * toggle that starts off, so the information had two homes and no reliable one.
- *
- * On the map it is anchored to the thing it describes, which is the whole point of it, and it
- * arrives with the selection rather than waiting to be found.
- *
- * Dismissal is remembered per feature, not globally: closing it should close this one, and
- * selecting something else is a new question that deserves an answer.
- */
+/** What the selected feature is, shown where the feature is. */
 export const SelectedFeaturePopup = React.memo(() => {
   const selectedFeature = useFeatureStore((s) => s.selected_feature);
   const [dismissedId, setDismissedId] = useState(null);

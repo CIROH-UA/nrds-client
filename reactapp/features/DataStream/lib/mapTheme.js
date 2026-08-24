@@ -3,23 +3,7 @@ import { useMemo } from 'react';
 import { createMediaQuery, useMediaQuery } from 'features/DataStream/lib/matchMedia';
 import { DARK_RAMP, LIGHT_RAMP } from 'features/DataStream/lib/valueRamp';
 
-/**
- * The map's colours, read when they are needed rather than when the module loads.
- *
- * Every one of these used to be a module-scope constant:
- *
- *   export const mapStyleUrl = rootStyles.getPropertyValue('--map-style-url').trim() || LIGHT;
- *
- * which runs while the module graph is still being evaluated, before App.scss has been
- * injected. getPropertyValue returned an empty string, every `||` fallback took over, and every
- * fallback happens to be the light value. So the basemap and all of the layer colours were the
- * light ones no matter what the theme said. In light mode that was invisible, because the
- * fallbacks were right by coincidence; in dark mode the tokens resolved to dark-style.json and
- * the app requested light-style.json anyway.
- *
- * Reading at use time also makes the map follow a theme change during a session, which the
- * frozen constants could never do.
- */
+/** The map's colours, read when they are needed rather than when the module loads. */
 const DARK_QUERY = '(prefers-color-scheme: dark)';
 
 const LIGHT_STYLE =
@@ -29,10 +13,7 @@ const LIGHT_STYLE =
 const dark = createMediaQuery(DARK_QUERY, () => false);
 
 /** Whether the reader's system asks for a dark interface. */
-/**
- * prefersDark looks unused to the linter and is the whole point: the tokens are not observable,
- * so the media query that changes them stands in for them.
- */
+/** prefersDark looks unused to the linter and is the whole point: the tokens are not observable, so the media query that changes them stands in for them. */
 export const usePrefersDark = () => useMediaQuery(dark);
 
 const readToken = (name, fallback) => {
@@ -40,17 +21,7 @@ const readToken = (name, fallback) => {
   return value || fallback;
 };
 
-/**
- * Read every map token now.
- *
- * The fallbacks are only for a genuinely missing token. They are no longer load-order
- * insurance, so a wrong one is a bug rather than a theme.
- *
- * The ramp is the exception: it comes from the media query rather than from a token. Everything
- * else here is a single value a stylesheet can hold, while the ramp is six stops that only work
- * as a set, each measured against the basemap surface it is drawn on. Reading the same signal
- * that switches the tokens keeps it in step with them without a parse step that could half-fail.
- */
+/** Read every map token now. */
 export const readMapTheme = () => {
   return {
     styleUrl: readToken('--map-style-url', LIGHT_STYLE),

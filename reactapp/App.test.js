@@ -1,20 +1,4 @@
-/**
- * The one test that mounts the app, and it had been contributing nothing.
- *
- * It failed to load rather than failing an assertion: App reaches DatastreamView, which reaches
- * deck.gl, which reaches @mapbox/tiny-sdf, which ships untransformed esm. Jest reported "0
- * tests" and the suite counted as failing, so the wiring most likely to break on an import --
- * the header's chain into the cache layer, which broke twice during this rework -- had no
- * coverage at all. Its four assertions were also inherited from the project template and named
- * a different app and pages that do not exist here.
- *
- * The map view is mocked, because it reaches deck.gl and letting that through would mean
- * transforming node_modules for every suite to serve this one file. Nothing else is: the header's
- * chain into queryData, opfsCache and the cache store is imported for real, and only
- * duckdbClient is faked, since duckdb-wasm wants a Worker jsdom cannot give it. An earlier
- * version of this file mocked those modules wholesale and so never imported the chain it claimed
- * to cover, which a reviewer caught and which is worth stating plainly here.
- */
+/** The one test that mounts the app, and it had been contributing nothing. */
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -81,10 +65,7 @@ describe('the app shell', () => {
     expect(await screen.findByRole('heading', { level: 1, name: /NRDS/i })).toBeInTheDocument();
   });
 
-  /**
-   * The app had no main landmark and no h1. Both existed only on the error page, so a screen
-   * reader had nothing to jump to and the heading tree started at h2 with the feature panel.
-   */
+  /** The app had no main landmark and no h1. Both existed only on the error page, so a screen reader had nothing to jump to and the heading tree started at h2 with the feature panel. */
   it('has a main landmark to skip into', async () => {
     renderApp();
     await screen.findByTestId('datastream-view');

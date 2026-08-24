@@ -9,11 +9,7 @@ import { InfoToggle } from '../InfoDisclosure';
 import { LayerInfoContent } from '../InfoContent';
 import { ValueLegendPanel } from './ValueLegend';
 
-/**
- * The legend reads the same signal the map layers do, so the two cannot describe different
- * themes. It was branching on styled-components' useTheme, and nothing installs a ThemeProvider,
- * so that value was always undefined and the legend was always the light branch.
- */
+/** The legend reads the same signal the map layers do, so the two cannot describe different themes. It was branching on styled-components' useTheme, and nothing installs a ThemeProvider, so that value was always undefined and the legend was always the light branch. */
 export const LayerControl = () => {
   const [layerInfoOpen, setLayerInfoOpen] = useState(false);
   
@@ -77,8 +73,6 @@ export const LayerControl = () => {
           <LayerInfoContent />
         </InfoPanel>
       )}
-
-
 
       <Row>
         <IconLabel as="label" htmlFor="catchment-layer-switch">

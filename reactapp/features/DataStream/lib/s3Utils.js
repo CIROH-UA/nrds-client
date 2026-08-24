@@ -1,13 +1,4 @@
-/**
- * The child directory names directly under a prefix, and the full prefixes they came from.
- *
- * Empty names are dropped. S3 answers some prefixes with a doubled slash, for instance
- * "outputs/routing_only/v2.2_hydrofabric/ngen.20251205//", which is an object filed under a
- * directory with no name. That became an option labelled "" which sorted ahead of the real
- * ones and was selected by default, so the Forecast control rendered blank, and every URL
- * built from it carried the doubled slash down to an empty output-file listing and a panel
- * reading "No Outputs Available".
- */
+/** The child directory names directly under a prefix, and the full prefixes they came from. */
 export async function listPublicS3Directories(prefix = "v2.2/", { signal } = {}) {
   const bucket = "ciroh-community-ngen-datastream";
 
@@ -51,7 +42,6 @@ async function listPublicS3Files(prefix = "v2.2/", { signal } = {}) {
         `https://${bucket}.s3.us-east-1.amazonaws.com` +
         `/?list-type=2&prefix=${encodeURIComponent(prefix)}`;
 
-
     const resp = await fetch(url,{ signal });
     if (!resp.ok) {
         throw new Error(`S3 list error: ${resp.status} ${resp.statusText}`);
@@ -67,16 +57,7 @@ async function listPublicS3Files(prefix = "v2.2/", { signal } = {}) {
 /** Array.sort() on objects compares "[object Object]" and orders nothing, hence an explicit one. */
 const byValue = (a, b) => (a.value < b.value ? -1 : a.value > b.value ? 1 : 0);
 
-/**
- * The choices a prefix offers, as options a select can render.
- *
- * Output listings are filtered to parquet, which is the one place a NetCDF output can be kept
- * out of the interface. The pipeline moved to parquet around March 2026 and every model has
- * published it since; what is left under .nc is archived runs from before that, which duckdb
- * cannot read. Filtering here rather than refusing later means nothing offers a choice that
- * cannot work, and a directory holding only .nc lists nothing -- the existing "no output file"
- * state rather than a new one.
- */
+/** The choices a prefix offers, as options a select can render. */
 export async function getOptionsFromURL(url, { signal } = {}) {
   try{
     if (url.split('/').includes('troute')){
@@ -94,20 +75,7 @@ export async function getOptionsFromURL(url, { signal } = {}) {
 
 }
 
-/**
- * Hold an answer for the life of the page, unless it is the kind of answer that is more likely
- * a bad moment than a fact.
- *
- * The three things this wraps -- a model's runs, whether one run has parquet, and a model's
- * readable dates -- are all lookups of a bucket that does not change under a reader in the
- * course of a session, and all cost a paged S3 request or several. They were being asked more
- * than once: deciding which models to offer reads the newest run of each, and then building the
- * chosen model's date list read the same listing and probed the same date over again.
- *
- * The promise is stored rather than the value, so two callers asking at once share one round
- * trip. Failures and non-answers are dropped, because remembering one would make a single bad
- * moment last the rest of the session; a reload picks up whatever has been published since.
- */
+/** Hold an answer for the life of the page, unless it is the kind of answer that is more likely a bad moment than a fact. */
 const held = (store, key, compute, worthKeeping) => {
   const already = store.get(key);
   if (already) return already;
@@ -125,22 +93,7 @@ const runsByModel = new Map();
 const parquetByRun = new Map();
 const datesByModel = new Map();
 
-/**
- * Whether a dated run published an output this app can read.
- *
- * Pages the whole date prefix looking for the first key under an outputs/troute directory, and
- * answers on what it finds there. Deliberately makes no assumption about the path in between:
- * the layout is not uniform -- some runs carry an ensemble level between cycle and vpu, some
- * carry benchmark vpus with no routing output -- and every shape a fixed descent fails to
- * anticipate would come back as a confident "no parquet" for a date it never actually looked at.
- *
- * Almost every date answers on the first page. The cap exists for the few older runs whose
- * troute keys sort past several thousand other keys; hitting it returns null, because giving up
- * is not the same as looking and finding nothing.
- *
- * A run with no routing output at all answers false, which is the same as one holding only
- * NetCDF: there is nothing for this app to show either way.
- */
+/** Whether a dated run published an output this app can read. */
 const PROBE_PAGE_LIMIT = 6;
 
 function dateHasParquet(model, date, { signal } = {}) {
@@ -181,25 +134,7 @@ async function probeForParquet(model, date, { signal } = {}) {
   }
 }
 
-/**
- * A model's dated runs, newest first.
- *
- * Filtered to ngen.YYYYMMDD before anything else, because a model's directory can hold children
- * that are not runs at all -- routing_only carries test and retro-test -- and those sort after
- * every real date, which is exactly where the newest run is looked for. Unfiltered, the newest
- * run of routing_only is `test`, it holds no parquet, and the model is dropped from the control
- * on the strength of a directory nobody meant to publish.
- *
- * Reversed rather than sorted descending: S3 answers in lexicographic order, which for this
- * name shape is oldest first. filter returns a new array, so reversing it mutates nothing shared.
- *
- * A failure answers { answered: false } rather than an empty list. getOptionsFromURL, which
- * every control below this one uses, turns any failure into an empty list -- fine for filling a
- * dropdown, where an empty control is visible and a reload fixes it, but not for deciding
- * whether a model exists at all. A network blip while listing a model's runs used to drop that
- * model from the interface for the rest of the session, silently, which is the very failure the
- * filter reading this answer was written to prevent.
- */
+/** A model's dated runs, newest first. */
 const DATED_RUN = /^ngen\.\d{8}$/;
 
 const datedRunsNewestFirst = (model, { signal } = {}) =>
@@ -217,27 +152,7 @@ const datedRunsNewestFirst = (model, { signal } = {}) =>
     }
   }, ({ answered }) => answered);
 
-/**
- * The models worth offering: the ones with at least one run this app can read.
- *
- * A model switched output format once and never switched back, so an old model whose recent runs
- * are all unreadable has nothing readable anywhere -- that is lstm, which stopped publishing
- * before the pipeline moved to parquet. Leaving it in the control offers a whole branch of the
- * interface that dead-ends on an empty date list.
- *
- * Several recent runs rather than only the newest, because publishing is not atomic. A model's
- * ngen.<today> prefix appears in S3 as soon as its first key lands and its troute output arrives
- * later, so for part of every day the newest run of a perfectly healthy model reads as
- * unreadable. Judging on that one run alone would drop the model from the control each morning
- * and restore it each afternoon. One failed run at the troute step would do the same until the
- * next day. Looking a few runs back costs nothing for the models that are kept -- their first
- * probe answers -- and only the ones on their way out pay the extra two.
- *
- * A model that never published a dated run goes too. Unsure keeps it, on the same reasoning as
- * the dates: a model that turns out empty costs a click, one wrongly hidden is silent. If that
- * left nothing at all the list is returned untouched, since an empty model control is worse than
- * an imperfect one.
- */
+/** The models worth offering: the ones with at least one run this app can read. */
 const RECENT_RUNS_CHECKED = 3;
 
 async function modelsWithReadableOutputs(models, { signal } = {}) {
@@ -256,24 +171,7 @@ async function modelsWithReadableOutputs(models, { signal } = {}) {
   return kept.length ? kept : models;
 }
 
-/**
- * The dates worth offering: the ones whose outputs this app can actually read.
- *
- * The pipeline moved from NetCDF to parquet once, per model, and never moved back -- checked
- * across the full range of cfe_nom, which steps cleanly from one format to the other with no
- * islands either side. So the answer is a boundary rather than a per-date fact, and a binary
- * search finds it in about nine probes instead of one per date, which for cfe_nom would be 386.
- *
- * Given newest-first input the shape is TTTT...FFFF and this returns the leading run of T. Every
- * way of being unsure returns the list untouched: an inconclusive probe at either end, or a
- * boundary that stops holding partway through. Offering a date that turns out empty costs one
- * click and lands in the existing no-output state; hiding one that would have worked is silent,
- * so the doubt is spent in that direction.
- *
- * A model with nothing readable at either end is the exception, and returns nothing. That is a
- * model like lstm, which stopped publishing before the format changed: every one of its dates
- * would open onto an empty output list, and inviting that click helps nobody.
- */
+/** The dates worth offering: the ones whose outputs this app can actually read. */
 async function datesWithReadableOutputs(model, dates, { signal } = {}) {
   if (dates.length === 0) return dates;
 
@@ -298,15 +196,7 @@ async function datesWithReadableOutputs(model, dates, { signal } = {}) {
   return dates.slice(0, hi);
 }
 
-/**
- * The dates to offer for a model: its dated runs, newest first, minus the ones with nothing
- * readable in them.
- *
- * Exported because the date list is built twice -- once for the model chosen at load, and again
- * every time the model control changes -- and a rule applied to only one of those shows up as
- * the list changing shape when the user does nothing but switch models. That is what happened
- * to the ordering and the readability filter, so both now live behind this one call.
- */
+/** The dates to offer for a model: its dated runs, newest first, minus the ones with nothing readable in them. */
 export function readableDatesNewestFirst(model, { signal } = {}) {
   return held(datesByModel, model, async () => {
     const { runs } = await datedRunsNewestFirst(model, { signal });
@@ -334,15 +224,7 @@ export const makeOutputUrl = (prefix) =>
 // listing is retried rather than remembered. A reload picks up newly published dates.
 let cachedBaseOptions = null;
 
-/**
- * The model, date, forecast and cycle lists the controls open on.
- *
- * The default date is dates[0], the newest, which is what the model-change path in dataMenu has
- * always picked. This used to take dates[1]: harmless back when the list was every date a model
- * had and arrived oldest-first, where it meant the second-oldest and nobody noticed. Once the
- * list became newest-first it quietly meant "yesterday" -- in a forecast tool, and disagreeing
- * with the other path about the same list.
- */
+/** The model, date, forecast and cycle lists the controls open on. */
 const loadBaseOptions = async ({ signal }) => {
   const _models = await getOptionsFromURL(`outputs`, { signal });
   if (_models.length === 0){

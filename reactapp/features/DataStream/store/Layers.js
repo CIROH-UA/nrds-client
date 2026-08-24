@@ -71,8 +71,6 @@ export const useLayersStore = create(
   }))
 );
 
-
-
 export const useFeatureStore = create((set) => ({
   hovered_feature: null,
   selected_feature: null,

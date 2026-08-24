@@ -6,10 +6,8 @@ import Layout from 'features/Tethys/components/layout/Layout';
 import Loader from 'features/Tethys/components/loader/Loader';
 import 'App.scss';
 
-
 import DataStreamView from 'features/DataStream/views/DatastreamView';
 import { reclaimLegacyOpfsCache } from 'features/DataStream/lib/reclaimOpfs';
-
 
 function App() {
   const PATH_HOME = '/';

@@ -1,9 +1,4 @@
-/**
- * The explanatory prose, kept apart from whatever shows it.
- *
- * Two of these opened as dialogs and now open inline, one is still a dialog. Holding the copy
- * here means moving something between the two costs an import rather than a rewrite.
- */
+/** The explanatory prose, kept apart from whatever shows it. */
 
 export const LayerInfoContent = () => (
   <>
@@ -52,16 +47,7 @@ export const LayerInfoContent = () => (
   </>
 );
 
-/**
- * The caveat, written once.
- *
- * It appears in three places -- the first-run dialog, the About dialog, and the data note beside
- * the forecast -- and three copies of a disclaimer is three chances for them to disagree about
- * what the product claims.
- *
- * It names the decision rather than hedging. "Preliminary and may not represent accurate
- * forecasts", which is what this used to say, warns without saying what the warning is for.
- */
+/** The caveat, written once. */
 export const ExperimentalCaveat = () => (
   <p>
     <strong>These results are experimental.</strong> They are preliminary research output, not an

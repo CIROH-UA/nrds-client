@@ -9,20 +9,7 @@ import { getValueAtTimeFlat } from 'features/DataStream/lib/layers';
 import { getVariableUnits } from 'features/DataStream/lib/data';
 import { formatMeasurement, numericPartOf, timeOffsetLabel } from 'features/DataStream/lib/utils';
 
-
-/**
- * The animated variable's value for the feature under the pointer.
- *
- * Its own component, subscribed to the time index, rather than a field on the hovered feature.
- * The hovered feature is written once on mousemove, so a value stored there would freeze at
- * whichever step the pointer stopped on and only catch up when the mouse moved again. Reading it
- * here means the number follows playback, and follows the slider when playback is paused: those
- * are the same code path, since paused only means the index is not changing.
- *
- * Renders nothing when there is nothing true to say. The flowpath layer covers the whole country
- * while only one vpu has values loaded, so a feature with no row in the value array must show no
- * number rather than a wrong one.
- */
+/** The animated variable's value for the feature under the pointer. */
 export const HoverValue = ({ hoverId }) => {
   const { variable, currentTimeIndex } = useTimeSeriesStore(
     useShallow((s) => ({ variable: s.variable, currentTimeIndex: s.currentTimeIndex }))

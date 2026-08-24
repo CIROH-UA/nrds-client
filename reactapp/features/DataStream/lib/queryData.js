@@ -6,17 +6,7 @@ import { fetchParquetBuffer, isMissing } from "./fetchParquet";
 import { sqlIdent, sqlStr } from "./sql";
 import { getConnection } from "./duckdbClient";
 
-/**
- * Let go of a connection without waiting for it.
- *
- * Released rather than awaited: closing is another round trip to the worker, so on one that has
- * stopped answering the wait for the close outlasted the timeout meant to escape it, and the
- * caller still never settled. Every query below ends in this; it was written out eleven times
- * before it had a name.
- *
- * Local rather than exported from duckdbClient, which every test mocks with an exhaustive
- * factory -- a new export there is undefined in ten mocks and throws from inside a finally.
- */
+/** Let go of a connection without waiting for it. */
 const safeClose = (conn) => {
   void Promise.resolve(conn?.close?.()).catch(() => {});
 };
@@ -102,24 +92,11 @@ export async function getFeatureIDs(cacheKey) {
 // still called index_data_table.
 const INDEX_CACHE_KEY = "index_data_table.parquet";
 
-/**
- * Where a parquet lives inside duckdb while its table is built. Not an OPFS path: the bytes are
- * registered from memory and dropped as soon as CREATE TABLE has copied the rows out.
- */
+/** Where a parquet lives inside duckdb while its table is built. Not an OPFS path: the bytes are registered from memory and dropped as soon as CREATE TABLE has copied the rows out. */
 const INDEX_DUCK_PATH = "nrds-index/index_data_table.parquet";
 const duckPathFor = (key) => `nrds-data/${key}`;
 
-/**
- * Build a duckdb table from parquet bytes already in hand.
- *
- * CREATE TABLE AS materialises the rows, so the registration is dead weight the moment the
- * statement returns, and it is dropped in a finally: a file that failed to parse would otherwise
- * stay registered with no table to show for it. Registering also transfers the buffer to the
- * worker, which detaches it, so nothing may read its length afterwards.
- *
- * Shared by the index and the vpu outputs because they now differ only in which bytes they hand
- * over -- which is the whole of what replaced the OPFS layer.
- */
+/** Build a duckdb table from parquet bytes already in hand. */
 async function createTableFromBuffer({ conn, tableName, duckPath, bytes }) {
   const { bindings } = conn;
   try {
@@ -133,30 +110,7 @@ async function createTableFromBuffer({ conn, tableName, duckPath, bytes }) {
   }
 }
 
-/**
- * Build the id index table from the slim artifact this app serves.
- *
- * No OPFS. The artifact is about 45 MiB and comes from our own static files, so ordinary HTTP
- * caching does what the cache layer used to: a reload revalidates and gets a 304 rather than
- * re-transferring the body. That removes the whole family of per-origin handle failures the
- * cached index used to cause, because a FileSystemSyncAccessHandle is exclusive for the origin
- * rather than for the tab and no second tab could open the file the first one held.
- *
- * CREATE TABLE AS materialises the rows, so the registered buffer is dead weight the moment the
- * statement returns. Dropped in a finally for the same reason the OPFS handle was: a file that
- * failed to parse would otherwise stay registered with no table to show for it. Registering also
- * transfers the buffer to the worker, which detaches it, so its length is read before that.
- *
- * The fallback covers two cases, both of which look like "the artifact this app serves is not
- * usable": a portal whose static was collected before the artifact existed answers 404, and a
- * proxy or error page can answer 200 with bytes that are not a parquet. The upstream file is
- * slower and larger, but a working search beats a correct failure.
- *
- * Concurrent callers share one load. The table-exists probe is a check-then-act against a duckdb
- * singleton, so two overlapping calls would both pass it, both fetch, and both try to create the
- * same table. StrictMode is off in this app, which makes that a remount race rather than a
- * certainty, but sharing the promise costs nothing and removes the question.
- */
+/** Build the id index table from the slim artifact this app serves. */
 let indexLoad = null;
 
 export function loadIndexData({ remoteUrl, fallbackUrl }) {
@@ -212,17 +166,8 @@ async function buildIndexTable({ remoteUrl, fallbackUrl }) {
   }
 }
 
-/**
- * The indexed row for a feature, given one id or several to try.
- *
- * Several, because a bare number names more than one thing: the catchment cat-N and its
- * flowpath wb-N. The catchment wins when both match, since that is what the app charts. Ids are
- * reduced to word characters and dashes before they reach the query.
- */
-/**
- * The table name comes from the same helper the table was created with, so the two cannot part
- * company on a key holding more than one dot.
- */
+/** The indexed row for a feature, given one id or several to try. */
+/** The table name comes from the same helper the table was created with, so the two cannot part company on a key holding more than one dot. */
 export async function getFeatureProperties({ cacheKey, feature_id }) {
   const candidates = (Array.isArray(feature_id) ? feature_id : [feature_id])
     .map((id) => String(id ?? '').replace(/[^\w-]/g, ''))
@@ -290,17 +235,7 @@ export async function loadVpuData(
   return formatBytes(byteLength);
 }
 
-/**
- * Whether the table for a cache key is registered in duckdb.
- *
- * Asked with the name the table was created under. This compared the raw cache key, extension
- * and all, against names that createTableFromOPFS had already stripped, so it answered false
- * for every parquet key it was ever given. loadVpu therefore re-ran its whole load on every
- * call and appended another row to the cached-files list each time, which is what filled the
- * panel with identical entries; the table was never actually rebuilt, and nothing was
- * re-downloaded, but the work was wasted and a series load asking the same question repeated
- * it on every catchment click.
- */
+/** Whether the table for a cache key is registered in duckdb. */
 export async function checkForTable(cacheKey) {
   const conn = await getConnection();
   const tableName = tableNameForKey(cacheKey);
@@ -354,7 +289,6 @@ export async function dropAllVpuDataTables() {
     safeClose(conn);
   }
 }
-
 
 export async function getVariables({ cacheKey }) {
   debugLog("getVariables called with cacheKey:", cacheKey);

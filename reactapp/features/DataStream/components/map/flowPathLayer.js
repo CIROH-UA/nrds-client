@@ -13,56 +13,15 @@ import { widthAtZoom } from '../../lib/flowpaths';
 // when the layer is toggled rather than one per frame while it is off.
 const HIDDEN = 'hidden';
 
-/**
- * How wide an animated reach is drawn, as a multiple of the static flowpath beneath it.
- *
- * These used to be pixel widths that ignored zoom -- a flat 1 to 4.5 px against a network drawn
- * at 0.6 px when zoomed out to CONUS and 2 px up close, so the animation read as several times
- * heavier than the reaches it was following. They are factors now, and the curve they multiply
- * is the one the static layer publishes, so the animation is the same network at every scale.
- *
- * The value varies the width between half the static width and three times it. Starting below
- * the network rather than at it is deliberate: at CONUS scale every headwater draws at once, and
- * with the floor at the network's own weight that was a lot of ink for reaches carrying almost
- * nothing. A quiet reach now recedes under the network and a busy one still stands well clear.
- * NO_DATA sits below even that, so a reach with nothing to report is the faintest thing on the
- * map rather than asserting a low value.
- *
- * MIN_PIXELS stops anything vanishing outright where the curve goes sub-pixel, and is 0.25
- * rather than 0.5 because at 0.5 it swallowed the bottom of the ramp: below zoom 7 the curve is
- * under 1, so the quietest fifth of real values and a no-data reach all clamped to the same
- * width and the distinction the factors describe did not survive to the screen. It is still a
- * floor, so the very bottom compresses at CONUS scale -- colour is what separates them there.
- *
- * The ceiling stays at 4.5 px, which is where the old constants topped out: at zoom 10 the curve
- * alone is 2 px and a maximum value would reach 6, and 4.5 is the figure that stopped the
- * animation burying the basemap.
- */
+/** How wide an animated reach is drawn, as a multiple of the static flowpath beneath it. */
 const FACTOR_MIN = 0.5;
 const FACTOR_RANGE = 2.5;
 const FACTOR_NO_DATA = 0.35;
 const MAX_PIXELS = 4.5;
 const MIN_PIXELS = 0.25;
 
-/**
- * The props for the animated flowpath layer, or null when there is nothing to draw.
- *
- * Returns plain props rather than a PathLayer, and lives apart from the map component, so the
- * update-trigger behaviour can be asserted without maplibre, deck.gl, or a canvas.
- */
-/**
- * The deck.gl PathLayer props for the animated network.
- *
- * The layer is toggled rather than removed, because deck.gl keeps a hidden layer's GPU
- * resources and rebuilding them on every toggle is the expensive part.
- *
- * widthScale is a uniform, so the view rescales what is already drawn -- which is why zoom is
- * absent from updateTriggers even though the widths follow it.
- *
- * ramp is in updateTriggers because a theme switch changes no frame, no variable and no tick.
- * Without it the reaches keep the old theme's colours until the animation next steps, and for
- * ever if it is paused.
- */
+/** The props for the animated flowpath layer, or null when there is nothing to draw. */
+/** The deck.gl PathLayer props for the animated network. */
 export function flowPathLayerProps({
   visible,
   valuesByVar,
@@ -109,18 +68,7 @@ export function flowPathLayerProps({
 
 const EMPTY_PATHS = [];
 
-/**
- * Whether to tell the reader that the view, not the data, is why nothing is animating.
- *
- * Only when there is something to draw and nothing drawn yet. Raised with no data loaded it
- * would send someone zooming in to find an empty map, and raised once reaches are on screen it
- * would contradict the animation running in front of them.
- *
- * Drawn, not collected. The two stopped meaning the same thing once paths were filtered to the
- * zoom the tileset serves them at: the store keeps every reach ever seen and is never pruned,
- * so one full of reaches gathered close up draws nothing at all over a whole vpu. Counting the
- * store there withheld the one message that explains the empty map.
- */
+/** Whether to tell the reader that the view, not the data, is why nothing is animating. */
 export function shouldPromptZoom({ visible, valuesByVar, timesArr, zoom, paths = EMPTY_PATHS }) {
   if (!visible || !valuesByVar || !timesArr?.length) return false;
   if (!Number.isFinite(zoom) || zoom >= FLOWPATHS_MIN_ZOOM) return false;

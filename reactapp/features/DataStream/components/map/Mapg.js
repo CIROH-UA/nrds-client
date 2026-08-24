@@ -61,7 +61,6 @@ const INITIAL_VIEW = { longitude: -96, latitude: 40, zoom: 4 };
 const HOVER_TOLERANCE_PX = 4;
 const EMPTY_PATHS = [];
 
-
 function DeckGLOverlay(props) {
   const overlay = useControl(() => new MapboxOverlay(props));
   overlay.setProps(props);
@@ -70,22 +69,8 @@ function DeckGLOverlay(props) {
 
 const NO_LAYERS = [];
 
-/**
- * The flowpath animation, isolated so that stepping through time re-renders only this.
- *
- * currentTimeIndex advances on an interval while playing. Reading it in MainMap re-ran that
- * whole component every frame, including a getComputedStyle call and every hook in it. The
- * frame index is read here instead, and nothing above this needs to re-render to animate.
- */
-/**
- * Zoom is read here rather than passed down, so only this component re-renders as it changes,
- * and it is quantised because maplibre's 'zoom' fires per frame of a gesture for a width that
- * has barely moved.
- *
- * The visible set is filtered once per zoom step and per new-geometry tick. The layer memo below
- * also depends on the frame index, so filtering inline handed deck.gl a fresh array every tick
- * and made it rebuild the whole dataset.
- */
+/** The flowpath animation, isolated so that stepping through time re-renders only this. */
+/** Zoom is read here rather than passed down, so only this component re-renders as it changes, and it is quantised because maplibre's 'zoom' fires per frame of a gesture for a width that has barely moved. */
 const FlowPathsOverlay = React.memo(function FlowPathsOverlay({
   visible,
   valuesByVar,
@@ -144,19 +129,7 @@ FlowPathsOverlay.propTypes = {
   ramp: PropTypes.arrayOf(PropTypes.array),
 };
 
-/**
- * The map and everything docked to it.
- *
- * The theme is read live rather than snapshotted at module load: the tokens resolve late, so a
- * snapshot got the wrong theme. The colour bounds are literally the same object the legend
- * reads, so the two cannot describe different ramps.
- *
- * The zoom prompt is memoised because below FLOWPATHS_MIN_ZOOM it scans the whole path store,
- * which is never pruned -- unmemoised it ran again for every hover, selection and layer toggle.
- *
- * The slider is docked on whether the animation is on the map, not on whether a vpu is selected;
- * see animationIsOnMap in lib/flowpaths.js.
- */
+/** The map and everything docked to it. */
 const MainMap = () => {
   const { 
     isCatchmentsVisible, 
@@ -174,7 +147,6 @@ const MainMap = () => {
     }))
   );
   const selectedFeatureId = useTimeSeriesStore((s) => s.feature_id);
-
 
   const {
     conus_pmtiles,
@@ -200,7 +172,6 @@ const MainMap = () => {
     }))
   );
 
-
   const variable = useTimeSeriesStore((s) => s.variable);
 
   const { featureIdToIndex, timesArr, valuesByVar } = useVPUStore(
@@ -210,7 +181,6 @@ const MainMap = () => {
       valuesByVar: s.valuesByVar?.[variable],
     }))
   );
-
 
   const mapTheme = useMapTheme();
 
@@ -252,13 +222,10 @@ const MainMap = () => {
 
   useShowSelectionOnChange();
 
-
-
   const clickableLayers = useMemo(
     () => clickableLayerIds({ isCatchmentsVisible }),
     [isCatchmentsVisible]
   );
-
 
   const isMapUsable = useCallback((map) => {
     if (!map || typeof map.on !== "function" || typeof map.off !== "function") return false;
@@ -359,7 +326,6 @@ const MainMap = () => {
     set_hovered_feature(next);
   }, [enabledHovering, featuresUnder, set_hovered_feature]);
 
-
   const catchmentLayer = useCatchmentLayers({
     isCatchmentsVisible,
     selectedFeatureId,
@@ -453,12 +419,7 @@ const MainMap = () => {
     };
   }, [featureIdToIndex, isFlowPathsVisible]);
 
-
-
-
-
   const layersToQuery = clickableLayers;
-
 
   useEffect(() => {
     if (useFeatureStore.getState().hovered_feature !== null) set_hovered_feature(null);
@@ -541,7 +502,6 @@ const MainMap = () => {
     </Map>
   );
 };
-
 
 const MapComponent = React.memo(MainMap);
 

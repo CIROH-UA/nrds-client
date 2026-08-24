@@ -22,15 +22,7 @@ const axisLabelColor = 'var(--chart-axis-label-color, #111827)';
 const axisTickTextColor = 'var(--chart-axis-tick-text-color, #111827)';
 const gridColor = 'var(--chart-grid-color, #e4e7eb)';
 
-/**
- * Axis values, short enough to sit in a 50px margin.
- *
- * Discharge spans several orders of magnitude between a headwater and a main stem, so a fixed
- * number of decimals is either noise at the top or nothing at the bottom.
- *
- * Emptiness is checked before Number(), which turns null and '' into 0 and would label an
- * absent tick "0".
- */
+/** Axis values, short enough to sit in a 50px margin. */
 export const formatAxisValue = (v) => {
   if (v === null || v === undefined || v === '') return '';
 
@@ -194,8 +186,6 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout, e
   const fontSize = isNarrow ? 13 : 18;
   const fontWeight = isNarrow ? 600 : 500;
 
-
-
   const colors = useMemo(
     () => [
       'var(--chart-line-0, #1d4ed8)',
@@ -308,15 +298,7 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout, e
 
   const lastTooltipKeyRef = useRef('');
 
-  /**
-   * The tooltip for the nearest point to a date, pinned to the top of the plot area.
-   *
-   * It used to sit at the value, which put it over the time axis whenever the reader scrubbed
-   * across a low flow -- and on a hydrograph the interesting part is usually the recession, so
-   * that is most of the chart. Following the point also made it jump vertically on every step,
-   * which is motion the reader did not ask for. The crosshair already says where on the line
-   * they are; the tooltip only has to say what it reads there.
-   */
+  /** The tooltip for the nearest point to a date, pinned to the top of the plot area. */
   const buildTooltipAtDate = useCallback(
     (x0, leftPx) => {
       const tooltipDataArray = [];

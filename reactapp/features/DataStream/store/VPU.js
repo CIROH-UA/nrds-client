@@ -2,18 +2,7 @@ import { create } from 'zustand';
 import { sameArrayValues, sameObjectValues } from 'features/DataStream/lib/equality';
 import { subscribeWithSelector } from 'zustand/middleware';
 
-/**
- * The animation's data: which features it covers, the clock it runs on, and the values per
- * variable.
- *
- * Split out of store/Layers.js, which still holds the visibility toggles and the hover/selection
- * that share none of this. The name mattered: store/Timeseries.js reaches in here for the clock,
- * and while this lived in a file called Layers.js nothing about that import said so. Anyone
- * adding a getter to the layers store, in the same file, could close a cycle without seeing it.
- * The direction is one way -- Timeseries reads VPU, VPU reads nothing -- and now the file names
- * say which way.
- */
-
+/** The animation's data: which features it covers, the clock it runs on, and the values per variable. */
 
 const buildFeatureIdToIndex = (featureIds) => {
   const m = {};
@@ -26,7 +15,6 @@ const buildFeatureIdToIndex = (featureIds) => {
 };
 
 const MAX_CACHED_VARS = 3;
-
 
 export const useVPUStore = create(
   subscribeWithSelector((set, get) => ({
@@ -43,11 +31,7 @@ export const useVPUStore = create(
         return { featureIds };
       }),
 
-    /**
-     * Sets featureIds + times + featureIdToIndex
-     * - avoids rebuilding objects if inputs are identical
-     * - avoids replacing featureIdToIndex if it would be identical by value
-     */
+    /** Sets featureIds + times + featureIdToIndex - avoids rebuilding objects if inputs are identical - avoids replacing featureIdToIndex if it would be identical by value */
     setAnimationIndex: (featureIds, times) =>
       set((s) => {
         const sameIds = sameArrayValues(s.featureIds, featureIds);
@@ -67,7 +51,6 @@ export const useVPUStore = create(
           featureIdToIndex: nextMap,
         };
       }),
-
 
     setVarData: (variable, flatValues) =>
       set((s) => {

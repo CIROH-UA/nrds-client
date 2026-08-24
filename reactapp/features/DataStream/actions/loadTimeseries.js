@@ -14,47 +14,7 @@ import {
 // question, answered by the shared vpu generation in loadState.
 const series = createSequence();
 
-/**
- * Load and chart the series for one feature.
- *
- * Called straight from the map click, the search box, the variable menu, and the end of a vpu
- * load. A repeat call is a retry, so a failed load needs no special path, and the guard below
- * means asking for the feature already on screen costs nothing.
- *
- * ``variable`` applies to this request only. The caller owns the store's variable, so the
- * flowpath layer is never left looking up data that has not arrived yet.
- *
- * Kept out of the store so that importing the store does not drag in duckdb and arrow: every
- * component reading a timeseries value would otherwise pull the whole query layer with it.
- *
- * Clearing the message on the already-charted path is unconditional, and safe to be. Read on its
- * own it looks like it could blank an indicator belonging to a load still running -- changing the
- * variable, for instance, updates the store's variable only after its load resolves, so a click
- * arriving in that window builds its key from the old variable. It cannot: every real load opens
- * with reset_series, which nulls last_loaded_key, so while one is in flight there is nothing here
- * for a later call to match. Reaching this branch is itself the proof that nothing is loading.
- *
- * A selection that moved on clears the answer on record with it: an answer belongs to the
- * feature it answered. A vpu load already rebuilding this table is left to chart whatever is
- * selected when it closes, rather than raced.
- *
- * The table check is guarded on its own and sits ahead of the already-charted short circuit,
- * because beginLoading has not run yet -- so its failure path clears pending by hand, the
- * finally that would balance the count never having been entered. loadVpu is imported inside
- * that branch so this module does not pull duckdb in through the cache store.
- *
- * Everything after the ticket is inside the try for the same reason as loadVpu: the finally is
- * what releases the count. A load is superseded either by a newer series load or by a vpu load
- * that replaced the table underneath, which is why the check reads both sequences.
- *
- * A missing table is rebuilt rather than queried. * A missing table is rebuilt rather than queried. Deleting a cached file drops its duckdb
- * table, and nothing else in the app knew that had happened, so a click came straight here and
- * queried a table that was gone. That surfaced as a raw "Table with name ... does not exist"
- * catalog error, after which nothing loaded again. The check sits ahead of the already-charted
- * short circuit because re-clicking the feature that was on screen when the cache was deleted
- * matches ``last_loaded_key``, so the gesture most likely to follow a delete would otherwise
- * return early and never recover. It costs one information_schema lookup, about a millisecond.
- */
+/** Load and chart the series for one feature. */
 export async function loadTimeseries({ featureId, variable, vpuGeneration } = {}) {
   const store = useTimeSeriesStore;
   const state = store.getState();

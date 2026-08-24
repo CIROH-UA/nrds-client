@@ -18,26 +18,7 @@ import {
 const isExternal = (to, externalFlag) =>
   externalFlag ?? /^https?:\/\//i.test(to);
 
-/**
- * The page around the map: header, off-canvas nav, and the first-run notice.
- *
- * The notice is read once at mount rather than on every render. Re-reading it would reopen the
- * dialog on any re-render that follows a storage failure, which is the one case where the
- * acknowledgement cannot be recorded -- so the reader who can least escape it would see it most.
- *
- * The outer element is a flex column because the map has to take whatever is left rather than a
- * full 100% of its own. With height: 100% on both, the banner that preceded this modal pushed
- * the map 52px past the bottom of the window and took the attribution control off screen.
- *
- * The h1 is visually hidden rather than absent. The app had no main landmark and no h1 at all --
- * both existed only on the error page -- so a screen reader had nothing to jump to and the
- * heading tree started at h2. This design has no visible headline by choice, the largest type in
- * it being 18px, but the document still needs a name.
- *
- * The skip link comes first in the tab order on purpose: the nav, the notice and its dismiss
- * button all sit between the header and the map, so without it every page load costs a keyboard
- * reader three stops before they reach anything they came for.
- */
+/** The page around the map: header, off-canvas nav, and the first-run notice. */
 export default function Layout({ navLinks = [], routes = [], children }) {
   const { tethysApp } = useContext(AppContext);
   const [navVisible, setNavVisible] = useState(false);
@@ -58,7 +39,6 @@ export default function Layout({ navLinks = [], routes = [], children }) {
       <SkipLink href="#main-content">Skip to the map</SkipLink>
 
       <Header onNavChange={setNavVisible} />
-
 
       <NavMenu navTitle="Main Menu" navVisible={navVisible} onNavChange={setNavVisible}>
         <Nav variant="pills"

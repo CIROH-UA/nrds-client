@@ -1,20 +1,6 @@
 import { formatLabel } from 'features/DataStream/lib/utils';
 
-/**
- * A selected feature as label/value rows, ready to render.
- *
- * Lifted out of the side panel's Feature Information block when that moved onto the map. The
- * formatting rules came with it: coordinates to six decimals because that is roughly a tenth of
- * a metre and anything more is noise from a centroid; other numbers to four; booleans as words,
- * since a bare "true" beside "Has Flowline" reads as a value rather than an answer.
- *
- * Position is pulled out first and recombined, because the two sources spell it differently -- a
- * map click produces latitude/longitude and the hydrofabric index produces lat/lon -- and the
- * reader wants one row, not two halves.
- *
- * Empty values are dropped rather than shown blank. The index carries columns that are null for
- * most rows, and a grid half full of empty cells reads as something failing to load.
- */
+/** A selected feature as label/value rows, ready to render. */
 export const featureFields = (feature) => {
   if (!feature) return [];
 

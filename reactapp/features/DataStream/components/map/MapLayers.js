@@ -8,9 +8,7 @@ import {
 import { FLOWPATHS_WIDTH_STOPS } from 'features/DataStream/lib/flowpaths';
 import { numericPartOf } from 'features/DataStream/lib/utils';
 
-/**
- * Catchment (divides) layers
- */
+/** Catchment (divides) layers */
 export function useCatchmentLayers({
   isCatchmentsVisible,
   selectedFeatureId,
@@ -67,23 +65,7 @@ export function useCatchmentLayers({
   ]);
 }
 
-/**
- * Flowpaths layer.
- *
- * Drawn from its own archive rather than from merged.pmtiles, which carries flowpaths only from
- * zoom 7 up. upstream_index/flowpaths.pmtiles carries them from zoom 1, which is what lets the
- * deck.gl animation draw over a wide view: its geometry is read back out of this layer with
- * queryRenderedFeatures, so wherever this renders, the animation can follow.
- *
- * Hovering reads this layer, and the archive is stripped: it carries divide_id, toid, order,
- * upstream_id and num_upstreams, and drops vpuid and lengthkm. divide_id is a bare number here,
- * which is what the highlight filter below matches on. The missing vpuid is the reason a click
- * cannot name the vpu from the tile alone. Its numeric MVT feature ids match the value array
- * through buildFeatureIdToIndex, which registers both the bare id and the wb- form.
- *
- * The ramps stay modest at low zoom: every available reach across CONUS at once is a lot of
- * ink, and the animation's own colour is what should carry there.
- */
+/** Flowpaths layer. */
 export function useFlowPathsLayer({ isFlowPathsVisible, flowpathsLineColor }) {
   return useMemo(() => {
     if (!isFlowPathsVisible) return null;
@@ -105,14 +87,7 @@ export function useFlowPathsLayer({ isFlowPathsVisible, flowpathsLineColor }) {
   }, [isFlowPathsVisible, flowpathsLineColor]);
 }
 
-/**
- * The selected reach, drawn over the flowpaths.
- *
- * A separate layer from the catchment highlight because it reads a different property: the
- * catchment tiles carry divide_id as "cat-2884494", while this archive carries it as the bare
- * number 2884494. Selecting a catchment therefore highlights both its polygon and its reach,
- * which is what someone searching an id is looking for.
- */
+/** The selected reach, drawn over the flowpaths. */
 export function useFlowPathsHighlightLayer({ isFlowPathsVisible, selectedFeatureId, color }) {
   return useMemo(() => {
     if (!isFlowPathsVisible) return null;
@@ -136,9 +111,7 @@ export function useFlowPathsHighlightLayer({ isFlowPathsVisible, selectedFeature
   }, [isFlowPathsVisible, selectedFeatureId, color]);
 }
 
-/**
- * CONUS gauges layer
- */
+/** CONUS gauges layer */
 export function useConusGaugesLayer({
   isConusGaugesVisible,
   gaugesCircleColor,

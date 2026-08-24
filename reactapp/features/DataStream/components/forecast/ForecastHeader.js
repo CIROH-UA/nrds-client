@@ -9,24 +9,7 @@ import { InfoToggle } from '../InfoDisclosure';
 import { DataInfoContent } from '../InfoContent';
 import { showSelection } from 'features/DataStream/actions/showSelection';
 
-/**
- * The panel's header, and the controls that act on the selection as a whole.
- *
- * "Zoom to catchment" is here rather than floating over the map, which is where it started and
- * where it read as unrelated to anything. It only means something while a feature is selected,
- * this panel only exists while a feature is selected, and the chart underneath is the reason the
- * reader wants to find it again.
- *
- * It is an icon in this row rather than a button under it. As a full-width bordered button it
- * took the most prominent position in the panel, between the title and the chart, for a utility
- * action -- so the reading order was the feature, then a button, then the thing the reader came
- * for. The row already holds the other two controls that act on the selection as a whole.
- *
- * The heading carries the catchment and the caption carries the run, which are facts of
- * different kinds: one names the thing and does not change while the panel is open, the other
- * is a property of it that the controls below can change. Together they made a two-line title
- * in a 400px panel and repeated what the Forecast select already said.
- */
+/** The panel's header, and the controls that act on the selection as a whole. */
 export const ForecastHeader = ({ title, subtitle, onClick }) => {
   const [dataInfoOpen, setDataInfoOpen] = useState(false);
 

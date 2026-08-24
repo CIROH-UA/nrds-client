@@ -9,16 +9,7 @@ import { useVPUStore } from 'features/DataStream/store/VPU';
 import { useShallow } from 'zustand/react/shallow';
 import { createSequence } from 'features/DataStream/lib/sequence';
 
-/**
- * The variable selector for the charted feature.
- *
- * No mounted flag: these writes all go to stores, so ordering alone is enough. Reusing the vpu
- * store's cached array skips a query measured at about 800 ms.
- *
- * An answer whose vpu has moved on describes a table that is no longer loaded, and it says so
- * rather than dropping it silently -- the chart has already changed, and silence hid the
- * disagreement.
- */
+/** The variable selector for the charted feature. */
 function VariablesMenu() {
   const changes = useRef(createSequence()).current;
 
@@ -53,13 +44,7 @@ function VariablesMenu() {
   }
   , [variables, variable]);
 
-  /**
-   * Load a variable's map values and its chart series together.
-   *
-   * allSettled rather than all: with all, a rejected flat load reported the failure while the
-   * series load was still in flight, and that load's success then wrote loadingText back to an
-   * empty string and erased the message. Waiting for both means the complaint is written last.
-   */
+  /** Load a variable's map values and its chart series together. */
   const handleChangeVariable = useCallback(async (evt) => {
     const opt = evt || availableVariablesList?.[0];
     if (!opt || !feature_id) return;
@@ -121,6 +106,5 @@ function VariablesMenu() {
     </Fragment>
   );
 }
-
 
 export default React.memo(VariablesMenu);

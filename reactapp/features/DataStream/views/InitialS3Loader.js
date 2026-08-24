@@ -8,10 +8,7 @@ import { getCacheKey } from 'features/DataStream/lib/utils';
 import { loadVpu } from 'features/DataStream/actions/loadVpu';
 import { abandonSelectionWithNoOutput } from 'features/DataStream/actions/noOutputFile';
 
-/**
- * Exported for its own sake: the first load of a vpu decides what the app opens on, and until
- * this was reachable by name the only way to exercise it was to mount the whole view.
- */
+/** Exported for its own sake: the first load of a vpu decides what the app opens on, and until this was reachable by name the only way to exercise it was to mount the whole view. */
 export function InitialS3Loader() {
   const { vpu } = useDataStreamStore(
     useShallow((s) => ({ vpu: s.vpu }))

@@ -11,12 +11,7 @@ export const TimeSeriesContainer = styled.div`
 `;
 
 // Themed Modal wrapper - now fully CSS-variable based
-/**
- * How explanatory prose reads, wherever it appears.
- *
- * Shared by the one remaining dialog and by the notes that open inline, so the same paragraph
- * does not get two different treatments depending on which container it landed in.
- */
+/** How explanatory prose reads, wherever it appears. */
 const infoProse = css`
   p,
   li {
@@ -58,16 +53,7 @@ const infoProse = css`
   }
 `;
 
-/**
- * The dialog surface.
- *
- * It floats over the basemap, which is the one case the flat-shell rule allows a shadow for:
- * the surface underneath is arbitrary imagery, so tonal layering cannot separate them.
- *
- * The body scrolls rather than the dialog growing past the viewport. The longest of these
- * dialogs is a page of prose and a six-item list, which on a short window ran off the bottom
- * with no way to reach the end.
- */
+/** The dialog surface. */
 export const ThemedModal = styled(Modal)`
   .modal-content {
     background-color: var(--modal-bg);
@@ -103,16 +89,7 @@ export const ThemedModal = styled(Modal)`
   }
 `;
 
-/**
- * A note that opens in place, under the control that asked for it.
- *
- * These were dialogs. Explaining what a layer is, while covering the layer, with a scrim over
- * the map the explanation is about, meant dismissing the answer to look at the thing. Opening
- * in place keeps both on screen, and costs no focus trap, no backdrop and no escape handling.
- *
- * It scrolls rather than pushing the panel it sits in out of shape: the layer note is four
- * links and a paragraph inside a 250px overlay.
- */
+/** A note that opens in place, under the control that asked for it. */
 export const InfoPanel = styled.div`
   margin: 8px 0 4px;
   padding: 10px 12px;
@@ -132,12 +109,7 @@ export const InfoPanel = styled.div`
   }
 `;
 
-/**
- * The dialog's close control.
- *
- * Outside the title, deliberately. It lived inside Modal.Title, which is the element
- * aria-labelledby points at, so the dialog announced itself as "Layer Information ✕".
- */
+/** The dialog's close control. */
 export const ModalCloseButton = styled.button`
   display: flex;
   align-items: center;
@@ -313,12 +285,7 @@ export const XButton = styled(Button)`
   }
 `;
 
-/**
- * A panel-level statement that something is missing.
- *
- * The empty state it replaces was a bare <p>No Outputs Available</p> in the panel's text flow,
- * which read as a caption rather than as the reason the Update button cannot do anything.
- */
+/** A panel-level statement that something is missing. */
 export const Notice = styled.p`
   display: flex;
   align-items: center;
@@ -354,18 +321,7 @@ export const SButton = styled(Button)`
   justify-content: center;
 `;
 
-/**
- * Anything that floats over the map.
- *
- * The legend, the zoom hint and the time slider each carried their own copy of this: the same
- * border, the same background, the same radius and the same box-shadow, written out three times.
- * Three copies of one card is why they read as interchangeable, and it is also why the shadow
- * was wrong everywhere at once -- pure black at 25%, invisible against the dark panel and heavy
- * against the light one.
- *
- * Elevation is a prop rather than part of the recipe, because these are not equally important.
- * The slider is the control the reader operates; the legend and the hint only report.
- */
+/** Anything that floats over the map. */
 const MapSurface = styled.div`
   position: absolute;
   z-index: 1000;
@@ -376,23 +332,7 @@ const MapSurface = styled.div`
   box-shadow: var(${(p) => (p.$control ? '--elevation-map-control' : '--elevation-map-readout')});
 `;
 
-/**
- * Where the time slider sits once it is a map control rather than a panel one.
- *
- * Bottom centre, because it drives the animation and belongs near it rather than in a panel the
- * reader has to look away to reach. That slot already had MapHint in it, and the two appear
- * under overlapping conditions -- a vpu loaded with flowpaths on, before the reader has zoomed
- * in far enough for the reaches to be mapped -- so MapHint is raised above this rather than left
- * to collide with it.
- *
- * Shrinks rather than hides on a narrow screen. A readout can afford display: none, as the
- * legend that used to sit beside this did; this is the only control that scrubs time, so
- * hiding it would take the animation away with it.
- *
- * pointer-events are on, unlike the legend: it is a control. The box is bounded so it only takes
- * the map interaction underneath itself. touch-action is set because maplibre claims drag
- * gestures on its container, and without it the thumb is not reliably draggable on a touchscreen.
- */
+/** Where the time slider sits once it is a map control rather than a panel one. */
 export const TimeSliderDock = styled(MapSurface).attrs({ $control: true })`
   left: 50%;
   transform: translateX(-50%);
@@ -403,25 +343,14 @@ export const TimeSliderDock = styled(MapSurface).attrs({ $control: true })`
   touch-action: manipulation;
 `;
 
-/**
- * The line under a panel's heading.
- *
- * For a fact about the thing named above rather than part of its name. The run used to be half
- * the heading, which made a two-line title in a 400px panel out of two facts of different kinds
- * and repeated what the Forecast select already said.
- */
+/** The line under a panel's heading. */
 export const PanelCaption = styled.p`
   margin: calc(var(--space-xs) * -1) 0 var(--space-sm) 26px;
   font-size: var(--text-xs);
   color: var(--panel-text-muted);
 `;
 
-/**
- * A prompt on the map, for when the view itself is why nothing is drawn.
- *
- * A button rather than a notice: telling someone to zoom in and making them find the control
- * are different things, and the whole complaint was that the data could not be located.
- */
+/** A prompt on the map, for when the view itself is why nothing is drawn. */
 export const MapHint = styled(MapSurface).attrs({ as: 'button' })`
   left: 50%;
   transform: translateX(-50%);
@@ -477,14 +406,7 @@ export const LegendScale = styled.div`
   }
 `;
 
-/**
- * The load status pill.
- *
- * Sits in the header, so it must stay compact and never push the search bar around. Failure is
- * styled from last_error rather than by matching the message text. The colours come from the
- * theme because the header is white in one and navy in the other -- a single hardcoded grey
- * measured 1.38:1 against the dark one, which is why nothing could be read.
- */
+/** The load status pill. */
 export const StatusStrip = styled.div`
   display: flex;
   align-items: center;
@@ -555,14 +477,7 @@ export const Title = styled.span`
   align-items: center;
 `;
 
-/**
- * The layer toggles.
- *
- * The pill itself is 34 by 18, which is the shape a switch should be and well under any touch
- * target. It does not need to grow: the row's label is bound to it with htmlFor, so the target
- * is the layer's name and symbol as well as the pill, which is both a larger area and the
- * accessible name the control was getting only from a title attribute.
- */
+/** The layer toggles. */
 export const Switch = styled(Form.Switch)`
   min-height: 44px;
   display: flex;
@@ -657,14 +572,7 @@ export const SearchBarWrapper = styled.div`
   border: 1px solid var(--search-border);
 `;
 
-/**
- * What stands in for the search box when the index could not be loaded.
- *
- * A disabled box with a placeholder would be the smaller change, but a control that can never
- * work is worse than no control: it invites typing and then swallows it. This says why, and
- * offers the retry, because the usual cause is one failed fetch of a 103 MB file rather than
- * anything permanent.
- */
+/** What stands in for the search box when the index could not be loaded. */
 export const SearchNotice = styled.div`
   display: flex;
   align-items: center;
@@ -794,15 +702,7 @@ export const NoData = styled.div`
   font-size: 1rem;
   color: var(--chart-empty-text-color, #6b7280);
 `;
-/**
- * Present to a screen reader, absent to everyone else.
- *
- * The clip-path-plus-1px technique rather than display:none or visibility:hidden, both of which
- * remove the element from the accessibility tree as well as from the page. Used for the page's
- * h1: this design has no visible headline by choice -- the largest type in the app is 18px --
- * but a document still needs a name, and heading navigation is how a screen-reader user finds
- * out what they are looking at.
- */
+/** Present to a screen reader, absent to everyone else. */
 export const VisuallyHidden = styled.h1`
   position: absolute;
   width: 1px;
@@ -815,14 +715,7 @@ export const VisuallyHidden = styled.h1`
   border: 0;
 `;
 
-/**
- * The first thing a keyboard reaches, and only then.
- *
- * Between the header and the map sit the nav, the banner and its dismiss button. Without this,
- * reaching the map or the feature panel means tabbing through all of them on every page load.
- * Hidden until focused, which is the whole convention: it is for people who are already
- * tabbing, and it would be noise for anyone else.
- */
+/** The first thing a keyboard reaches, and only then. */
 export const SkipLink = styled.a`
   position: absolute;
   left: var(--space-sm);
@@ -841,23 +734,7 @@ export const SkipLink = styled.a`
   }
 `;
 
-/**
- * A standing property of the product, worn beside its name.
- *
- * This was a dismissible full-width strip between the header and the map. Two things were wrong
- * with that beyond the layout bug it caused. It spent a band of vertical space, above a map, on
- * a sentence that never changes; and being dismissible made it transient, when what it says is
- * permanently true -- a caveat you can close is not load-bearing, so either it did not need to
- * be that loud or it should not have had an X.
- *
- * A badge is neither. It cannot be dismissed because it is a fact about the product rather than
- * a notice about a moment, it costs no layout, and it sits where a reader looks to find out what
- * they are using. The sentence it stands for lives with the results it qualifies, in the panel's
- * data note, and in the About dialog the (i) beside this opens.
- *
- * Not interactive: the header's own info button is two elements away and does the explaining, so
- * a second control here would be a target to hit for no new destination.
- */
+/** A standing property of the product, worn beside its name. */
 export const ExperimentalBadge = styled.span`
   flex: 0 0 auto;
   padding: 1px var(--space-sm);
@@ -871,17 +748,7 @@ export const ExperimentalBadge = styled.span`
   white-space: nowrap;
 `;
 
-/**
- * The label on a block within a panel.
- *
- * The feature panel holds two different things -- a reading, and the controls that choose which
- * reading -- and had nothing saying so. A heading is cheaper than a divider or a card and does
- * not add a box inside a box, which is the failure mode this palette cannot rescue.
- *
- * Weight before size, per the type scale: this is --text-xs at the strong weight rather than a
- * step up, because the panel's own title is only 16px and a section label must not compete
- * with it.
- */
+/** The label on a block within a panel. */
 export const PanelSectionHeading = styled.h3`
   margin: var(--space-md) 0 var(--space-xs);
   font-size: var(--text-xs);
@@ -889,21 +756,7 @@ export const PanelSectionHeading = styled.h3`
   color: var(--panel-text-muted);
 `;
 
-/**
- * A line across the top of the map while the app is working.
- *
- * The status strip says what is loading, but it lives in the header beside the search box, and
- * a reader who has just clicked a catchment in the middle of the map is not looking there. This
- * is: it spans the whole width, it moves, and it is the one thing on screen that changes while
- * a vpu comes down.
- *
- * Indeterminate on purpose. The work is an S3 listing, a parquet download and a duckdb table
- * build, and there is no honest way to turn that into a percentage -- a fake one that sticks at
- * 90% is worse than no number.
- *
- * Under prefers-reduced-motion it holds still and dims instead, following the same reasoning as
- * the spinner: remove the motion, keep the signal.
- */
+/** A line across the top of the map while the app is working. */
 const slide = keyframes`
   from { transform: translateX(-100%); }
   to { transform: translateX(400%); }
