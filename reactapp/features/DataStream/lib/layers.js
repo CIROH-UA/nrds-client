@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import { readMapTheme } from './mapTheme';
+import { quantiseZoom } from 'features/DataStream/lib/flowpaths';
 /**
  * The lowest zoom at which flowpath geometry exists.
  *
@@ -48,8 +49,6 @@ const STYLE_FLOWPATHS_LAYER_ID = 'flowpaths';
  * visibility on the style's layer rather than mounting one of ours.
  */
 const STYLE_VPU_LAYER_ID = 'vpu';
-
-/** The colour the basemap style draws vpu boundaries in, so the legend can match it. */
 
 /** Show or hide the style's vpu boundaries. */
 export const setVpuVisibility = (map, visible) => {
@@ -278,28 +277,6 @@ export const CursorSymbol = ({
   </svg>
 );
 
-export const BasinSymbol = ({
-  fill = 'rgba(91, 44, 111, 0.32)',
-  stroke = 'rgba(91, 44, 111, 0.9)',
-}) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="20"
-    height="20"
-    viewBox="0 0 20 20"
-    fill="none"
-    className="Eo3Yub"
-  >
-    <path
-      d="M2.0975 7.12551L10.878 1.1499L18.5 13.8414L13.378 18.8502L1 16.5158L2.0975 7.12551Z"
-      fill={fill}
-      stroke={stroke}
-      strokeWidth="1.5"
-    />
-  </svg>
-);
-
-
 const baseProps = {
   width: 20,
   height: 20,
@@ -308,136 +285,6 @@ const baseProps = {
   xmlns: 'http://www.w3.org/2000/svg',
   'aria-hidden': 'true',
 };
-
-// Model: small cube / block
-export const ModelIcon = (props) => (
-  <svg {...baseProps} {...props}>
-    <path
-      d="M7 9L12 6L17 9L12 12L7 9Z"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M7 9V15L12 18L17 15V9"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-// Date: calendar
-export const DateIcon = (props) => (
-  <svg {...baseProps} {...props}>
-    <rect
-      x="4"
-      y="6"
-      width="16"
-      height="14"
-      rx="2"
-      stroke="currentColor"
-      strokeWidth="1.5"
-    />
-    <path
-      d="M8 4V7M16 4V7"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-    />
-    <path
-      d="M4 10H20"
-      stroke="currentColor"
-      strokeWidth="1.5"
-    />
-  </svg>
-);
-
-// Forecast: horizon + forward arrow
-export const ForecastIcon = (props) => (
-  <svg {...baseProps} {...props}>
-    {/* horizon */}
-    <path
-      d="M4 16H14"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-    />
-    {/* rising curve */}
-    <path
-      d="M4 16C6.5 12 9 10 12 10"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    {/* forward arrow */}
-    <path
-      d="M13 7L18 12L13 17"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-// Cycle: circular arrows
-export const CycleIcon = (props) => (
-  <svg {...baseProps} {...props}>
-    <path
-      d="M7 8H12.5C14.9853 8 17 10.0147 17 12.5C17 13.3284 16.7893 14.1074 16.4189 14.7816"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-    />
-    <path
-      d="M9 5L7 8L9 11"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M17 16H11.5C9.01472 16 7 13.9853 7 11.5C7 10.6716 7.21075 9.89257 7.58107 9.21835"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-    />
-    <path
-      d="M15 19L17 16L15 13"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-export const EnsembleIcon = (props) => (
-  <svg {...baseProps} {...props}>
-    <path
-      d="M4 9C5.2 8.4 6.4 8 8 8C10.5 8 11.5 10 14 10C15.6 10 16.8 9.6 18 9"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-    />
-    <path
-      d="M4 12C5.2 11.4 6.4 11 8 11C10.5 11 11.5 13 14 13C15.6 13 16.8 12.6 18 12"
-      stroke="currentColor"
-      strokeWidth="1.2"
-      strokeLinecap="round"
-      opacity="0.85"
-    />
-    <path
-      d="M4 15C5.2 14.4 6.4 14 8 14C10.5 14 11.5 16 14 16C15.6 16 16.8 15.6 18 15"
-      stroke="currentColor"
-      strokeWidth="1"
-      strokeLinecap="round"
-      opacity="0.7"
-    />
-  </svg>
-);
 
 export const FileIcon = (props) => (
   <svg {...baseProps} {...props}>
@@ -451,33 +298,6 @@ export const FileIcon = (props) => (
       d="M14 2V8H20"
       stroke="currentColor"
       strokeWidth="1.5"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-// Variable: axes + curve
-export const VariableIcon = (props) => (
-  <svg {...baseProps} {...props}>
-    {/* axes */}
-    <path
-      d="M5 18V7"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-    />
-    <path
-      d="M5 18H18"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-    />
-    {/* curve */}
-    <path
-      d="M7 15C9 12 10 10 12 10C14 10 15 12 17 9"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
       strokeLinejoin="round"
     />
   </svg>
@@ -648,9 +468,17 @@ export const mapFeatureId = (feature) =>
  * first met close up would otherwise be marked as fine detail for ever, because the order the
  * reader happened to travel in is not a fact about the river.
  *
+ * Both are quantised here rather than at the call site. pathsVisibleAt compares minZoom against
+ * the overlay's zoom, which is quantised to keep the animation from rebuilding on every frame of
+ * a pinch -- so a raw tag and a quantised comparison are different units. A reach served at 7.124
+ * was tagged 7.124, compared against 7.0, and disappeared until the reader zoomed another eighth
+ * of a level in. Quantising on the way in makes the two agree by construction, which a second
+ * call site cannot then undo.
+ *
  * The count is what tells the caller whether to hand deck.gl a new array.
  */
-export function addPaths(store, features, featureIdToIndex, zoom = 0) {
+export function addPaths(store, features, featureIdToIndex, rawZoom = 0) {
+  const zoom = quantiseZoom(rawZoom);
   let changed = 0;
   for (const path of convertFeaturesToPaths(features, featureIdToIndex)) {
     const held = store.get(path.id);
@@ -681,10 +509,12 @@ export function addPaths(store, features, featureIdToIndex, zoom = 0) {
  * A path with no zoom recorded is drawn. Anything arriving from somewhere that does not tag is
  * geometry the animation had before this existed, and it should not disappear to it.
  */
+export const pathIsVisibleAt = (path, zoom) => (path.minZoom ?? -Infinity) <= zoom;
+
 export const pathsVisibleAt = (paths, zoom) => {
   if (!paths?.length) return [];
   if (!Number.isFinite(zoom)) return paths;
-  return paths.filter((p) => (p.minZoom ?? -Infinity) <= zoom);
+  return paths.filter((p) => pathIsVisibleAt(p, zoom));
 };
 
 function convertFeaturesToPaths(features, featureIdToIndex) {

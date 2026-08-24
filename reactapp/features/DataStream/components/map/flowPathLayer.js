@@ -1,5 +1,6 @@
 import {
   FLOWPATHS_MIN_ZOOM,
+  pathIsVisibleAt,
   getValueAtTimeFlat,
   normalizeValue,
 } from '../../lib/layers';
@@ -90,32 +91,31 @@ export function flowPathLayerProps({
     jointRounded: true,
     pickable: false,
     updateTriggers: {
-      // The ramp is in here because a theme switch changes no frame, no variable and no tick.
-      // Without it the reaches keep the old theme's colours until the animation next steps, and
-      // for ever if it is paused.
+      // ramp is here because a theme switch changes no frame, no variable and no tick.
       getColor: [frame, variable, pathTick, ramp],
       getWidth: [frame, variable, pathTick],
     },
   };
 }
 
+const EMPTY_PATHS = [];
+
 /**
  * Whether to tell the reader that the view, not the data, is why nothing is animating.
  *
  * Only when there is something to draw and nothing drawn yet. Raised with no data loaded it
- * would send someone zooming in to find an empty map, and raised once paths have been
- * collected it would contradict the animation running in front of them.
+ * would send someone zooming in to find an empty map, and raised once reaches are on screen it
+ * would contradict the animation running in front of them.
+ *
+ * Drawn, not collected. The two stopped meaning the same thing once paths were filtered to the
+ * zoom the tileset serves them at: the store keeps every reach ever seen and is never pruned,
+ * so one full of reaches gathered close up draws nothing at all over a whole vpu. Counting the
+ * store there withheld the one message that explains the empty map.
  */
-export function shouldPromptZoom({ visible, valuesByVar, timesArr, zoom, collectedPaths = 0 }) {
+export function shouldPromptZoom({ visible, valuesByVar, timesArr, zoom, paths = EMPTY_PATHS }) {
   if (!visible || !valuesByVar || !timesArr?.length) return false;
-  // Anything collected at all means the reader has data somewhere, so this would be telling
-  // them to zoom in on ground they have already covered.
-  //
-  // Not the same as "something is drawn": paths are filtered to the zoom the tileset serves them
-  // at, so a store full of headwaters draws nothing over a whole vpu. That gap is unreachable
-  // in practice -- FLOWPATHS_MIN_ZOOM is 1 and the check below needs a zoom under it -- and
-  // counting the visible subset here would put an O(n) filter over the store into every render
-  // of the map component to fix a case that cannot happen.
-  if (collectedPaths > 0) return false;
-  return Number.isFinite(zoom) && zoom < FLOWPATHS_MIN_ZOOM;
+  // The zoom test first, so the scan below only runs where the message could appear.
+  if (!Number.isFinite(zoom) || zoom >= FLOWPATHS_MIN_ZOOM) return false;
+  // Drawn, not collected -- the two stopped meaning the same thing; see the docstring.
+  return !paths.some((path) => pathIsVisibleAt(path, zoom));
 }

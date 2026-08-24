@@ -139,12 +139,12 @@ describe('the zoom prompt once geometry is collected', () => {
   };
 
   test('prompts when nothing has been collected yet', () => {
-    expect(shouldPromptZoom({ ...loaded, collectedPaths: 0 })).toBe(true);
+    expect(shouldPromptZoom({ ...loaded, paths: [] })).toBe(true);
   });
 
   test('stays quiet once there is something drawn, whatever the zoom', () => {
     // Otherwise it contradicts the animation running in front of the reader.
-    expect(shouldPromptZoom({ ...loaded, collectedPaths: 120 })).toBe(false);
+    expect(shouldPromptZoom({ ...loaded, paths: [{ id: 'wb-1', minZoom: 0 }] })).toBe(false);
   });
 
   test('treats a missing count as nothing collected', () => {
@@ -199,10 +199,12 @@ describe('keeping the most detailed capture', () => {
     expect(addPaths(store, [reach(coarse)], { 'wb-1': 0 }, 7)).toBe(0);
   });
 
-  test('records the zoom it read each path at', () => {
+  test('records the zoom it read each path at, quantised', () => {
+    // Quantised on the way in so the tag and the overlay's filter are in the same units; see
+    // the "zoom units" block below for why that is not a detail.
     const store = new Map();
     addPaths(store, [reach(coarse)], { 'wb-1': 0 }, 7.4);
-    expect(store.get('wb-1').zoom).toBe(7.4);
+    expect(store.get('wb-1').zoom).toBe(7.5);
   });
 });
 
@@ -355,5 +357,164 @@ describe('a reader who zooms into one half and back out', () => {
     const east = travel().find((p) => p.id === 'wb-2');
     expect(east.zoom).toBe(11);
     expect(east.minZoom).toBe(6);
+  });
+});
+
+/**
+ * The tag and the filter must be in the same units.
+ *
+ * addPaths was given the map's raw zoom while the overlay filtered on the quantised one, so a
+ * reach the tileset had just served at 7.124 was tagged 7.124, compared against 7.0, and hidden
+ * until the reader zoomed another eighth of a level in. Both halves were individually correct
+ * and the existing tests covered both; nothing compared them.
+ *
+ * addPaths quantises what it is handed rather than trusting the caller to, so a second call site
+ * cannot reintroduce the mismatch.
+ */
+describe('zoom units', () => {
+  const { pathsVisibleAt } = require('features/DataStream/lib/layers');
+  const { quantiseZoom } = require('features/DataStream/lib/flowpaths');
+  const one = (id) => [feature(id, [[0, 0], [1, 1]])];
+  const idx = { 'wb-1': 0 };
+
+  test('a reach is drawn at the zoom it was served at', () => {
+    const store = new Map();
+    const raw = 7.124;
+
+    addPaths(store, one('wb-1'), idx, raw);
+
+    expect(pathsVisibleAt([...store.values()], quantiseZoom(raw))).toHaveLength(1);
+  });
+
+  test.each([7.124, 7.13, 9.4, 4.99, 11.0])('holds at raw zoom %s', (raw) => {
+    const store = new Map();
+    addPaths(store, one('wb-1'), idx, raw);
+
+    expect(pathsVisibleAt([...store.values()], quantiseZoom(raw))).toHaveLength(1);
+  });
+
+  test('records the tag already quantised, so the caller cannot get the units wrong', () => {
+    const store = new Map();
+    addPaths(store, one('wb-1'), idx, 7.124);
+
+    expect(store.get('wb-1').minZoom).toBe(quantiseZoom(7.124));
+  });
+});
+
+/**
+ * The drawable set is stable across animation frames.
+ *
+ * pathsVisibleAt allocates and filters a store that can hold tens of thousands of reaches. Called
+ * inline in the layer memo it ran on every tick, because that memo also depends on the frame
+ * index -- so deck.gl got a brand-new `data` array every frame and treated the dataset as
+ * changed, defeating the updateTriggers-scoped partial update the layer is built around.
+ */
+describe('useVisiblePaths', () => {
+  const { renderHook } = require('@testing-library/react');
+  const { useVisiblePaths } = require('features/DataStream/lib/flowpaths');
+
+  const store = () => {
+    const s = new Map();
+    addPaths(s, [feature('wb-1', [[0, 0], [1, 1]])], { 'wb-1': 0 }, 6);
+    addPaths(s, [feature('wb-2', [[0, 0], [1, 1]])], { 'wb-2': 1 }, 11);
+    return { current: [...s.values()] };
+  };
+
+  test('returns the same array when nothing that matters changed', () => {
+    // The regression: a re-render caused by the frame index must not rebuild this.
+    const ref = store();
+    const { result, rerender } = renderHook(({ z, t }) => useVisiblePaths(ref, z, t), {
+      initialProps: { z: 6, t: 0 },
+    });
+    const first = result.current;
+
+    rerender({ z: 6, t: 0 });
+    rerender({ z: 6, t: 0 });
+
+    expect(result.current).toBe(first);
+  });
+
+  test('rebuilds when the zoom crosses a step', () => {
+    const ref = store();
+    const { result, rerender } = renderHook(({ z, t }) => useVisiblePaths(ref, z, t), {
+      initialProps: { z: 6, t: 0 },
+    });
+    expect(result.current.map((p) => p.id)).toEqual(['wb-1']);
+
+    rerender({ z: 11, t: 0 });
+
+    expect(result.current.map((p) => p.id).sort()).toEqual(['wb-1', 'wb-2']);
+  });
+
+  test('rebuilds when new geometry arrives', () => {
+    const ref = store();
+    const { result, rerender } = renderHook(({ z, t }) => useVisiblePaths(ref, z, t), {
+      initialProps: { z: 6, t: 0 },
+    });
+    const first = result.current;
+
+    ref.current = [...ref.current];
+    rerender({ z: 6, t: 1 });
+
+    expect(result.current).not.toBe(first);
+  });
+});
+
+/**
+ * Nothing outlives the subscription that registered it.
+ *
+ * The map component registered 'idle' with once() and removed only moveend and zoomend. once()
+ * does not remove itself until it fires, so an effect that re-ran before the map had settled
+ * left the previous run's callback listening -- and that callback closes over the vpu's feature
+ * index, while the effect re-runs precisely when the vpu changes. The stale listener collected
+ * the new vpu's geometry under the old vpu's indices.
+ */
+describe('onMapSettled', () => {
+  const { onMapSettled } = require('features/DataStream/lib/flowpaths');
+
+  const fakeMap = () => {
+    const on = jest.fn();
+    const once = jest.fn();
+    const off = jest.fn();
+    return { on, once, off, listening: () => {
+      const added = [...on.mock.calls, ...once.mock.calls].map(([e]) => e).sort();
+      const removed = off.mock.calls.map(([e]) => e).sort();
+      return added.filter((e) => {
+        const at = removed.indexOf(e);
+        if (at === -1) return true;
+        removed.splice(at, 1);
+        return false;
+      });
+    } };
+  };
+
+  it('settles on the first idle as well as on every later move', () => {
+    const map = fakeMap();
+    const run = jest.fn();
+
+    onMapSettled(map, run);
+
+    expect(map.once).toHaveBeenCalledWith('idle', run);
+    expect(map.on).toHaveBeenCalledWith('moveend', run);
+    expect(map.on).toHaveBeenCalledWith('zoomend', run);
+  });
+
+  it('leaves nothing listening after the unsubscribe', () => {
+    const map = fakeMap();
+    const run = jest.fn();
+
+    onMapSettled(map, run)();
+
+    expect(map.listening()).toEqual([]);
+  });
+
+  it('removes the same callback it registered', () => {
+    // off(event) with a different function removes nothing, which is how this looked correct.
+    const map = fakeMap();
+    const run = jest.fn();
+
+    onMapSettled(map, run)();
+
+    map.off.mock.calls.forEach(([, fn]) => expect(fn).toBe(run));
   });
 });

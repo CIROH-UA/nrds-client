@@ -1,3 +1,7 @@
+import { useMemo } from 'react';
+
+import { pathsVisibleAt } from 'features/DataStream/lib/layers';
+
 /**
  * What the static flowpaths layer and the animated overlay have to agree about.
  *
@@ -75,4 +79,49 @@ export const QUANTISED_ZOOM_STEP = 0.25;
 export const quantiseZoom = (zoom) => {
   if (!Number.isFinite(zoom)) return 0;
   return Math.round(zoom / QUANTISED_ZOOM_STEP) * QUANTISED_ZOOM_STEP;
+};
+
+/**
+ * The drawable paths, held stable across animation frames.
+ *
+ * pathsVisibleAt allocates, and it filters a store that is never pruned and can hold tens of
+ * thousands of reaches. Called inline in the layer memo it ran on every tick of the animation,
+ * because that memo also depends on the frame index -- so deck.gl received a new `data` array
+ * sixty times a minute and treated the whole dataset as changed, which is exactly the partial
+ * update the layer's updateTriggers exist to get.
+ *
+ * Keyed only on what can actually change the answer: the zoom, and the tick that says new
+ * geometry arrived. The frame index is deliberately absent.
+ *
+ * The ref is read rather than passed by value because the store is mutated in place by addPaths;
+ * pathTick is the signal that it changed.
+ */
+export const useVisiblePaths = (pathDataRef, zoom, pathTick) =>
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- pathTick stands in for the ref's contents
+  useMemo(() => pathsVisibleAt(pathDataRef.current, zoom), [pathDataRef, zoom, pathTick]);
+
+/**
+ * Run something whenever the map settles, until the caller lets go.
+ *
+ * Three events, because none of them covers the case on its own: 'idle' for the first settle
+ * after a style or a source loads, when nothing has moved yet, and moveend/zoomend for every
+ * settle after that.
+ *
+ * It exists so the unsubscribe cannot forget one. The map component registered 'idle' with
+ * once() and removed only the other two, and once() does not remove itself until it fires -- so
+ * an effect that re-ran before the map settled left the previous run's callback listening.
+ * That callback closes over the vpu's feature index, and the effect re-runs precisely when the
+ * vpu changes, so the stale one collected the new vpu's geometry under the old vpu's indices.
+ *
+ * Returns the unsubscribe.
+ */
+export const onMapSettled = (map, run) => {
+  map.once('idle', run);
+  map.on('moveend', run);
+  map.on('zoomend', run);
+  return () => {
+    map.off('idle', run);
+    map.off('moveend', run);
+    map.off('zoomend', run);
+  };
 };

@@ -80,3 +80,35 @@ describe('animated path width', () => {
     expect(missing).toBeLessThan(props(0).getWidth({ featureIndex: 0 }));
   });
 });
+
+/**
+ * The prompt counts what is drawn, not what is held.
+ *
+ * The store keeps every reach ever seen and is never pruned, so once the zoom filter arrived the
+ * two stopped meaning the same thing: a store full of reaches collected close up draws nothing
+ * at all over a whole vpu. Counting the store there suppresses the one message that explains
+ * why -- the reader is told nothing while looking at an empty map.
+ */
+describe('what shouldPromptZoom counts', () => {
+  const base = { visible: true, valuesByVar: { streamflow: {} }, timesArr: [1, 2], zoom: 0.5 };
+
+  it('prompts when the store is full but nothing is visible at this zoom', () => {
+    // What the reader sees: an empty map, and a store holding everything they gathered close up.
+    const gatheredCloseUp = [{ id: 'wb-1', minZoom: 9 }, { id: 'wb-2', minZoom: 11 }];
+
+    expect(shouldPromptZoom({ ...base, paths: gatheredCloseUp })).toBe(true);
+  });
+
+  it('stays quiet once something is actually drawn', () => {
+    const drawnHere = [{ id: 'wb-1', minZoom: 9 }, { id: 'wb-2', minZoom: 0 }];
+
+    expect(shouldPromptZoom({ ...base, paths: drawnHere })).toBe(false);
+  });
+
+  it('does not scan the store at a zoom that could not show the message', () => {
+    const paths = { some: jest.fn(() => false) };
+
+    expect(shouldPromptZoom({ ...base, zoom: 8, paths })).toBe(false);
+    expect(paths.some).not.toHaveBeenCalled();
+  });
+});

@@ -19,26 +19,28 @@ import { useLayersStore, useFeatureStore } from '../../store/Layers';
 import CustomPopUp from './Popup';
 import { SelectedFeaturePopup } from './SelectedFeaturePopup';
 import {
-  reorderLayers,
+  DIVIDES_MIN_ZOOM,
+  FLOWPATHS_LAYER_ID,
+  FLOWPATHS_MIN_ZOOM,
+  addPaths,
   boundsFor,
+  clickableLayerIds,
+  createPathStore,
+  hideStyleFlowpaths,
+  reorderLayers,
+  selectionLngLat,
+  setVpuVisibility,
 } from '../../lib/layers';
 import { useMapTheme } from '../../lib/mapTheme';
 import { createPointerCursor } from '../../lib/mapCursor';
-import { animationIsOnMap, quantiseZoom } from '../../lib/flowpaths';
-import { selectionLngLat } from '../../lib/layers';
-import { setMapHandle } from '../../lib/mapHandle';
-import { useShowSelectionOnChange } from '../../actions/showSelection';
 import {
-  DIVIDES_MIN_ZOOM,
-  FLOWPATHS_LAYER_ID,
-  clickableLayerIds,
-  FLOWPATHS_MIN_ZOOM,
-  addPaths,
-  createPathStore,
-  pathsVisibleAt,
-  hideStyleFlowpaths,
-  setVpuVisibility,
-} from '../../lib/layers';
+  animationIsOnMap,
+  onMapSettled,
+  quantiseZoom,
+  useVisiblePaths,
+} from '../../lib/flowpaths';
+import { releaseMapHandle, setMapHandle } from '../../lib/mapHandle';
+import { useShowSelectionOnChange } from '../../actions/showSelection';
 import { flowPathLayerProps, shouldPromptZoom } from './flowPathLayer';
 import { TimeSlider } from '../forecast/TimeSlider';
 import { selectMapFeature } from '../../actions/selectFeature';
@@ -102,6 +104,9 @@ const FlowPathsOverlay = React.memo(function FlowPathsOverlay({
     return () => map.off('zoom', onZoom);
   }, [mapRef]);
 
+  // Once per zoom step and per new-geometry tick; the memo below runs every frame.
+  const visiblePaths = useVisiblePaths(pathDataRef, zoom, pathTick);
+
   const layers = useMemo(() => {
     const props = flowPathLayerProps({
       visible,
@@ -109,17 +114,14 @@ const FlowPathsOverlay = React.memo(function FlowPathsOverlay({
       timesArr,
       variable,
       bounds,
-      // Only what the tileset would serve at this zoom. The store keeps everything ever seen,
-      // so handing all of it over drew whichever areas the reader had been close to at their
-      // close-up density and left the rest coarse.
-      pathData: pathsVisibleAt(pathDataRef.current, zoom),
+      pathData: visiblePaths,
       currentTimeIndex,
       pathTick,
       zoom,
       ramp,
     });
     return props ? [new PathLayer(props)] : NO_LAYERS;
-  }, [visible, valuesByVar, bounds, variable, timesArr, currentTimeIndex, pathTick, pathDataRef, zoom, ramp]);
+  }, [visible, valuesByVar, bounds, variable, timesArr, currentTimeIndex, visiblePaths, zoom, ramp]);
 
   return <DeckGLOverlay layers={layers} interleaved getCursor={getCursor} />;
 });
@@ -207,13 +209,13 @@ const MainMap = () => {
   // Literally the same object the legend reads, so the two cannot describe different ramps.
   const colorBounds = useMemo(() => boundsFor(valuesByVar), [valuesByVar]);
 
-  // pathTick is what re-renders this, so reading the ref during render is current.
   const belowFlowpathZoom = shouldPromptZoom({
     visible: isFlowPathsVisible,
     valuesByVar,
     timesArr,
     zoom,
-    collectedPaths: pathDataRef.current.length,
+    // Read during render, which pathTick is what re-renders this for.
+    paths: pathDataRef.current,
   });
 
   const selectionAt = useMemo(() => selectionLngLat(selectedMapFeature), [selectedMapFeature]);
@@ -230,8 +232,7 @@ const MainMap = () => {
     map.easeTo({ zoom: FLOWPATHS_MIN_ZOOM + 1, essential: true });
   }, [selectionAt, mapRef]);
 
-  // Selecting something moves the map to it. The same move on demand lives beside the chart it
-  // relates to, in the feature panel; see actions/showSelection.js.
+  // Selecting something moves the map to it; the on-demand button is in the feature panel.
   useShowSelectionOnChange();
 
 
@@ -281,6 +282,9 @@ const MainMap = () => {
     reorderLayers(map);
     setMapReady(true);
   }, [isMapUsable]);
+
+  // Released with the map, so nothing outside can reach a canvas that has been torn down.
+  useEffect(() => () => releaseMapHandle(hoverMapRef.current), []);
 
   // Re-registered whenever the clickable set changes, so the cleanup removes exactly this run's.
   useEffect(() => {
@@ -437,14 +441,11 @@ const MainMap = () => {
       });
     };
 
-    map.once("idle", run);
-    map.on("moveend", run);
-    map.on("zoomend", run);
+    const unsubscribe = onMapSettled(map, run);
 
     return () => {
       if (raf) cancelAnimationFrame(raf);
-      map.off("moveend", run);
-      map.off("zoomend", run);
+      unsubscribe();
     };
   }, [featureIdToIndex, isFlowPathsVisible]);
 
