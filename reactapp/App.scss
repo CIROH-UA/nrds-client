@@ -81,6 +81,8 @@ $theme-colors: (
    --primary-color: oklch(0.985 0.006 249);
   --title-text-color: #5f6368;
   --ts-header-height: 56px;
+  --sheet-height: min(58dvh, calc(100dvh - var(--ts-header-height) - 120px));
+  --sheet-offset: 0px;
   --modal-scrim: oklch(0.248 0.006 249);
 
   // Referenced by name before they existed: TimeSlider.css asked for --space-sm, --space-md and
@@ -261,6 +263,25 @@ $theme-colors: (
   --chart-line-4: #7c3aed;
 
 }
+
+@media (max-width: 768px) {
+  body[data-sheet-open='true'] {
+    --sheet-offset: var(--sheet-height);
+    --map-controls-offset: calc(var(--sheet-height) + 96px);
+  }
+
+  .maplibregl-ctrl.maplibregl-ctrl-group button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .maplibregl-ctrl-bottom-right,
+  .maplibregl-ctrl-bottom-left {
+    transform: translateY(calc(-1 * var(--map-controls-offset, 0px)));
+    transition: transform 0.25s ease-out;
+  }
+}
+
 
 /* Dark theme override */
 @media (prefers-color-scheme: dark) {

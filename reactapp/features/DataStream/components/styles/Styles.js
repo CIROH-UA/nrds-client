@@ -2,6 +2,15 @@ import styled, { css, keyframes } from 'styled-components';
 import { Button, Form, Modal } from 'react-bootstrap';
 import { FiSearch } from 'react-icons/fi';
 
+const visuallyHiddenRules = css`
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+`;
+
 export const TimeSeriesContainer = styled.div`
   width: 100%;
   height: 300px;
@@ -210,10 +219,15 @@ export const Container = styled.div`
     $isOpen ? 'translateX(0)' : 'translateX(-100%)'};
 
   @media (max-width: 768px) {
+    inset: auto 0 0 0;
     width: 100%;
-    border-radius: 0;
+    height: var(--sheet-height);
+    padding: 12px 16px 16px;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    border-top: 1px solid var(--panel-border-color);
+    box-shadow: var(--elevation-map-control);
     transform: ${({ $isOpen }) =>
-      $isOpen ? 'translateX(0)' : 'translateX(-100%)'};
+      $isOpen ? 'translateY(0)' : 'translateY(100%)'};
   }
 `;
 
@@ -232,8 +246,10 @@ export const LayersContainer = styled.div`
   transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 
   @media (max-width: 768px) {
-    width: 100%;
-    border-radius: 0;
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-height: calc(100dvh - var(--ts-header-height) - 32px);
   }
 `;
 
@@ -242,6 +258,11 @@ export const LayerButton = styled(Button)`
   right: 1%;
   position: absolute;
   margin-top: 10px;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   transition: transform 0.3s ease;
 
   background-color: ${({ $bgColor = 'var(--button-primary-bg)' }) =>
@@ -336,7 +357,8 @@ const MapSurface = styled.div`
 export const TimeSliderDock = styled(MapSurface).attrs({ $control: true })`
   left: 50%;
   transform: translateX(-50%);
-  bottom: 28px;
+  bottom: calc(28px + var(--sheet-offset, 0px));
+  transition: bottom 0.25s ease-out;
   width: min(680px, calc(100vw - 32px));
   padding: 6px 10px;
   pointer-events: auto;
@@ -417,7 +439,8 @@ export const StatusStrip = styled.div`
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   line-height: 1.2;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
 
   > span {
     min-width: 0;
@@ -426,8 +449,16 @@ export const StatusStrip = styled.div`
 
   @media (max-width: 768px) {
     > span {
-      white-space: normal;
-      overflow-wrap: break-word;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  @media (max-width: 640px) {
+    padding: 4px;
+
+    > span:not(:only-child) {
+      ${visuallyHiddenRules}
     }
   }
   color: ${({ $failed }) =>
@@ -451,6 +482,7 @@ export const Row = styled.div`
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
+  min-height: 44px;
   padding: 6px 0;
   margin-bottom: 2px;
   font-size: 13px;
@@ -563,9 +595,14 @@ export const FieldValue = styled.div`
 export const SearchBarWrapper = styled.div`
   display: flex;
   align-items: center;
-  flex: 0 1 400px;
+  flex: 1 1 200px;
   min-width: 0;
   padding: 6px 10px;
+
+  @media (max-width: 768px) {
+    min-height: 44px;
+    min-width: 190px;
+  }
   border-radius: 6px;
   background-color: var(--search-bg);
   box-sizing: border-box;
@@ -633,6 +670,7 @@ export const SearchInput = styled.input`
   border: none;
   flex: 1 1 auto;
   min-width: 0;
+  align-self: stretch;
   font-size: var(--text-md);
   background: transparent;
   color: ${({ $notFound }) =>
@@ -658,6 +696,11 @@ export const SearchButton = styled.button`
   flex-shrink: 0;
   margin-left: 8px;
   padding: 2px 10px;
+
+  @media (max-width: 768px) {
+    min-height: 36px;
+    padding: 2px 12px;
+  }
   border: none;
   border-radius: var(--radius-sm);
   font-size: 13px;
@@ -704,14 +747,9 @@ export const NoData = styled.div`
 `;
 /** Present to a screen reader, absent to everyone else. */
 export const VisuallyHidden = styled.h1`
-  position: absolute;
-  width: 1px;
-  height: 1px;
+  ${visuallyHiddenRules}
   margin: -1px;
   padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
   border: 0;
 `;
 
@@ -746,6 +784,9 @@ export const ExperimentalBadge = styled.span`
   font-weight: var(--weight-medium);
   line-height: 1.5;
   white-space: nowrap;
+  @media (max-width: 560px) {
+    display: none;
+  }
 `;
 
 /** The label on a block within a panel. */

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 
 import { getMapHandle } from 'features/DataStream/lib/mapHandle';
 import { selectionLngLat } from 'features/DataStream/lib/layers';
+import { sheetCoverPx } from 'features/DataStream/lib/breakpoints';
 import { useFeatureStore } from 'features/DataStream/store/Layers';
 
 /** Where a selection is shown from. */
@@ -13,7 +14,13 @@ export const showSelection = () => {
   const at = selectionLngLat(useFeatureStore.getState().selected_feature);
   if (!map || !at) return false;
 
-  map.flyTo({ center: at, zoom: SELECTION_ZOOM, essential: true });
+  const covered = sheetCoverPx();
+  map.flyTo({
+    center: at,
+    zoom: SELECTION_ZOOM,
+    offset: [0, covered > 0 ? -covered / 2 : 0],
+    essential: true,
+  });
   return true;
 };
 

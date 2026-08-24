@@ -42,7 +42,7 @@ const Header = ({onNavChange}) => {
               <SearchBar/>
               <LoadStatus/>
             </CustomDiv>
-            <CustomDiv>
+            <CustomDiv $fixed>
               <StyledButton
                 type="button"
                 onClick={() => setModalGeneralInfoShow(true)}

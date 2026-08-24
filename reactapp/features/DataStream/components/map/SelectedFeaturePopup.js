@@ -2,6 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { Popup } from 'react-map-gl/maplibre';
 
 import { useFeatureStore } from 'features/DataStream/store/Layers';
+import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
+import { useIsSheetLayout } from 'features/DataStream/lib/breakpoints';
 import { featureFields } from 'features/DataStream/lib/featureFields';
 import { selectionLngLat } from 'features/DataStream/lib/layers';
 import { PopupContent } from '../styles/Styles';
@@ -10,12 +12,14 @@ import { PopupContent } from '../styles/Styles';
 export const SelectedFeaturePopup = React.memo(() => {
   const selectedFeature = useFeatureStore((s) => s.selected_feature);
   const [dismissedId, setDismissedId] = useState(null);
+  const isSheet = useIsSheetLayout();
+  const chartedId = useTimeSeriesStore((s) => s.feature_id);
 
   const at = useMemo(() => selectionLngLat(selectedFeature), [selectedFeature]);
   const fields = useMemo(() => featureFields(selectedFeature), [selectedFeature]);
 
   const id = selectedFeature?._id ?? null;
-  if (!at || !id || dismissedId === id || !fields.length) return null;
+  if ((isSheet && chartedId === id) || !at || !id || dismissedId === id || !fields.length) return null;
 
   return (
     <Popup

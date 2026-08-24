@@ -86,8 +86,29 @@ describe('showSelection', () => {
     expect(map.flyTo).toHaveBeenCalledWith({
       center: [-111.5, 40.8],
       zoom: SELECTION_ZOOM,
+      offset: [0, 0],
       essential: true,
     });
+  });
+
+  /**
+   * The sheet covers the bottom of the map, and the map's centre is below its top edge on every
+   * phone, so a plain centring flight puts the selected catchment underneath the panel that
+   * describes it. The offset lifts the target into the strip that stays visible.
+   */
+  it('lifts the target out from under the sheet', () => {
+    document.body.innerHTML = '<aside aria-label="Selected feature"></aside>';
+    const sheet = document.querySelector('aside');
+    sheet.getBoundingClientRect = () => ({ height: 480 });
+    const width = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { value: 390, configurable: true });
+    useFeatureStore.setState({ selected_feature: { _id: 'cat-1', lat: 40.8, lon: -111.5 } });
+
+    showSelection();
+
+    expect(map.flyTo).toHaveBeenCalledWith(expect.objectContaining({ offset: [0, -240] }));
+    Object.defineProperty(window, 'innerWidth', { value: width, configurable: true });
+    document.body.innerHTML = '';
   });
 
   it('returns at a zoom where the catchment is actually drawn', () => {

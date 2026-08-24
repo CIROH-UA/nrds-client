@@ -9,6 +9,11 @@ export const StyledButton = styled.button`
   color: var(--text-color);
   border-radius: 20px;
   padding: 5px;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   &:hover,
   &:focus {
     background-color: var(--button-primary-hover-bg); 
@@ -81,6 +86,10 @@ export const ErrorTitle = styled.h1`
 
 export const CustomNavBar = styled(Navbar)`
   min-height: var(--ts-header-height);
+
+  > * {
+    gap: 16px;
+  }
   color: var(--title-text-color);
 
   /* Ensure navbar brand and links use theme colors */
@@ -110,7 +119,10 @@ export const CustomNavBar = styled(Navbar)`
 export const CustomDiv = styled.div`
   display: flex;
   align-items: center;
-  gap: 32px;
+  gap: clamp(8px, 3vw, 32px);
+  min-width: 0;
+
+  flex: ${({ $fixed }) => ($fixed ? '0 0 auto' : '0 1 auto')};
 
   /* any plain anchor inside this div */
   & a {

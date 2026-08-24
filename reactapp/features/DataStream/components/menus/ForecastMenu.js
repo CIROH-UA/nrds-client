@@ -1,9 +1,10 @@
-import { Fragment, useMemo, useCallback } from 'react';
+import { Fragment, useMemo, useCallback, useEffect } from 'react';
 import DataMenu from '../forecast/dataMenu';
 import VariablesMenu from '../forecast/variablesMenu';
 import { Content, Container } from '../styles/Styles';
 import TimeSeriesCard from '../forecast/TimeseriesCard';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
+import { useFeatureStore } from 'features/DataStream/store/Layers';
 import { useVPUStore } from 'features/DataStream/store/VPU';
 import { ForecastHeader } from '../forecast/ForecastHeader';
 import { useShallow } from 'zustand/react/shallow';
@@ -26,9 +27,16 @@ const ForecastMenu = () => {
 
   const isopen = useMemo(() => feature_id != null, [feature_id]);
 
+  useEffect(() => {
+    document.body.dataset.sheetOpen = isopen ? 'true' : 'false';
+  }, [isopen]);
+
+  useEffect(() => () => { delete document.body.dataset.sheetOpen; }, []);
+
   const onReset = useCallback(() => {
     reset();
     resetVPU();
+    useFeatureStore.getState().set_selected_feature(null);
   }, [reset, resetVPU]);
   
   return (
