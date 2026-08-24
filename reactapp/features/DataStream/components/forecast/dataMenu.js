@@ -41,7 +41,6 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
       }))
     );
 
-  // setters
   const {
     set_date,
     set_forecast,
@@ -151,9 +150,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
 
   const handleVisulization = useEvent(async () => {
     const { loading, set_loading_text } = useTimeSeriesStore.getState();
-    // Clear last press's complaint first, so a stale one cannot read as this press's answer.
     set_loading_text('');
-    // Flagged as errors so the status strip styles them as refusals rather than as progress.
     if (!selected_feature_id || !vpu) {
       useTimeSeriesStore.setState({
         loadingText: 'Select a feature on the map first',
@@ -178,7 +175,6 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
     const _prefix = makePrefix(model, date, forecast, cycle, ensemble, vpu, outputFile);
     set_prefix(_prefix);
 
-    // A repeat press is simply a repeat, which is what makes retrying a failure possible.
     await loadVpu();
   });
 
@@ -384,7 +380,6 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
     set_outputFile(opt.value);
   });
 
-  // -------------------- selected values --------------------
   const selectedDateOption = useMemo(
     () =>
       availableDatesList.find((opt) => opt.value === date) ??
@@ -548,7 +543,6 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
 
   return (
     <Fragment>
-      {/* Names the half below, which the undifferentiated stack never did. */}
       <PanelSectionHeading>Change the run</PanelSectionHeading>
 
       {rows.map((r) => (
@@ -586,7 +580,6 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
 
 
 function DataMenu() {
-  // No status line here any more; LoadStatus sits in the header, which is always on screen.
   return <DataMenuControls />;
 }
 

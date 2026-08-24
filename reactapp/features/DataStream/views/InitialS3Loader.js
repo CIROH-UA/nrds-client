@@ -42,13 +42,11 @@ export function InitialS3Loader() {
         const { models, dates, forecasts, cycles, ensembles, outputFiles } =
           await initialS3Data(vpu, { signal: controller.signal });
 
-        if (!alive) return; // <- prevents any setState after unmount/dep change
+        if (!alive) return;
 
         const _models = models.filter(m => m.value !== 'test');
 
-        // Nothing to read, so nothing to key; applyOutputFiles refuses on the same condition.
         if (!outputFiles.length) {
-          // The controls still describe this vpu, or later dropdowns build urls for another.
           setInitialData({
             models: _models, dates, forecasts, cycles, outputFiles, prefix: '',
           });
@@ -63,7 +61,6 @@ export function InitialS3Loader() {
         }
 
         const defaultDate = dates[0]?.value;
-        // One list, spread into both: a key and a prefix that disagree name different places.
         const selection = [
           _models[0]?.value,
           defaultDate,
@@ -94,7 +91,6 @@ export function InitialS3Loader() {
           prefix: _prefix,
         });
 
-        // Explicit, so the vpu load is no longer a second effect reacting to cache_key.
         await loadVpu();
 
       } catch (error) {

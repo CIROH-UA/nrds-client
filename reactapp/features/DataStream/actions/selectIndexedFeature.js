@@ -47,14 +47,12 @@ export async function selectIndexedFeature(candidates) {
   if (!features.length) return null;
 
   const feature = features[0];
-  // The id the index holds, not the one asked for: "2884494" selects cat-2884494.
   const matchedId = feature.id ?? ids[0];
   const vpuName = `VPU_${feature.vpuid}`;
   const { vpu, set_vpu } = useDataStreamStore.getState();
 
   const before = useFeatureStore.getState().selected_feature;
   useFeatureStore.getState().set_selected_feature({ _id: matchedId, ...feature });
-  // Only when the store kept what it had, or the change moves the map and this flies twice.
   if (useFeatureStore.getState().selected_feature === before) showSelection();
 
   useTimeSeriesStore.setState({

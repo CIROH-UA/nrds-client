@@ -44,13 +44,6 @@ const ForecastMenu = () => {
                   )}
             </div>
             
-            {/* Grouped by when a change takes effect, which is the distinction that matters
-                here and the one the order was getting wrong. The variable applies the moment it
-                is picked and it changes what this chart plots, so it belongs to the chart. The
-                run selectors do nothing until Update, so they are a separate block behind it.
-
-                The variable used to sit below Update, which read as an afterthought to the
-                query rather than a property of the reading. */}
             <Content>
               <TimeSeriesCard />
               <VariablesMenu />

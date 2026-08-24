@@ -20,7 +20,6 @@ import HoverValue from './HoverValue';
  * and above zoom 7 the divides fill covers every pixel so that never came.
  */
 const CustomPopUp = React.memo(({ hovered_feature, enabledHovering }) => {
-  // Drops hoverId, longitude and latitude: ours for placement, not the feature's to show.
   const rows = useMemo(() => hoverRows(hovered_feature), [hovered_feature]);
 
     if (!enabledHovering || !hovered_feature?.hoverId) return null;
@@ -31,7 +30,6 @@ const CustomPopUp = React.memo(({ hovered_feature, enabledHovering }) => {
       latitude={hovered_feature.latitude}
       offset={[0, -10]}
       closeButton={false}
-      // The hover state owns when this is on screen; see the docstring.
       closeOnClick={false}
     >
       <PopupContent>

@@ -67,7 +67,6 @@ export const beginLoading = () => {
 
 export const endLoading = () => {
   loads = Math.max(0, loads - 1);
-  // pending goes with it: a click's promise of work is kept once the work it promised is done.
   if (loads === 0) useTimeSeriesStore.setState({ loading: false, pending: false });
 };
 

@@ -44,7 +44,6 @@ export function chartSelection({ featureId, vpuName }) {
 
   return restore().catch((err) => {
     console.error('Could not chart', featureId, err);
-    // Neither branch reached beginLoading, so nothing else will retire the click's promise.
     useTimeSeriesStore.setState({
       loadingText: 'Could not load this selection',
       last_error: { kind: 'timeseries', featureId },

@@ -78,7 +78,6 @@ describe('the app shell', () => {
   it('names itself', async () => {
     renderApp();
 
-    // By role: the name is in the brand link too, and the heading is the one that matters.
     expect(await screen.findByRole('heading', { level: 1, name: /NRDS/i })).toBeInTheDocument();
   });
 
@@ -100,7 +99,6 @@ describe('the app shell', () => {
 
     const skip = await screen.findByRole('link', { name: /skip to the map/i });
     expect(skip).toHaveAttribute('href', '#main-content');
-    // First, or it is not a skip link: the nav and the notice sit between it and the map.
     const focusable = document.querySelectorAll('a[href], button, input, select, [tabindex]');
     expect(focusable[0]).toBe(skip);
   });
@@ -118,7 +116,6 @@ describe('the app shell', () => {
     renderApp();
 
     await screen.findByTestId('datastream-view');
-    // Nothing is persisted any more, so the button that cleared OPFS has nothing to act on.
     expect(screen.queryByRole('button', { name: /cached data/i })).not.toBeInTheDocument();
   });
 
@@ -126,7 +123,6 @@ describe('the app shell', () => {
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
     renderApp();
 
-    // Proves the chain ran rather than merely parsed: the real loadIndexData fails on duckdb.
     expect(await screen.findByRole('alert')).toHaveTextContent(/search unavailable/i);
     consoleError.mockRestore();
   });

@@ -17,7 +17,7 @@ export const getYesterdayDateString = () => {
 };
 
 export const makeTitle = (forecast, feature_id) => {
-  const cleanForecast = forecast.replace(/_/g, ' '); // replace all underscores
+  const cleanForecast = forecast.replace(/_/g, ' ');
   const cleanId = separateWords(feature_id);
   return capitalizeWords(`${cleanId} ${cleanForecast} Forecast`);
 };
@@ -188,7 +188,6 @@ export const formatPropertyValue = (value) => {
  * developer can have all of it.
  */
 export function cacheFailureReason(err) {
-  // Asked through the same predicates the fetch decides with, so the two cannot drift apart.
   if (isStalled(err)) return 'the download stopped';
   if (isMissing(err)) return 'the file is not there';
 
@@ -200,7 +199,6 @@ export function cacheFailureReason(err) {
     case 'TypeError':
       return 'could not fetch it';
     default:
-      // null rather than a phrase: the caller has a better sentence than "see the console".
       return null;
   }
 }
@@ -217,7 +215,6 @@ export function cacheFailureReason(err) {
  * timezone would quietly shift every frame away from the cycle it belongs to.
  */
 export const formatFrameTime = (value) => {
-  // Rejected before Number(), which turns null and '' into 0 and would render them as 1970.
   if (value === null || value === undefined || value === '') return '';
 
   const ms = value instanceof Date ? value.getTime() : Number(value);
@@ -247,6 +244,13 @@ export const formatFrameTime = (value) => {
  */
 const TICK_FORMATS = ['%m/%d', '%m/%d %H:%M', '%H:%M', '%H:%M:%S'];
 
+/**
+ * A tick format that does not print two ticks on one day identically.
+ *
+ * Chosen from where the ticks actually fall rather than from the forecast's name: a
+ * medium-range chart spanning under two days put two ticks on the same day and labelled both
+ * "08/31".
+ */
 export const distinctTickFormat = (ticks, format) => {
   const values = (ticks || []).filter((t) => t instanceof Date || Number.isFinite(t));
   if (values.length < 2) return TICK_FORMATS[0];
@@ -254,7 +258,6 @@ export const distinctTickFormat = (ticks, format) => {
   const sameDay = values.every(
     (t) => new Date(t).toDateString() === new Date(values[0]).toDateString()
   );
-  // Within one day the date is the same on every tick, so it is noise rather than a label.
   const candidates = sameDay ? ['%H:%M', '%H:%M:%S'] : TICK_FORMATS;
 
   for (const candidate of candidates) {

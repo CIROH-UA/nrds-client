@@ -85,7 +85,6 @@ export const hideStyleFlowpaths = (map) => {
 
 export const reorderLayers = (map) => {
   if (!map) return;
-  // Draw order from bottom → top
   const LAYER_ORDER = [
     FLOWPATHS_LAYER_ID,
     FLOWPATHS_HIGHLIGHT_LAYER_ID,
@@ -96,7 +95,6 @@ export const reorderLayers = (map) => {
 
   LAYER_ORDER.forEach((id) => {
     if (map.getLayer(id)) {
-      // moveLayer with no beforeId = move to top
       map.moveLayer(id);
     }
   });
@@ -266,7 +264,6 @@ export const CursorSymbol = ({
     style={{ marginRight: '6px' }}
     xmlns="http://www.w3.org/2000/svg"
   >
-    {/* Arrow body */}
     <path
       d="M4 3 L4 18 L8.5 14.5 L11 20 L13 19 L10.5 13.5 L15 13 Z"
       fill={fill}
@@ -340,7 +337,6 @@ export function computeBounds(varData) {
   const last = sample.length - 1;
   const min = sample[Math.floor(last * LOW_PERCENTILE)];
   const high = sample[Math.ceil(last * HIGH_PERCENTILE)];
-  // Everything inside the trimmed range being identical is a real answer, not a failure.
   const max = high > min ? high : min + 1;
   const median = sample[Math.round(last * 0.5)];
   return { min, max, curve: fitCurve(median - min, max - min) };
@@ -405,7 +401,6 @@ export function normalizeValue(value, bounds) {
   const span = bounds.max - bounds.min;
   if (!(span > 0)) return 0;
   const offset = Math.min(Math.max(value - bounds.min, 0), span);
-  // curve defaults to 1 so bounds built by hand, as tests do, still normalise sensibly.
   const curve = bounds.curve > 0 ? bounds.curve : 1;
   return Math.log1p(curve * offset) / Math.log1p(curve * span);
 }
@@ -485,7 +480,6 @@ export function addPaths(store, features, featureIdToIndex, rawZoom = 0) {
     const held = store.get(path.id);
     const minZoom = held ? Math.min(held.minZoom ?? held.zoom ?? zoom, zoom) : zoom;
 
-    // Nothing new: the geometry is already at least this detailed and the floor has not moved.
     if (held && held.zoom >= zoom && held.minZoom === minZoom) continue;
 
     const geometry = held && held.zoom >= zoom ? held : path;

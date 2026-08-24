@@ -29,6 +29,10 @@ const LIGHT_STYLE =
 const dark = createMediaQuery(DARK_QUERY, () => false);
 
 /** Whether the reader's system asks for a dark interface. */
+/**
+ * prefersDark looks unused to the linter and is the whole point: the tokens are not observable,
+ * so the media query that changes them stands in for them.
+ */
 export const usePrefersDark = () => useMediaQuery(dark);
 
 const readToken = (name, fallback) => {
@@ -57,9 +61,7 @@ export const readMapTheme = () => {
     gauges: readToken('--map-gauges-color', '#646464'),
     vpuBoundary: readToken('--map-vpu-boundary-color', '#009988'),
     cursorSymbolFill: readToken('--map-cursor-symbol-fill', '#1f78b4'),
-    // Shared: the gauge outline and the cursor legend symbol both read it.
     pointStroke: readToken('--map-point-stroke-color', '#f7fafe'),
-    // From the media query, not a token: six stops only work as a set. See the docstring.
     ramp: dark.snapshot() ? DARK_RAMP : LIGHT_RAMP,
   };
 };
@@ -67,7 +69,6 @@ export const readMapTheme = () => {
 /** The map's colours for the current theme, recomputed when the theme changes. */
 export const useMapTheme = () => {
   const prefersDark = usePrefersDark();
-  // prefersDark looks unused and is the whole point: tokens are not observable, this is.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   return useMemo(() => readMapTheme(), [prefersDark]);
 };

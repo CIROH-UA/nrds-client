@@ -6,7 +6,6 @@ import { useVPUStore } from "features/DataStream/store/VPU";
 import "./TimeSlider.css";
 
 export const TimeSlider = React.memo(() => {
-  // The animation's clock, not the chart's: series is empty until a feature is selected.
   const times = useVPUStore((s) => s.times);
   const currentTimeIndex = useTimeSeriesStore((s) => s.currentTimeIndex);
   const setCurrentTimeIndex = useTimeSeriesStore((s) => s.setCurrentTimeIndex);
@@ -24,13 +23,11 @@ export const TimeSlider = React.memo(() => {
 
   const timeSteps = Array.isArray(times) ? times.length : 0;
 
-  // The frame's own time, not its offset from a cycle start the reader may not know.
   const currentLabel = useMemo(
     () => (timeSteps ? formatFrameTime(times[Math.min(currentTimeIndex, timeSteps - 1)]) : ''),
     [times, currentTimeIndex, timeSteps]
   );
 
-  // Start/stop autoplay
   useEffect(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
@@ -39,7 +36,6 @@ export const TimeSlider = React.memo(() => {
 
     if (!isPlaying) return;
     if (!timeSteps) return;
-    // get ids
     const ms = Math.max(1, Math.floor(baseFrameMs / Math.max(1, playSpeed)));
 
     intervalRef.current = setInterval(() => {
@@ -103,8 +99,6 @@ export const TimeSlider = React.memo(() => {
 
         <span className="time-value" id="currentTime">{currentLabel}</span>
 
-        {/* A select rather than a second range: on one row a slider for speed reads as a second
-            timeline, and it is the widest thing here for the least said. */}
         <select
           className="speed-select"
           value={playSpeed}

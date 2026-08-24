@@ -21,7 +21,6 @@ export function selectMapFeature(feature, layerId) {
   const featureId = feature.properties?.[featureIdProperty];
   const { lon, lat } = getCentroid(feature);
 
-  // A feature we cannot name is not a selection, said here rather than left to a dedupe guard.
   if (featureId != null) {
     useFeatureStore.getState().set_selected_feature({
       latitude: lat,
@@ -35,7 +34,6 @@ export function selectMapFeature(feature, layerId) {
   const vpuName = `VPU_${feature.properties?.vpuid}`;
   const { vpu, set_vpu } = useDataStreamStore.getState();
 
-  // Said now: both paths below take most of a second to report anything of their own.
   if (featureId != null) {
     useTimeSeriesStore.setState({
       loadingText: vpuName === vpu ? `Loading ${featureId}` : `Loading ${vpuName}`,
@@ -43,7 +41,6 @@ export function selectMapFeature(feature, layerId) {
       pending: true,
     });
   }
-  // Only for a feature we could name: charting falls back to the previous selection otherwise.
   if (featureId != null && vpuName === vpu) {
     chartSelection({ featureId, vpuName });
   }

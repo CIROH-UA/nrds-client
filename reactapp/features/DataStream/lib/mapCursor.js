@@ -33,7 +33,6 @@ export function createPointerCursor() {
     return inside > 0 ? CURSOR_CLICKABLE : CURSOR_IDLE;
   }
 
-  // maplibre hands listeners the map as e.target; the effect has it directly.
   function paint(source) {
     const map = source?.getCanvas ? source : source?.target;
     const canvas = map?.getCanvas?.();

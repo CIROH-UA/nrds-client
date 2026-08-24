@@ -11,10 +11,8 @@
 export async function listPublicS3Directories(prefix = "v2.2/", { signal } = {}) {
   const bucket = "ciroh-community-ngen-datastream";
 
-  // Ensure trailing slash
   const normalizedPrefix = prefix.endsWith("/") ? prefix : `${prefix}/`;
 
-  // S3 ListObjectsV2 with delimiter to get "folders"
   const url =
     `https://${bucket}.s3.us-east-1.amazonaws.com/` +
     `?list-type=2&prefix=${encodeURIComponent(normalizedPrefix)}` +
@@ -27,23 +25,20 @@ export async function listPublicS3Directories(prefix = "v2.2/", { signal } = {})
 
   const xml = await resp.text();
 
-  // Parse XML and extract CommonPrefixes/Prefix
   const parser = new DOMParser();
   const doc = parser.parseFromString(xml, "application/xml");
 
   const prefixNodes = [...doc.getElementsByTagName("CommonPrefixes")];
 
-  // Full prefixes from S3, e.g. "v2.2/ngen.20251121/short_range/"
   const fullPrefixes = prefixNodes
     .map((node) => node.getElementsByTagName("Prefix")[0]?.textContent)
     .filter(Boolean);
 
-  // Empty names are dropped; see the note above.
   const childNames = fullPrefixes
     .map((p) =>
       p
-        .slice(normalizedPrefix.length) // remove base prefix
-        .replace(/\/$/, "")            // trim trailing slash
+        .slice(normalizedPrefix.length)
+        .replace(/\/$/, "")
     )
     .filter((name) => name !== "");
 
@@ -63,13 +58,13 @@ async function listPublicS3Files(prefix = "v2.2/", { signal } = {}) {
     }
     const xml = await resp.text();
 
-    // parse XML -> extract <Key> elements
     const parser = new DOMParser();
     const doc = parser.parseFromString(xml, "application/xml");
     const contents = [...doc.getElementsByTagName("Contents")];
     return contents.map(node => node.getElementsByTagName("Key")[0].textContent);
 }
 
+/** Array.sort() on objects compares "[object Object]" and orders nothing, hence an explicit one. */
 const byValue = (a, b) => (a.value < b.value ? -1 : a.value > b.value ? 1 : 0);
 
 /**
@@ -86,10 +81,8 @@ export async function getOptionsFromURL(url, { signal } = {}) {
   try{
     if (url.split('/').includes('troute')){
       const files = await listPublicS3Files(url, { signal });
-      // Parquet only; the docstring says why the archived .nc runs are dropped here.
       const readable = files.filter((f) => f.endsWith('.parquet'));
       const options = readable.map((d) => ({ value: d.split('/').pop(), label: d.split('/').pop() }));
-      // byValue, because Array.sort() on objects compares "[object Object]" and orders nothing.
       return options.sort(byValue).reverse();
     }
     const { childNames } = await listPublicS3Directories(url, { signal });
@@ -151,7 +144,6 @@ const datesByModel = new Map();
 const PROBE_PAGE_LIMIT = 6;
 
 function dateHasParquet(model, date, { signal } = {}) {
-  // Not a definite yes or no is not an answer, so it is not worth keeping.
   return held(parquetByRun, `${model}/${date}`, () => probeForParquet(model, date, { signal }),
     (answer) => answer !== null);
 }
@@ -221,7 +213,6 @@ const datedRunsNewestFirst = (model, { signal } = {}) =>
         .reverse();
       return { runs, answered: true };
     } catch {
-      // answered: false, not an empty list -- see the docstring. A blip is not an absence.
       return { runs: [], answered: false };
     }
   }, ({ answered }) => answered);
@@ -253,11 +244,9 @@ async function modelsWithReadableOutputs(models, { signal } = {}) {
   const checked = await Promise.all(
     models.map(async (model) => {
       const { runs, answered } = await datedRunsNewestFirst(model.value, { signal });
-      // Could not look is not looked and found nothing; only the second hides a model.
       if (!answered) return model;
       if (runs.length === 0) return null;
       for (const run of runs.slice(0, RECENT_RUNS_CHECKED)) {
-        // Anything but a definite no keeps the model, so an unanswerable probe stops the search.
         if (await dateHasParquet(model.value, run.value, { signal }) !== false) return model;
       }
       return null;
@@ -298,7 +287,6 @@ async function datesWithReadableOutputs(model, dates, { signal } = {}) {
   if (oldest === true) return dates;
   if (newest === false) return [];
 
-  // Invariant: lo is readable, hi is not; the boundary lies between them.
   let lo = 0;
   let hi = dates.length - 1;
   while (hi - lo > 1) {
@@ -360,19 +348,16 @@ const loadBaseOptions = async ({ signal }) => {
   if (_models.length === 0){
     return {models: [], dates: [], forecasts: [], cycles: []};
   }
-  // Only the models with something readable in them, or the control dead-ends on empty dates.
   const models = await modelsWithReadableOutputs(
     _models.filter((m) => m.value !== 'test'), { signal }
   );
   if (models.length === 0){
     return {models: [], dates: [], forecasts: [], cycles: []};
   }
-  // Shared with the model-change path so both build an identically shaped list.
   const dates = await readableDatesNewestFirst(models[0]?.value, { signal });
   if (dates.length === 0){
     return {models, dates: [], forecasts: [], cycles: []};
   }
-  // The newest, which is what the model-change path in dataMenu picks; see the docstring.
   const defaultDate = dates[0]?.value;
   const forecasts = (await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${defaultDate}/`, { signal })).reverse();
   if (forecasts.length === 0){
@@ -401,7 +386,6 @@ export const initialS3Data = async(vpu, { signal } = {}) => {
   if (!vpu) {
     return {models, dates, forecasts, cycles, ensembles:[], outputFiles: []};
   }
-  // The same four values the loader selects, or this listing describes another selection.
   const outputFiles = await getOptionsFromURL(`outputs/${models[0]?.value}/v2.2_hydrofabric/${dates[0]?.value}/${forecasts[0]?.value}/${cycles[0]?.value}/${vpu}/ngen-run/outputs/troute/`, { signal });
   return {models, dates, forecasts, cycles, ensembles:[], outputFiles};
 }

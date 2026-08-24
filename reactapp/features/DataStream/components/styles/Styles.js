@@ -44,7 +44,6 @@ const infoProse = css`
     color: var(--link-color);
     text-decoration: underline;
     text-underline-offset: 2px;
-    /* These are urls and file names: they have no spaces to break at. */
     overflow-wrap: break-word;
   }
 
@@ -75,8 +74,6 @@ export const ThemedModal = styled(Modal)`
     color: var(--modal-text-color);
     border: 1px solid var(--modal-border-color);
     border-radius: var(--radius-md);
-    /* Flat. The surface underneath is ours and a scrim already covers it, so this added only
-       an untinted black that the dark theme cannot show anyway. */
     box-shadow: none;
   }
 
@@ -87,9 +84,6 @@ export const ThemedModal = styled(Modal)`
     border-bottom: 1px solid var(--modal-border-color);
   }
 
-  /* Styled here rather than through styled(Modal.Title): styled-components claims the "as"
-     prop for itself, so styled(Modal.Title) with as="h2" rendered a bare h2 and never called
-     Modal.Title at all, quietly dropping its class. */
   .modal-title {
     margin: 0;
     font-size: var(--text-lg);
@@ -101,9 +95,6 @@ export const ThemedModal = styled(Modal)`
     border-color: var(--modal-border-color);
   }
 
-  /* Height is bootstrap's job here: the dialog is rendered scrollable, which sizes the body
-     against the viewport. A max-height of our own fought that and capped it short on tall
-     windows. */
   .modal-body {
     padding: 18px;
     font-size: var(--text-md);
@@ -179,8 +170,6 @@ export const PopupContent = styled.div`
   background-color: var(--popup-bg);
   color: var(--popup-text-color);
 
-  /* Over the basemap, which is the only surface this app does not control and so the only
-     place the Flat Shell Rule allows a shadow. Tinted and per-theme, like the other overlays. */
   box-shadow: var(--elevation-map-readout);
   font-size: 12px;
   line-height: 1.4;
@@ -201,8 +190,6 @@ export const PopupContent = styled.div`
     gap: 6px;
   }
 
-  /* The headline reading, set apart from the feature's own attributes below it. The time is
-     part of the label because the number is one step of the forecast, not the forecast. */
   .popup-measure {
     align-items: baseline;
     padding-bottom: 4px;
@@ -235,9 +222,6 @@ export const PopupContent = styled.div`
 `;
 
 export const Container = styled.div`
-  /* Fills whatever the flex column leaves, rather than measuring down from the top of the window.
-     The old top/height pair assumed the header was the only thing above it and broke the moment
-     anything else was, which is what the banner is. */
   position: absolute;
   inset: 0 auto 0 0;
   width: 400px;
@@ -273,8 +257,6 @@ export const LayersContainer = styled.div`
 
   border-radius: var(--radius-md);
   overflow-y: auto;
-  /* Named, not "all": this container changes width at the 768px breakpoint, and "all" put that
-     width change on the transition. */
   transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 
   @media (max-width: 768px) {
@@ -309,9 +291,6 @@ export const LayerButton = styled(Button)`
 
 export const XButton = styled(Button)`
   background: var(--accent-text);
-  /* Was a --border-color fallback of #2a3a4a with a --radius-sm fallback of 4px. Neither token
-     existed, so both fell back and a dark navy border rendered in the light theme too. Both are
-     defined now, and this uses the panel border the rest of the app uses. */
   border: 1px solid var(--panel-border-color);
   border-radius: var(--radius-sm);
   color: var(--primary-color);
@@ -325,12 +304,9 @@ export const XButton = styled(Button)`
   &:focus:not(:disabled) {
     background-color: var(--button-primary-hover-bg);
     color: var(--button-primary-text-hover);
-    /* Bootstrap's. Nine of these were removed by hand across the app; this one was missed. */
     box-shadow: none;
   }
 
-  /* Pressing it could only ever fail when there is nothing to read, so it says so by feel as
-     well as by the notice above it. */
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
@@ -421,8 +397,6 @@ export const TimeSliderDock = styled(MapSurface).attrs({ $control: true })`
   left: 50%;
   transform: translateX(-50%);
   bottom: 28px;
-  /* Wider than it was: one transport button instead of three, and a full timestamp instead of
-     "T+0h", so the track is what should get the room. */
   width: min(680px, calc(100vw - 32px));
   padding: 6px 10px;
   pointer-events: auto;
@@ -451,7 +425,6 @@ export const PanelCaption = styled.p`
 export const MapHint = styled(MapSurface).attrs({ as: 'button' })`
   left: 50%;
   transform: translateX(-50%);
-  /* Above the time slider when it is docked, in its usual place when it is not. */
   bottom: ${(p) => (p.$raised ? '150px' : '28px')};
   display: flex;
   align-items: center;
@@ -493,12 +466,10 @@ export const LegendScale = styled.div`
   display: flex;
   justify-content: space-between;
   margin-top: 4px;
-  /* Tabular figures rather than a second typeface; the ticks only have to stop shifting. */
   font-variant-numeric: tabular-nums;
   font-size: var(--text-xs);
   color: var(--panel-text-muted);
 
-  /* The middle label is the ramp's midpoint, not the range's, so it is centred over the bar. */
   > span:nth-child(2) {
     transform: translateX(-50%);
     margin-left: 50%;
@@ -524,25 +495,13 @@ export const StatusStrip = styled.div`
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   line-height: 1.2;
-  /* 0 0: it must not shrink. With flex-shrink allowed the pill was handed 209px for a 34
-     character message and clipped it silently, which is the same defect as the ellipsis with
-     the evidence removed. The search box shrinks instead. */
   flex: 0 0 auto;
 
-  /* Shown whole, on one line. This clipped mid-word first ("Loading feature p"), then truncated
-     with an ellipsis, and a message whose entire job is to name what is missing is no use
-     ending in dots: "No streamflow data for cat-28..." does not say which catchment. The
-     longest message in the app is 54 characters, which at this size is about 430px including
-     the spinner, and the header has room for it once the search box stops claiming the row.
-     One line also keeps the navbar at its 56px min-height, which matters because the panels are
-     positioned against --ts-header-height rather than against the navbar itself. */
   > span {
     min-width: 0;
     white-space: nowrap;
   }
 
-  /* Narrow viewports have no room for either, so the message wraps and the header grows with
-     it. Below this width the panels are full-width anyway. */
   @media (max-width: 768px) {
     > span {
       white-space: normal;
@@ -554,7 +513,6 @@ export const StatusStrip = styled.div`
   background-color: ${({ $failed }) =>
     $failed ? 'var(--status-failed-bg)' : 'var(--status-bg)'};
 
-  /* The spinner draws itself in currentColor, so it follows the text. */
   .spinner-border {
     border-width: 2px;
   }
@@ -580,14 +538,10 @@ export const IconLabel = styled.span`
   display: flex;
   align-items: center;
   gap: 6px;
-  /* A flex item will not shrink below its content by default, so a long feature title pushed
-     the info and close buttons off the edge of the panel instead of wrapping. Catchment ids
-     are generated, not typed, so there is no length to design for. */
   min-width: 0;
   overflow-wrap: break-word;
   font-size: ${({ $fontSize }) => ($fontSize ? `${$fontSize}px` : 'var(--text-sm)')};
   font-weight: var(--weight-medium);
-  /* Explicit, because this renders as a heading in places and would inherit h2 margins. */
   margin: 0 0 4px;
   color: var(--accent-text);
 `;
@@ -639,14 +593,10 @@ export const Content = styled.div`
   padding: 14px 16px 18px;
   border-block-end: 1px solid var(--panel-border-color);
 
-  /* No rule under the final section. It used to be dropped from the first one instead, which
-     left the panel ending on a hanging divider. */
   &:last-of-type {
     border-block-end: none;
   }
 
-  /* Rhythm: sections after the first breathe a little more, so the panel reads as grouped
-     regions rather than one uniform stack. */
   & + & {
     padding-top: 20px;
   }
@@ -698,9 +648,6 @@ export const FieldValue = styled.div`
 export const SearchBarWrapper = styled.div`
   display: flex;
   align-items: center;
-  /* Yields rather than claiming the row. width: 100% made this take the whole header line and
-     squeeze the status message into a 213px column, where it wrapped to three lines and grew
-     the navbar to 80px while the panels stayed pinned to --ts-header-height at 56px. */
   flex: 0 1 400px;
   min-width: 0;
   padding: 6px 10px;
@@ -733,9 +680,6 @@ export const SearchNotice = styled.div`
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
 
-  /* Wraps rather than running on. Every message is short by construction now, but nowrap made
-     the header's width the only limit, so one long one took the retry button off the screen.
-     Wrapping and not clipping, because a reason cut in half is worse than a taller pill. */
   > span {
     min-width: 0;
     white-space: normal;
@@ -786,8 +730,6 @@ export const SearchInput = styled.input`
   color: ${({ $notFound }) =>
     $notFound ? 'var(--status-failed-text)' : 'var(--search-text)'};
 
-  /* A visible ring rather than outline: none. Keyboard users had no indication of focus in
-     the app's most-used control. Drawn inside so it cannot widen the header. */
   outline: none;
   &:focus-visible {
     box-shadow: inset 0 0 0 2px var(--nav-pill-active-bg);
@@ -827,12 +769,7 @@ export const SearchButton = styled.button`
 `;
 
 export const ViewContainer = styled.div`
-  /* Takes the space the header and the banner leave, rather than a full 100% underneath them.
-     min-height: 0 so the map can shrink inside the column instead of forcing it taller. */
   flex: 1 1 auto;
-  /* And it is the containing block for what floats inside it. Without this the feature panel
-     resolved against the viewport and anchored itself to a hard-coded header height, which knows
-     nothing about the banner above it -- so the banner printed straight over the panel's title. */
   position: relative;
   min-height: 0;
   width: 100%;

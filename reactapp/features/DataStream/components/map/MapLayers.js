@@ -125,7 +125,6 @@ export function useFlowPathsHighlightLayer({ isFlowPathsVisible, selectedFeature
         type="line"
         source="flowpath-geometry"
         source-layer="flowpaths"
-        // An id that cannot match, rather than no filter, so nothing is highlighted by default.
         filter={numeric ? ['==', ['get', 'divide_id'], Number(numeric)] : ['==', ['get', 'divide_id'], -1]}
         paint={{
           'line-color': color,

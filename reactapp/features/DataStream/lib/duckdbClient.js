@@ -67,10 +67,8 @@ export function getDuckDB() {
 
       await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
       
-      // No opfs option, so a future registerFileHandle cannot reopen per-origin locking.
       await db.open({ accessMode: duckdb.DuckDBAccessMode.READ_WRITE });
 
-      // Optional cleanup
       URL.revokeObjectURL(workerUrl);
 
       return db;
@@ -96,7 +94,6 @@ export async function getConnection() {
   const db = await withDeadline(getDuckDB(), INIT_MS, "the database");
   let abandoned = false;
   const pending = db.connect();
-  // Closed if it turns up late: losing the race cannot cancel the connect, only disown it.
   pending.then(
     (conn) => { if (abandoned) Promise.resolve(conn.close()).catch(() => {}); },
     () => {}

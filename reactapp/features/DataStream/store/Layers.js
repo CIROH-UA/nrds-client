@@ -21,8 +21,6 @@ export const useLayersStore = create(
     catchments: { visible: true },
     flowpaths: { visible: true },
     conus_gauges: { visible: false },
-    // Drawn by the basemap style rather than by this app, so its switch reaches into the style
-    // instead of rendering a Layer of our own. Listed here so the legend can describe it.
     vpu: { visible: true },
 
     colorBounds: {
@@ -33,10 +31,8 @@ export const useLayersStore = create(
 
     hovered_enabled: false,
 
-    // ---- getters (fine to keep, but note: using get() doesn't subscribe) ----
     get_catchments_visibility: () => get().catchments.visible,
 
-    // ---- setters with guards ----
     set_hovered_enabled: (isEnabled) =>
       set((s) => (s.hovered_enabled === isEnabled ? s : { hovered_enabled: isEnabled })),
 
@@ -83,7 +79,6 @@ export const useFeatureStore = create((set) => ({
 
   set_selected_feature: (feature) =>
     set((s) => {
-      // same reference OR same id => no update
       if (s.selected_feature === feature) return s;
       if (sameFeature(s.selected_feature, feature)) return s;
       return { selected_feature: feature };

@@ -9,8 +9,17 @@ import { useVPUStore } from 'features/DataStream/store/VPU';
 import { useShallow } from 'zustand/react/shallow';
 import { createSequence } from 'features/DataStream/lib/sequence';
 
+/**
+ * The variable selector for the charted feature.
+ *
+ * No mounted flag: these writes all go to stores, so ordering alone is enough. Reusing the vpu
+ * store's cached array skips a query measured at about 800 ms.
+ *
+ * An answer whose vpu has moved on describes a table that is no longer loaded, and it says so
+ * rather than dropping it silently -- the chart has already changed, and silence hid the
+ * disagreement.
+ */
 function VariablesMenu() {
-  // No mounted flag: these writes all go to stores, so ordering alone is enough.
   const changes = useRef(createSequence()).current;
 
   const{ variables, cacheKey } = useDataStreamStore(
@@ -59,20 +68,16 @@ function VariablesMenu() {
     const requestCacheKey = cacheKey;
 
     try {
-      // Reusing the vpu store's cached array skips a query measured at about 800 ms.
       const cached = useVPUStore.getState().getVarData(opt.value);
 
-      // Both start together; the variable is set last so the layer never reads absent values.
       const [flatResult] = await Promise.allSettled([
         cached ?? getVpuVariableFlat(requestCacheKey, opt.value),
         loadTimeseries({ variable: opt.value }),
       ]);
       if (!changes.isCurrent(ticket)) return;
-      // The vpu moved on, so these values describe a table that is no longer loaded.
       if (useDataStreamStore.getState().cache_key !== requestCacheKey) return;
 
       if (flatResult.status === 'rejected') {
-        // Say so: the chart has already changed, and silence hid the disagreement.
         useTimeSeriesStore.setState({
           loadingText: `Failed to load ${opt.value} for the map`,
           last_error: { kind: 'variable', variable: opt.value },

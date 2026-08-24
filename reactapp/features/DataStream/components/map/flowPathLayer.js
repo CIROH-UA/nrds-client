@@ -50,6 +50,19 @@ const MIN_PIXELS = 0.25;
  * Returns plain props rather than a PathLayer, and lives apart from the map component, so the
  * update-trigger behaviour can be asserted without maplibre, deck.gl, or a canvas.
  */
+/**
+ * The deck.gl PathLayer props for the animated network.
+ *
+ * The layer is toggled rather than removed, because deck.gl keeps a hidden layer's GPU
+ * resources and rebuilding them on every toggle is the expensive part.
+ *
+ * widthScale is a uniform, so the view rescales what is already drawn -- which is why zoom is
+ * absent from updateTriggers even though the widths follow it.
+ *
+ * ramp is in updateTriggers because a theme switch changes no frame, no variable and no tick.
+ * Without it the reaches keep the old theme's colours until the animation next steps, and for
+ * ever if it is paused.
+ */
 export function flowPathLayerProps({
   visible,
   valuesByVar,
@@ -69,7 +82,6 @@ export function flowPathLayerProps({
   return {
     id: 'flowpaths-anim',
     data: pathData,
-    // Toggled, not removed: deck.gl keeps a hidden layer's GPU resources.
     visible,
     getPath: (d) => d.path,
     getColor: (d, { target }) => {
@@ -79,10 +91,8 @@ export function flowPathLayerProps({
     getWidth: (d) => {
       const v = getValueAtTimeFlat(valuesByVar, numTimes, d.featureIndex, currentTimeIndex);
       if (v === null || v <= NO_DATA_VALUE) return FACTOR_NO_DATA;
-      // The same curve the colour uses, so a reach cannot read wide and cool at once.
       return FACTOR_MIN + normalizeValue(v, bounds) * FACTOR_RANGE;
     },
-    // A uniform, so the view rescales what is drawn; hence no zoom in updateTriggers.
     widthScale: widthAtZoom(zoom),
     widthUnits: 'pixels',
     widthMinPixels: MIN_PIXELS,
@@ -91,7 +101,6 @@ export function flowPathLayerProps({
     jointRounded: true,
     pickable: false,
     updateTriggers: {
-      // ramp is here because a theme switch changes no frame, no variable and no tick.
       getColor: [frame, variable, pathTick, ramp],
       getWidth: [frame, variable, pathTick],
     },
@@ -114,8 +123,6 @@ const EMPTY_PATHS = [];
  */
 export function shouldPromptZoom({ visible, valuesByVar, timesArr, zoom, paths = EMPTY_PATHS }) {
   if (!visible || !valuesByVar || !timesArr?.length) return false;
-  // The zoom test first, so the scan below only runs where the message could appear.
   if (!Number.isFinite(zoom) || zoom >= FLOWPATHS_MIN_ZOOM) return false;
-  // Drawn, not collected -- the two stopped meaning the same thing; see the docstring.
   return !paths.some((path) => pathIsVisibleAt(path, zoom));
 }

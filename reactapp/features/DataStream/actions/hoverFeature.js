@@ -21,7 +21,6 @@ export function pickHoverFeature(features) {
   let bestRank = Infinity;
   for (const feature of features) {
     const rank = TARGET_ORDER.indexOf(feature?.layer?.id);
-    // An unranked layer still beats nothing, but never a ranked one.
     const effective = rank === -1 ? TARGET_ORDER.length : rank;
     if (effective < bestRank) {
       best = feature;
@@ -57,7 +56,6 @@ export function hoveredFeatureOf(feature, lngLat) {
   if (!hoverId) return null;
 
   return {
-    // _id is where the feature store looks first; without it a flowpath keys as null.
     _id: hoverId,
     layerId,
     ...feature.properties,

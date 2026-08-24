@@ -14,7 +14,6 @@ import { reclaimLegacyOpfsCache } from 'features/DataStream/lib/reclaimOpfs';
 function App() {
   const PATH_HOME = '/';
 
-  // Best effort and once per page: hands back the cache directory an older build left behind.
   useEffect(() => {
     void reclaimLegacyOpfsCache();
   }, []);

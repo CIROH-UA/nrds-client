@@ -29,7 +29,6 @@ export const LoadStatus = React.memo(function LoadStatus() {
     }))
   );
 
-  // Yields to a real load, so the strip only ever makes one statement at a time.
   if (indexLoading && !loading && !loadingText) {
     return (
       <StatusStrip role="status" aria-live="polite">
@@ -43,7 +42,6 @@ export const LoadStatus = React.memo(function LoadStatus() {
 
   return (
     <StatusStrip role="status" aria-live="polite" $failed={failed} data-error-kind={errorKind || undefined}>
-      {/* pending as well as loading: see the docstring for the gap this covers. */}
       {(loading || pending) && !failed && <Spinner size={14} />}
       {loadingText && <span>{loadingText}</span>}
     </StatusStrip>

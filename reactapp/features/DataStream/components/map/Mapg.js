@@ -77,6 +77,15 @@ const NO_LAYERS = [];
  * whole component every frame, including a getComputedStyle call and every hook in it. The
  * frame index is read here instead, and nothing above this needs to re-render to animate.
  */
+/**
+ * Zoom is read here rather than passed down, so only this component re-renders as it changes,
+ * and it is quantised because maplibre's 'zoom' fires per frame of a gesture for a width that
+ * has barely moved.
+ *
+ * The visible set is filtered once per zoom step and per new-geometry tick. The layer memo below
+ * also depends on the frame index, so filtering inline handed deck.gl a fresh array every tick
+ * and made it rebuild the whole dataset.
+ */
 const FlowPathsOverlay = React.memo(function FlowPathsOverlay({
   visible,
   valuesByVar,
@@ -90,21 +99,18 @@ const FlowPathsOverlay = React.memo(function FlowPathsOverlay({
 }) {
   const currentTimeIndex = useTimeSeriesStore((s) => s.currentTimeIndex);
 
-  // Zoom read here, not passed down, so only this component re-renders as it changes.
   const { current: mapRef } = useMap();
   const [zoom, setZoom] = useState(() => quantiseZoom(mapRef?.getZoom?.() ?? 0));
 
   useEffect(() => {
     const map = mapRef?.getMap?.();
     if (!map) return undefined;
-    // Quantised: 'zoom' fires per frame of a gesture, for a width that has barely moved.
     const onZoom = () => setZoom(quantiseZoom(map.getZoom()));
     onZoom();
     map.on('zoom', onZoom);
     return () => map.off('zoom', onZoom);
   }, [mapRef]);
 
-  // Once per zoom step and per new-geometry tick; the memo below runs every frame.
   const visiblePaths = useVisiblePaths(pathDataRef, zoom, pathTick);
 
   const layers = useMemo(() => {
@@ -138,6 +144,19 @@ FlowPathsOverlay.propTypes = {
   ramp: PropTypes.arrayOf(PropTypes.array),
 };
 
+/**
+ * The map and everything docked to it.
+ *
+ * The theme is read live rather than snapshotted at module load: the tokens resolve late, so a
+ * snapshot got the wrong theme. The colour bounds are literally the same object the legend
+ * reads, so the two cannot describe different ramps.
+ *
+ * The zoom prompt is memoised because below FLOWPATHS_MIN_ZOOM it scans the whole path store,
+ * which is never pruned -- unmemoised it ran again for every hover, selection and layer toggle.
+ *
+ * The slider is docked on whether the animation is on the map, not on whether a vpu is selected;
+ * see animationIsOnMap in lib/flowpaths.js.
+ */
 const MainMap = () => {
   const { 
     isCatchmentsVisible, 
@@ -167,7 +186,6 @@ const MainMap = () => {
     }))
   );
 
-  // The slider goes with the animation it drives; see animationIsOnMap in lib/flowpaths.js.
   const animationTimes = useVPUStore((s) => s.times);
   const sliderDocked = animationIsOnMap({
     times: animationTimes,
@@ -194,7 +212,6 @@ const MainMap = () => {
   );
 
 
-  // Read live: tokens resolve late, so a module-load snapshot got the wrong theme.
   const mapTheme = useMapTheme();
 
   const mapRef = useRef(null);
@@ -206,11 +223,8 @@ const MainMap = () => {
   const [zoom, setZoom] = useState(INITIAL_VIEW.zoom);
   const [mapReady, setMapReady] = useState(false);
 
-  // Literally the same object the legend reads, so the two cannot describe different ramps.
   const colorBounds = useMemo(() => boundsFor(valuesByVar), [valuesByVar]);
 
-  // Memoised: below FLOWPATHS_MIN_ZOOM this scans the whole path store, and the store is never
-  // pruned. Unmemoised it ran again for every hover, selection and layer toggle.
   const belowFlowpathZoom = useMemo(
     () => shouldPromptZoom({
       visible: isFlowPathsVisible,
@@ -229,7 +243,6 @@ const MainMap = () => {
     const map = mapRef.current?.getMap?.() ?? mapRef.current;
     if (!map) return;
 
-    // Toward the selection when there is one, since the data's location is the question.
     if (selectionAt) {
       map.flyTo({ center: selectionAt, zoom: FLOWPATHS_MIN_ZOOM + 1, essential: true });
       return;
@@ -237,12 +250,10 @@ const MainMap = () => {
     map.easeTo({ zoom: FLOWPATHS_MIN_ZOOM + 1, essential: true });
   }, [selectionAt, mapRef]);
 
-  // Selecting something moves the map to it; the on-demand button is in the feature panel.
   useShowSelectionOnChange();
 
 
 
-  // Catchments only; a reach is reached by clicking the catchment it runs through.
   const clickableLayers = useMemo(
     () => clickableLayerIds({ isCatchmentsVisible }),
     [isCatchmentsVisible]
@@ -259,7 +270,6 @@ const MainMap = () => {
     }
   }, []);
 
-  // One owner for the pointer cursor, shared with deck.gl; see lib/mapCursor.js.
   const pointerCursor = useRef(null);
   if (!pointerCursor.current) pointerCursor.current = createPointerCursor();
 
@@ -275,7 +285,6 @@ const MainMap = () => {
     });
   }, [isMapUsable, setPointerCursor, resetPointerCursor]);
 
-  // State, not a ref: the cursor effect below has to re-run when the map arrives.
   const handleMapLoad = useCallback((event) => {
     const map = event.target;
     if (!isMapUsable(map)) return;
@@ -288,10 +297,8 @@ const MainMap = () => {
     setMapReady(true);
   }, [isMapUsable]);
 
-  // Released with the map, so nothing outside can reach a canvas that has been torn down.
   useEffect(() => () => releaseMapHandle(hoverMapRef.current), []);
 
-  // Re-registered whenever the clickable set changes, so the cleanup removes exactly this run's.
   useEffect(() => {
     const map = hoverMapRef.current;
     if (!mapReady || !isMapUsable(map)) return undefined;
@@ -305,7 +312,6 @@ const MainMap = () => {
     return () => removeHoverListeners(map, clickableLayers);
   }, [mapReady, clickableLayers, isMapUsable, removeHoverListeners, setPointerCursor, resetPointerCursor]);
 
-  // Only layers on the map: queryRenderedFeatures refuses the whole call if one is missing.
   const hoverableLayerIds = useMemo(() => {
     const ids = [];
     if (isCatchmentsVisible) ids.push('divides');
@@ -314,13 +320,10 @@ const MainMap = () => {
     return ids;
   }, [isCatchmentsVisible, isFlowPathsVisible, isConusGaugesVisible]);
 
-  // Asked of the live map with tolerance; event.features queries one pixel and misses reaches.
   const featuresUnder = useCallback((point) => {
-    // react-map-gl's event.target need not be the maplibre map; this lookup always is.
     const map = mapRef.current?.getMap?.() ?? mapRef.current;
     if (!map?.getLayer || !point) return [];
     const ids = hoverableLayerIds.filter((id) => map.getLayer(id));
-    // An empty list would query the whole style rather than nothing.
     if (!ids.length) return [];
     const box = [
       [point.x - HOVER_TOLERANCE_PX, point.y - HOVER_TOLERANCE_PX],
@@ -404,14 +407,12 @@ const MainMap = () => {
     reorderLayers(map);
   }, [isCatchmentsVisible, isFlowPathsVisible, isConusGaugesVisible]);
 
-  // The vpu outlines live in the basemap style, so this reaches in rather than mounting a Layer.
   useEffect(() => {
     const map = mapRef.current?.getMap?.() ?? mapRef.current;
     setVpuVisibility(map, isVpuVisible);
   }, [isVpuVisible]);
 
  
-  // Dropped per vpu: featureIndex points into that vpu's flat array and nothing else's.
   useEffect(() => {
     pathsByIdRef.current = createPathStore();
     pathDataRef.current = EMPTY_PATHS;
@@ -434,10 +435,8 @@ const MainMap = () => {
         raf = null;
         if (!isFlowPathsVisible) return;
 
-        // Handed over whole: addPaths alone decides what a feature's id is.
         const feats = map.queryRenderedFeatures({ layers: [FLOWPATHS_LAYER_ID] });
 
-        // Accumulated and zoom-tagged: geometry outlives its view, a closer look replaces it.
         const added = addPaths(pathsByIdRef.current, feats, featureIdToIndex, map.getZoom());
         if (!added) return;
 
@@ -458,17 +457,14 @@ const MainMap = () => {
 
 
 
-  // The same list the cursor uses, so what invites a click and what answers one cannot drift.
   const layersToQuery = clickableLayers;
 
 
-  // A popup outliving the layer it describes has to go.
   useEffect(() => {
     if (useFeatureStore.getState().hovered_feature !== null) set_hovered_feature(null);
   }, [hoverableLayerIds, set_hovered_feature]);
 
   const handleMapClick = async (event) => {
-    // Deliberately unguarded by loading: a newer load supersedes an older one.
     const map = event.target;
 
     if (layersToQuery.length === 0) return;
@@ -477,7 +473,6 @@ const MainMap = () => {
       layers: layersToQuery,
     });
     if (!features || !features.length) {
-      // Nothing to hit rather than a missed aim: no catchment geometry exists below this zoom.
       if (map.getZoom() < DIVIDES_MIN_ZOOM) {
         useTimeSeriesStore.setState({
           loadingText: `Zoom in past ${DIVIDES_MIN_ZOOM} to select a catchment`,
@@ -500,7 +495,6 @@ const MainMap = () => {
       mapStyle={mapTheme.styleUrl}
       onClick={handleMapClick}
       onLoad={handleMapLoad}
-      // No interactiveLayerIds: it would add a second query per pointer move that onHover ignores.
       onMouseMove={onHover}
       onZoomEnd={(e) => setZoom(e.viewState.zoom)}
     >
@@ -535,7 +529,6 @@ const MainMap = () => {
           <TimeSlider />
         </TimeSliderDock>
       )}
-      {/* Bottom right: the layer panel owns the top right and covered these. */}
       <NavigationControl position="bottom-right" showCompass={false} />
       <ScaleControl position="bottom-right" unit="metric" />
       <SelectedFeaturePopup />

@@ -72,6 +72,10 @@ ValueLegend.propTypes = {
  * It reads its own state rather than being handed it, because nothing between here and the map
  * has any business knowing about colour bounds.
  */
+/**
+ * The colour key, reading the same bounds object the map layer uses rather than a second
+ * computation of the same numbers.
+ */
 export const ValueLegendPanel = () => {
   const variable = useTimeSeriesStore((s) => s.variable);
   const { times, values } = useVPUStore(
@@ -80,7 +84,6 @@ export const ValueLegendPanel = () => {
   const flowpathsVisible = useLayersStore((s) => s.flowpaths.visible);
   const { ramp } = useMapTheme();
 
-  // The same object the map layer uses, not a second computation of the same numbers.
   const bounds = boundsFor(values);
 
   if (!flowpathsVisible || !times.length) return null;

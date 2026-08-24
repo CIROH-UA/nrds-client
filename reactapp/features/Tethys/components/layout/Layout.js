@@ -16,7 +16,7 @@ import {
 } from 'features/DataStream/lib/firstRun';
 
 const isExternal = (to, externalFlag) =>
-  externalFlag ?? /^https?:\/\//i.test(to);      // auto-detect absolute URLs
+  externalFlag ?? /^https?:\/\//i.test(to);
 
 /**
  * The page around the map: header, off-canvas nav, and the first-run notice.
@@ -41,7 +41,6 @@ const isExternal = (to, externalFlag) =>
 export default function Layout({ navLinks = [], routes = [], children }) {
   const { tethysApp } = useContext(AppContext);
   const [navVisible, setNavVisible] = useState(false);
-  // Read once at mount, for the reason in the docstring.
   const [noticeOpen, setNoticeOpen] = useState(() => !hasAcknowledgedExperimental());
 
   const acknowledgeNotice = () => {
@@ -91,7 +90,6 @@ export default function Layout({ navLinks = [], routes = [], children }) {
 
       </NavMenu>
 
-      {/* Hidden rather than absent: the document still needs a name. */}
       <main id="main-content" className="h-100 d-flex flex-column" style={{ minHeight: 0 }}>
         <VisuallyHidden>{tethysApp.title}</VisuallyHidden>
 
@@ -113,7 +111,7 @@ Layout.propTypes = {
       title:     PropTypes.string.isRequired,
       to:        PropTypes.string.isRequired,
       eventKey:  PropTypes.string,
-      external:  PropTypes.bool,          // <- NEW (optional)
+      external:  PropTypes.bool,
     })
   ),
   routes:   PropTypes.arrayOf(PropTypes.node),

@@ -9,6 +9,11 @@ import { InfoToggle } from '../InfoDisclosure';
 import { LayerInfoContent } from '../InfoContent';
 import { ValueLegendPanel } from './ValueLegend';
 
+/**
+ * The legend reads the same signal the map layers do, so the two cannot describe different
+ * themes. It was branching on styled-components' useTheme, and nothing installs a ThemeProvider,
+ * so that value was always undefined and the legend was always the light branch.
+ */
 export const LayerControl = () => {
   const [layerInfoOpen, setLayerInfoOpen] = useState(false);
   
@@ -34,7 +39,6 @@ export const LayerControl = () => {
   const vpuLayer = useLayersStore((state) => state.vpu);
   const set_vpu_visibility = useLayersStore((state) => state.set_vpu_visibility);
 
-  // The same signal the map layers read, so the legend cannot describe a different theme.
   const prefersDark = usePrefersDark();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const colors = useMemo(() => symbologyColors(), [prefersDark]);
@@ -75,7 +79,6 @@ export const LayerControl = () => {
       )}
 
 
-      {/* <Content> */}
 
       <Row>
         <IconLabel as="label" htmlFor="catchment-layer-switch">
@@ -121,7 +124,6 @@ export const LayerControl = () => {
           title="Toggle Conus Gauges Layer visualization"
         />
       </Row>
-      {/* </Content> */}
 
       <Row>
         <IconLabel as="label" htmlFor="vpu-layer-switch">
@@ -136,7 +138,6 @@ export const LayerControl = () => {
         />
       </Row>
 
-      {/* The key for the animation, beside the switch that turns it on. */}
       <ValueLegendPanel />
 
       <IconLabel $fontSize={14}>

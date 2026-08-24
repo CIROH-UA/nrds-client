@@ -36,7 +36,6 @@ export const HoverValue = ({ hoverId }) => {
     }))
   );
 
-  // The index holds the bare number and the wb- form, so a cat- id needs reducing first.
   const featureIndex = useMemo(() => {
     if (hoverId === null || hoverId === undefined) return undefined;
     const direct = featureIdToIndex?.[String(hoverId)];

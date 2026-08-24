@@ -29,7 +29,6 @@ const debugLog = (...args) => {
 export async function getTimeseries(id, cacheKey, variable) {
   const conn = await getConnection();
   const tableName = tableNameForKey(cacheKey);
-  // feature_id is compared as a number, so anything else belongs nowhere near this query.
   const featureId = Number(id);
   if (!Number.isFinite(featureId)) throw new Error(`Not a feature id: ${id}`);
   try {
@@ -161,7 +160,6 @@ async function createTableFromBuffer({ conn, tableName, duckPath, bytes }) {
 let indexLoad = null;
 
 export function loadIndexData({ remoteUrl, fallbackUrl }) {
-  // Cleared on settle so a retry after a failure starts a fresh attempt rather than replaying it.
   if (!indexLoad) {
     indexLoad = buildIndexTable({ remoteUrl, fallbackUrl }).finally(() => {
       indexLoad = null;
@@ -194,13 +192,11 @@ async function buildIndexTable({ remoteUrl, fallbackUrl }) {
   try {
     buffer = await fetchParquetBuffer(remoteUrl);
   } catch (err) {
-    // See the docstring: a stale portal has nothing at that path, and neither has a bad proxy.
     if (!isMissing(err) || !fallbackUrl) throw err;
     console.warn(`No slim index at ${remoteUrl}; falling back to ${fallbackUrl}`);
     buffer = await fetchParquetBuffer(fallbackUrl);
   }
 
-  // Read before registering, which transfers the buffer and detaches it.
   const byteLength = buffer.byteLength;
   const tableConn = await getConnection();
   try {
@@ -223,6 +219,10 @@ async function buildIndexTable({ remoteUrl, fallbackUrl }) {
  * flowpath wb-N. The catchment wins when both match, since that is what the app charts. Ids are
  * reduced to word characters and dashes before they reach the query.
  */
+/**
+ * The table name comes from the same helper the table was created with, so the two cannot part
+ * company on a key holding more than one dot.
+ */
 export async function getFeatureProperties({ cacheKey, feature_id }) {
   const candidates = (Array.isArray(feature_id) ? feature_id : [feature_id])
     .map((id) => String(id ?? '').replace(/[^\w-]/g, ''))
@@ -231,10 +231,8 @@ export async function getFeatureProperties({ cacheKey, feature_id }) {
   if (!candidates.length) return [];
 
   const conn = await getConnection();
-  // The same helper the table was created with, so the two cannot part company on a key.
   const tableName = tableNameForKey(cacheKey);
   const inList = candidates.map(sqlStr).join(', ');
-  // Ranked by the order asked for, so "cat first" is expressed once, at the call site.
   const ranking = candidates
     .map((id, i) => `WHEN ${sqlStr(id)} THEN ${i}`)
     .join(' ');
@@ -275,7 +273,6 @@ export async function loadVpuData(
   debugLog("loadVpuData called with cacheKey:", cacheKey, "prefix:", prefix);
 
   const bytes = await fetchParquetBuffer(makeOutputUrl(prefix));
-  // Read before registering, which transfers the buffer and detaches it.
   const byteLength = bytes.byteLength;
 
   const conn = await getConnection();
@@ -490,7 +487,6 @@ export async function getVpuVariableFlat(cacheKey, variable) {
     }
 
     if (offset === out.length) return out;
-    // Defensive resize in case rows changed during stream.
     const resized = new Float32Array(offset);
     for (let i = 0; i < offset; i++) {
       resized[i] = out[i];

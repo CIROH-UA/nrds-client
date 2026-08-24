@@ -29,14 +29,12 @@ import { cancelVpuLoads } from 'features/DataStream/actions/loadState';
  * checkpoint, finds the generation unchanged, and writes its arrays in behind this refusal.
  */
 export function abandonSelectionWithNoOutput() {
-  // First, or a load already running writes its arrays in behind this refusal.
   cancelVpuLoads();
   const { set_cache_key, set_outputFile } = useDataStreamStore.getState();
   const timeseries = useTimeSeriesStore.getState();
 
   set_cache_key(null);
   set_outputFile('');
-  // The prefix lives with the bucket listing rather than the selection.
   useS3DataStreamBucketStore.getState().set_prefix('');
   useVPUStore.getState().resetVPU();
   timeseries.reset_series();
@@ -49,7 +47,6 @@ export function abandonSelectionWithNoOutput() {
   useTimeSeriesStore.setState({
     loadingText: 'No output file for this selection',
     last_error: { kind: 'no-output-file' },
-    // Nothing was loaded, so nothing will call endLoading to retire the click that asked.
     pending: false,
   });
 }

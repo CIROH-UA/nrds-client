@@ -32,7 +32,21 @@ import { useVPUStore } from 'features/DataStream/store/VPU';
  * visualize is an event, and so is picking a vpu on the map, so both call this instead and a
  * repeat call is simply a repeat.
  *
- * It lives outside the stores because it spans six of them. Reading each with getState at
+ * The generation is bumped before any await, so a series load already in flight stops writing
+ * immediately. Everything after it is inside the try: a throw before the finally would defer
+ * every later click for good. reset_series rather than a full reset, because feature_id is what
+ * holds the panel open -- clearing it closed the panel mid-load and reopened it once the series
+ * arrived, with the placeholder title in between.
+ *
+ * Failures are named where they can be. Every one of them used to read as absent data, so a
+ * stalled download, a full cache and a database that stopped answering were all reported as this
+ * vpu having nothing. The message names the vpu rather than the cache key, which runs to about a
+ * hundred characters and is read in a header pill.
+ *
+ * The feature ids and the variable list are fetched together: neither reads the other's answer,
+ * and each is its own round trip to the worker.
+ *
+ * It lives outside the stores because it spans six of them. * It lives outside the stores because it spans six of them. Reading each with getState at
  * the point of use also means late steps see current state rather than whatever a render
  * closure captured when the load began.
  *
@@ -45,14 +59,11 @@ export async function loadVpu() {
   const { cache_key: cacheKey, vpu, set_variables } = useDataStreamStore.getState();
   if (!cacheKey) return;
 
-  // Bumped before any await, so a series load already in flight stops writing immediately.
   const generation = startVpuLoad();
   const superseded = () => generation !== currentVpuGeneration();
   const timeseries = useTimeSeriesStore.getState();
 
-  // All inside the try: a throw before the finally would defer every later click for good.
   try {
-    // Not a full reset: feature_id holds the panel open, and clearing it closed it mid-load.
     timeseries.reset_series();
     useTimeSeriesStore.setState({ last_error: null });
     useVPUStore.getState().resetVPU();
@@ -70,7 +81,6 @@ export async function loadVpu() {
       } catch (err) {
         if (superseded()) return;
         console.error('No data for VPU', vpu, err);
-        // Named when it can be: a stall and a full cache both used to read as absent data.
         const reason = cacheFailureReason(err);
         useTimeSeriesStore.setState({
           loadingText: reason ? `Could not load: ${reason}` : 'No data available for selected VPU',
@@ -80,7 +90,6 @@ export async function loadVpu() {
       }
     }
 
-    // Together: neither reads the other's answer, and each is its own round trip to the worker.
     const [featureIDs, variables] = await Promise.all([
       getFeatureIDs(cacheKey),
       getVariables({ cacheKey }),
@@ -100,20 +109,17 @@ export async function loadVpu() {
     useVPUStore.getState().setAnimationIndex(featureIds, times);
     useVPUStore.getState().setVarData(currentVariable, flat);
 
-    // Read at the point of use: the selection can have moved on while the vpu was loading.
     const { selected_feature } = useFeatureStore.getState();
     const featureId = selected_feature?._id ?? null;
     if (featureId) {
       await loadTimeseries({ featureId, vpuGeneration: generation });
       if (superseded()) return;
     } else {
-      // Otherwise the series load owns this message.
       timeseries.set_loading_text('');
     }
   } catch (err) {
     if (superseded()) return;
     useTimeSeriesStore.setState({
-      // The vpu, not the cache key: the key is a hundred characters and this is a pill.
       loadingText: vpu ? `Failed to load data for ${vpu}` : 'Failed to load the selected data',
       last_error: { kind: 'vpu', cacheKey },
     });

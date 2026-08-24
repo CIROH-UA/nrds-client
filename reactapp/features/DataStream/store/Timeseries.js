@@ -27,6 +27,16 @@ const DEFAULT_LAYOUT = Object.freeze({
   title: 'TimeSeries',
 });
 
+/**
+ * The charted series and the clock the animation runs on.
+ *
+ * ``last_loaded_key`` is whose data ``series`` holds, as vpu|variable|feature; null means nothing
+ * is loaded. ``last_error`` is what went wrong last, as {kind, ...}, so a failure is readable
+ * without parsing prose.
+ *
+ * set_series compares by reference and by emptiness, and deliberately carries no fingerprint
+ * guard beyond that: two features can share endpoints and differ in between.
+ */
 const useTimeSeriesStore = create(
   subscribeWithSelector((set, get ) => ({
       series: EMPTY_SERIES,
@@ -49,11 +59,8 @@ const useTimeSeriesStore = create(
        */
       pending: false,
       loadingText: '' ,
-      // Whose data `series` holds, as vpu|variable|feature; null means nothing is loaded.
       last_loaded_key: null,
-      // The request a load last answered, found anything or not; the empty state needs that.
       last_answered_key: null,
-      // What went wrong last, as {kind, ...}, so failure is readable without parsing prose.
       last_error: null,
       currentTimeIndex: 0,
 
@@ -64,17 +71,13 @@ const useTimeSeriesStore = create(
         set((s) => {
           const prev = s.series;
 
-          // same ref => no update
           if (prev === nextSeries) return s;
 
-          // both empty => no update (this is the one your screenshot screams about)
           const prevEmpty = !prev || prev.length === 0;
           const nextEmpty = !nextSeries || nextSeries.length === 0;
           if (prevEmpty && nextEmpty) return s;
 
-          // No fingerprint guard: two features can share endpoints and differ in between.
 
-          // Bounded by the animation, like every other mutator of this index.
           const maxIdx = Math.max(0, stepCount(nextSeries) - 1);
           if (s.currentTimeIndex > maxIdx) {
             return { series: nextSeries, currentTimeIndex: maxIdx };
@@ -98,7 +101,7 @@ const useTimeSeriesStore = create(
         set((s) => {
           const maxIdx = Math.max(0, stepCount(s.series) - 1);
           const next = clamp(Number(idx) || 0, 0, maxIdx);
-          if (next === s.currentTimeIndex) return s;   // IMPORTANT
+          if (next === s.currentTimeIndex) return s;
           return { currentTimeIndex: next };
         });
       },
@@ -110,7 +113,6 @@ const useTimeSeriesStore = create(
 
       toggleIsPlaying: () => set((s) => ({ isPlaying: !s.isPlaying })),
 
-      // --- stepping used by back/forward buttons + autoplay ---
       stepForward: () => {
         const { series, currentTimeIndex } = get();
         const maxIdx = stepCount(series) - 1;
@@ -125,13 +127,12 @@ const useTimeSeriesStore = create(
         set({ currentTimeIndex: currentTimeIndex === 0 ? maxIdx : currentTimeIndex - 1 });
       },
 
-      // returns "T+Nh" assuming 1-hour timesteps;
       getCurrentTimeLabel: () => {
         const { series, currentTimeIndex } = get();
         const t0 = series?.[0]?.time;
         const t = series?.[currentTimeIndex]?.time;
         if (typeof t0 !== "number" || typeof t !== "number") return "T+0h";
-        const hours = Math.round((t - t0) / 3600000); // ms -> hours
+        const hours = Math.round((t - t0) / 3600000);
         return `T+${hours}h`;
       },
       set_loading: (isLoading) => set({ loading: isLoading }),
@@ -163,7 +164,6 @@ const useTimeSeriesStore = create(
         set((s) => ({
           ...s,
           series: EMPTY_SERIES,
-          // With last_error: nothing remains to retire it, so the spinner would never stop.
           pending: false,
           loadingText: '',
           feature_id: null,

@@ -27,9 +27,11 @@ const gridColor = 'var(--chart-grid-color, #e4e7eb)';
  *
  * Discharge spans several orders of magnitude between a headwater and a main stem, so a fixed
  * number of decimals is either noise at the top or nothing at the bottom.
+ *
+ * Emptiness is checked before Number(), which turns null and '' into 0 and would label an
+ * absent tick "0".
  */
 export const formatAxisValue = (v) => {
-  // Checked before Number(), which turns null and '' into 0 and would label an absent tick "0".
   if (v === null || v === undefined || v === '') return '';
 
   const n = Number(v);
@@ -80,7 +82,6 @@ const StaticSvgLayer = React.memo(function StaticSvgLayer({
 
       <Group left={margin.left} top={margin.top}>
 
-        {/* A hydrograph with no value axis is a shape, not a reading. */}
         <GridRows
           scale={yScale}
           width={innerWidth}
@@ -150,7 +151,6 @@ const TooltipSvgLayer = React.memo(function TooltipSvgLayer({
       style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
     >
       <Group left={margin.left} top={margin.top} clipPath={`url(#${clipId})`}>
-        {/* Crosshair */}
         <Line
           from={{ x: tooltipLeft - margin.left, y: 0 }}
           to={{ x: tooltipLeft - margin.left, y: innerHeight }}
@@ -159,7 +159,6 @@ const TooltipSvgLayer = React.memo(function TooltipSvgLayer({
           strokeDasharray="6,3"
         />
 
-        {/* Glyphs */}
         {tooltipData.map((d, i) => (
           <GlyphCircle
             key={`glyph-${i}`}
@@ -188,10 +187,9 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout, e
     return () => { unsub?.(); };
   }, []);
 
-  const clipId = useId(); // avoids collisions if multiple charts
+  const clipId = useId();
   const overlayRef = useRef(null);
 
-  // --- theme vars ---
   const isNarrow = useIsNarrowViewport();
   const fontSize = isNarrow ? 13 : 18;
   const fontWeight = isNarrow ? 600 : 500;
@@ -209,7 +207,6 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout, e
     []
   );
 
-  // axis props (stable references)
   const axisLabelProps = useMemo(
     () => ({
       style: { fill: axisLabelColor, fontSize, fontWeight },
@@ -289,7 +286,6 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout, e
       backgroundColor: tooltipBg,
       color: tooltipTextColor,
       fontSize: 14,
-      // Flat: this sits on the panel, which is ours, and the border below already separates it.
       boxShadow: 'none',
       borderRadius: 6,
       border: `1px solid ${tooltipBorderColor}`,
@@ -298,7 +294,6 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout, e
     [tooltipBg, tooltipTextColor, tooltipBorderColor]
   );
 
-  // From where the ticks fall, not the forecast's name, which mislabels a short span.
   const formatDate = useMemo(() => {
     const fmt = distinctTickFormat(xTickValues, timeFormat);
     return (date) => timeFormat(fmt)(date);
@@ -325,7 +320,6 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout, e
   const buildTooltipAtDate = useCallback(
     (x0, leftPx) => {
       const tooltipDataArray = [];
-      // const indices = [];
       const keyParts = [];
 
       data.forEach((series, seriesIndex) => {
@@ -333,7 +327,6 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout, e
         if (!seriesData.length) return;
 
         const index = bisectDate(seriesData, x0, 1);
-        // indices.push(index);
 
         const d0 = seriesData[index - 1];
         const d1 = seriesData[index];
@@ -344,7 +337,6 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout, e
 
         if (d) {
           tooltipDataArray.push({ dataPoint: d, seriesIndex, seriesLabel: series.label });
-          // key by *actual selected point*, not bisect index (prevents equal-data new-object updates)
           keyParts.push(`${seriesIndex}:${+getDate(d)}:${getYValue(d) ?? ''}`);
         }
       });
@@ -353,12 +345,10 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout, e
 
       
       
-      // Only re-show when selected points change (not pixels / object identity)
       const key = keyParts.join('|');
       if (key === lastTooltipKeyRef.current) return;
       lastTooltipKeyRef.current = key;
 
-      // Pinned to the top of the plot area rather than tracking the point; see the docstring.
       showTooltip({
         tooltipData: tooltipDataArray,
         tooltipLeft: leftPx,
@@ -427,7 +417,6 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout, e
       r.buildTooltipAtDate(x0, r.marginLeft + xPx);
     };
 
-    // initial sync (in case we're already playing)
     sync(useTimeSeriesStore.getState());
 
     const unsub = useTimeSeriesStore.subscribe((state, prev) => {
@@ -448,7 +437,6 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout, e
         <NoData>{emptyMessage || 'Select a catchment to see its timeseries'}</NoData>
       ) : (
         <>
-          {/* STATIC layer (won't rerender on tooltip changes) */}
           <StaticSvgLayer
             width={width}
             height={height}
@@ -471,7 +459,6 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout, e
             bottomTickLabelProps={bottomTickLabelProps}
           />
 
-          {/* TOOLTIP svg layer (rerenders only when tooltip changes) */}
           <TooltipSvgLayer
             margin={margin}
             innerHeight={innerHeight}
@@ -487,7 +474,6 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout, e
             colors={colors}
           />
 
-          {/* interaction overlay (captures mouse events) */}
           <svg
             width={width}
             height={height}
@@ -514,7 +500,6 @@ const LineChart = React.memo(function LineChart({ width, height, data, layout, e
             </Group>
           </svg>
 
-          {/* HTML tooltip (rerenders only when tooltip changes) */}
           {tooltipData && (
             <TooltipWithBounds top={tooltipTop} left={tooltipLeft} style={tooltipStyles}>
               <div style={{ marginBottom: 4 }}>

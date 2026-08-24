@@ -36,7 +36,6 @@ export const useVPUStore = create(
     valuesByVar: {},
     varDataOrder: [],
 
-    // Optional convenience getters
     getVarData: (variable) => get().valuesByVar?.[variable],
     setFeatureIds: (featureIds) =>
       set((s) => {
@@ -54,10 +53,8 @@ export const useVPUStore = create(
         const sameIds = sameArrayValues(s.featureIds, featureIds);
         const sameTimes = sameArrayValues(s.times, times);
 
-        // if both are same, do nothing
         if (sameIds && sameTimes) return s;
 
-        // Only rebuild mapping if featureIds changed
         let nextMap = s.featureIdToIndex;
         if (!sameIds) {
           const built = buildFeatureIdToIndex(featureIds);

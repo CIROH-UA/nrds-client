@@ -19,7 +19,6 @@ const DataStreamView = () => {
 
   return (
     <ViewContainer>
-      {/* Across the top of the map, which is where the reader is looking. */}
       <LoadProgress />
       <InitialS3Loader />
       <ToastContainer stacked  />

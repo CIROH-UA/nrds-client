@@ -27,19 +27,27 @@ function leaveCurrentVpu() {
   useVPUStore.getState().resetVPU();
 }
 
+/**
+ * Where the app reads its data from, before anything is selected.
+ *
+ * ``flowpaths_pmtiles`` is a separate archive from ``community_pmtiles`` because merged.pmtiles
+ * only carries flowpaths from zoom 7, and the animation needs them further out than that.
+ *
+ * ``hydrofabric_index`` is served from this app's own static files, generated at image build
+ * time from the upstream 103 MB index: ten columns instead of 37, which is every column the app
+ * reads -- four to resolve and position a search, six the Feature Information panel labels.
+ *
+ * ``hydrofabric_index_fallback`` is the upstream file, kept as a fallback rather than a default.
+ * A portal whose static was collected without the slim index has nothing at the path above, and
+ * answers 403 from S3 rather than 404 -- see isMissing in lib/fetchParquet.js. A slow search is
+ * a great deal better than none while that is sorted out.
+ */
 const DEFAULTS = {
   bucket: "ciroh-community-ngen-datastream",
   community_pmtiles: "https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/merged.pmtiles",
-  // Flowpaths come from their own archive because merged.pmtiles only carries them from zoom 7.
   flowpaths_pmtiles:
     "https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/only_geometry/upstream_index/flowpaths.pmtiles",
-  // Served from this app's own static files, generated at image build time from the upstream
-  // 103 MB index. Ten columns instead of 37, which is every column the app reads: four to
-  // resolve and position a search, six the Feature Information panel labels.
   hydrofabric_index: "/static/nrds/data/hydrofabric_index_slim.parquet",
-  // The upstream file, kept as a fallback rather than a default. A portal whose static was
-  // collected before this artifact existed answers 404 for the path above, and a slow search is
-  // a great deal better than none while that is sorted out.
   hydrofabric_index_fallback:
     "https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/hydrofabric_index.parquet",
   cache_key: null,

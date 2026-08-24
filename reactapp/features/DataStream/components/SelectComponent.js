@@ -16,7 +16,6 @@ const MenuList = React.memo(function MenuList(props) {
   const childArray = useMemo(() => React.Children.toArray(children), [children]);
   const itemCount = childArray.length;
 
-  // Compute initial scroll offset based on selected option
   const initialOffset = useMemo(() => {
     const [value] = getValue();
     const selected = value?.value;
@@ -54,7 +53,6 @@ const customStyles = (width = 150) => {
     }),
     control: (base, state) => ({
       ...base,
-      /* 28px was below any touch guidance, on the six controls used most. */
       minHeight: 44,
       height: 44,
       fontSize: 'var(--text-sm)',
@@ -122,7 +120,6 @@ const customStyles = (width = 150) => {
       fontSize: 12,
       padding: '4px 8px',
       width: '100%',
-      // Wraps: output-file names differ only in their tail, so truncation left nothing to read.
       whiteSpace: 'normal',
       overflowWrap: 'break-word',
       color: state.isSelected ? 'var(--nav-pill-active-text-color)' : 'var(--select-text-color)',
@@ -178,7 +175,6 @@ SelectComponent.propTypes = {
   value: PropTypes.any,
   width: PropTypes.number,
   isLoading: PropTypes.bool,
-  // The one this file was missing: the selects are addressed by it from outside.
   inputId: PropTypes.string,
 };
 

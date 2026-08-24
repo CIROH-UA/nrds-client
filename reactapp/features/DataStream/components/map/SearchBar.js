@@ -40,6 +40,13 @@ import useDataStreamStore from 'features/DataStream/store/Datastream';
  * overwrote it: the box lied for the rest of the session. It now says it plainly and offers to
  * try again, since the usual cause is a transient fetch of a 103 MB file.
  */
+/**
+ * A bare number is looked up as the catchment first, then its flowpath.
+ *
+ * While the index is loading the control is disabled and marked aria-busy, and says nothing in
+ * words: the status strip beside it already carries "Building the search index", and saying it
+ * twice made a pill wide enough to push the button off the screen.
+ */
 const SearchBar = ({ placeholder = 'Search for an id' }) => {
   const {
     hydrofabric_index_url,
@@ -65,7 +72,6 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
     let alive = true;
     setIndexStatus('loading');
     setReason(null);
-    // Building the id index is the one load that has to happen without being asked for.
     loadIndexData({
       remoteUrl: hydrofabric_index_url,
       fallbackUrl: hydrofabric_index_fallback,
@@ -88,11 +94,9 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
     setSearching(true);
     setNotFound(false);
     try {
-      // A bare number is looked up as the catchment first, then its flowpath.
       const matchedId = await selectIndexedFeature(searchCandidates(id));
       if (!matchedId) {
         setNotFound(true);
-        // Through the store, not the placeholder; see the note above.
         useTimeSeriesStore.setState({
           loadingText: `No feature found with id ${id}`,
           last_error: { kind: 'search-miss', featureId: id },
@@ -114,7 +118,6 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
   if (indexStatus === 'failed') {
     return (
       <SearchNotice role="alert">
-        {/* The reason is the sentence; naming the index too said it twice, in jargon. */}
         <span>{reason ? `Search unavailable: ${reason}` : 'Search unavailable'}</span>
         <button type="button" onClick={() => setAttempt((n) => n + 1)}>
           Try again
@@ -124,7 +127,6 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
   }
 
   const loading = indexStatus === 'loading';
-  // The strip beside it already says so in words; disabled and aria-busy are this one's part.
 
 
   return (
