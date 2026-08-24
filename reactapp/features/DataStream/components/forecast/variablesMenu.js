@@ -8,8 +8,6 @@ import useDataStreamStore from 'features/DataStream/store/Datastream';
 import { useVPUStore } from 'features/DataStream/store/VPU';
 import { useShallow } from 'zustand/react/shallow';
 import { createSequence } from 'features/DataStream/lib/sequence';
-import {
-} from 'features/DataStream/lib/layers';
 
 function VariablesMenu() {
   // No mounted flag: these writes all go to stores, so ordering alone is enough.

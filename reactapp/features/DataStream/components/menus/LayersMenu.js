@@ -6,18 +6,6 @@ import { LayerControl } from '../map/LayersControl';
 import { LayersContainer, LayerButton } from '../styles/Styles';
 
 /**
- * The layer panel, and the control that reveals it.
- *
- * A disclosure, declared as one: aria-expanded and aria-controls are what make it that rather
- * than a button that happens to change something. It was two icon-only buttons with no
- * accessible name at all, announcing themselves as "button", and they were how the layer panel
- * is reached. The panel also took an isOpen prop it never read, which styled-components
- * filtered out before it could reach the DOM, so it did nothing in either direction.
- *
- * ``inline`` drops the absolute positioning so the control can sit in the header rather than
- * floating over the map. The panel it opens stays absolutely positioned either way.
- */
-/**
  * Open unless the screen is too small to spare the room.
  *
  * The panel is what says which layers exist and lets them be switched, and leaving it shut hid
@@ -36,6 +24,18 @@ const shouldStartOpen = () => {
   }
 };
 
+/**
+ * The layer panel, and the control that reveals it.
+ *
+ * A disclosure, declared as one: aria-expanded and aria-controls are what make it that rather
+ * than a button that happens to change something. It was two icon-only buttons with no
+ * accessible name at all, announcing themselves as "button", and they were how the layer panel
+ * is reached. The panel also took an isOpen prop it never read, which styled-components
+ * filtered out before it could reach the DOM, so it did nothing in either direction.
+ *
+ * ``inline`` drops the absolute positioning so the control can sit in the header rather than
+ * floating over the map. The panel it opens stays absolutely positioned either way.
+ */
 export const LayersMenu = ({ inline = false }) => {
   const [open, setIsOpen] = useState(shouldStartOpen);
   const toggle = useCallback(() => setIsOpen((o) => !o), []);

@@ -14,10 +14,7 @@ import { abandonSelectionWithNoOutput } from 'features/DataStream/actions/noOutp
  */
 export function InitialS3Loader() {
   const { vpu } = useDataStreamStore(
-    useShallow((s) => ({
-      vpu: s.vpu,
-      ensemble: s.ensemble,
-    }))
+    useShallow((s) => ({ vpu: s.vpu }))
   );
 
   const { set_model, set_forecast, set_cycle, set_outputFile, set_date, set_ensemble, set_cache_key } = useDataStreamStore(
@@ -66,15 +63,17 @@ export function InitialS3Loader() {
         }
 
         const defaultDate = dates[0]?.value;
-        const cacheKey = getCacheKey(
+        // One list, spread into both: a key and a prefix that disagree name different places.
+        const selection = [
           _models[0]?.value,
           defaultDate,
           forecasts[0]?.value,
           cycles[0]?.value,
           ensembles[0]?.value || null,
           vpu,
-          outputFiles[0]?.value
-        );
+          outputFiles[0]?.value,
+        ];
+        const cacheKey = getCacheKey(...selection);
 
         set_model(_models[0]?.value);
         set_forecast(forecasts[0]?.value);
@@ -84,15 +83,7 @@ export function InitialS3Loader() {
         set_ensemble(ensembles[0]?.value || null);
         set_cache_key(cacheKey);
 
-        const _prefix = makePrefix(
-          _models[0]?.value,
-          defaultDate,
-          forecasts[0]?.value,
-          cycles[0]?.value,
-          ensembles[0]?.value || null,
-          vpu,
-          outputFiles[0]?.value
-        );
+        const _prefix = makePrefix(...selection);
 
         setInitialData({
           models: _models,

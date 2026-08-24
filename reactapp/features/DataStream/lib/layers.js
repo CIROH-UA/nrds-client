@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import { NO_DATA_VALUE } from 'features/DataStream/lib/valueRamp';
 import { readMapTheme } from './mapTheme';
 import { quantiseZoom } from 'features/DataStream/lib/flowpaths';
 /**
@@ -331,7 +332,7 @@ export function computeBounds(varData) {
   const sample = [];
   for (let i = 0; i < length; i += stride) {
     const v = varData[i];
-    if (v > -9998 && Number.isFinite(v)) sample.push(v);
+    if (v > NO_DATA_VALUE && Number.isFinite(v)) sample.push(v);
   }
   if (!sample.length) return { min: 0, max: 1 };
 

@@ -4,7 +4,7 @@ import {
   getValueAtTimeFlat,
   normalizeValue,
 } from '../../lib/layers';
-import { writeColorInto } from '../../lib/valueRamp';
+import { NO_DATA_VALUE, writeColorInto } from '../../lib/valueRamp';
 import { widthAtZoom } from '../../lib/flowpaths';
 
 // Stands in for the frame index while the layer is hidden. deck.gl gates drawing on `visible`
@@ -78,7 +78,7 @@ export function flowPathLayerProps({
     },
     getWidth: (d) => {
       const v = getValueAtTimeFlat(valuesByVar, numTimes, d.featureIndex, currentTimeIndex);
-      if (v === null || v <= -9998) return FACTOR_NO_DATA;
+      if (v === null || v <= NO_DATA_VALUE) return FACTOR_NO_DATA;
       // The same curve the colour uses, so a reach cannot read wide and cool at once.
       return FACTOR_MIN + normalizeValue(v, bounds) * FACTOR_RANGE;
     },

@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import { NO_DATA_VALUE } from 'features/DataStream/lib/valueRamp';
 import { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -8,7 +9,6 @@ import { getValueAtTimeFlat } from 'features/DataStream/lib/layers';
 import { getVariableUnits } from 'features/DataStream/lib/data';
 import { formatMeasurement, numericPartOf, timeOffsetLabel } from 'features/DataStream/lib/utils';
 
-const MISSING = -9998;
 
 /**
  * The animated variable's value for the feature under the pointer.
@@ -52,7 +52,7 @@ export const HoverValue = ({ hoverId }) => {
 
   const label = `${variable}${getVariableUnits(variable) ? ` (${getVariableUnits(variable)})` : ''}`;
   const at = timeOffsetLabel(times, currentTimeIndex);
-  const reading = value <= MISSING ? 'no data' : formatMeasurement(value);
+  const reading = value <= NO_DATA_VALUE ? 'no data' : formatMeasurement(value);
   if (reading === null) return null;
 
   return (

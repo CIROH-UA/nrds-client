@@ -63,8 +63,16 @@ const MISSING_COLOR = [100, 100, 100, 150];
  * that forgot to pass one would silently draw the wrong theme -- the exact failure mapTheme.js
  * was written to end, where every fallback happened to be the light value.
  */
+/**
+ * What ngen writes where a reach has no value at a timestep.
+ *
+ * Not a magic number in four files: the map's hover readout, the animated width, the animated
+ * colour and the bounds sampler all have to agree, and they were each carrying their own copy.
+ */
+export const NO_DATA_VALUE = -9998;
+
 export function writeColorInto(value, bounds, target, scale) {
-  if (value === null || value === undefined || value <= -9998) {
+  if (value === null || value === undefined || value <= NO_DATA_VALUE) {
     target[0] = MISSING_COLOR[0];
     target[1] = MISSING_COLOR[1];
     target[2] = MISSING_COLOR[2];

@@ -475,15 +475,6 @@ export const MapHint = styled(MapSurface).attrs({ as: 'button' })`
   }
 `;
 
-/**
- * The colour key for the animated flowpaths.
- *
- * Bottom right: bottom left is where the forecast panel sits, which covered it entirely, and the
- * layer panel opens at the top right. Raised clear of the attribution bar. Small on purpose: it
- * explains one ramp, and the map is the thing being read.
- */
-
-
 /* A label, not a heading. Uppercase with tracking at weight 650 is the house style of every
    generated dashboard, and it made a passive caption shout louder than the controls beside it. */
 export const LegendTitle = styled.div`
