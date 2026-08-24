@@ -548,9 +548,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
 
   return (
     <Fragment>
-      {/* The panel was one undifferentiated stack: a chart, then five selects, then a button.
-          Naming this half separates the answer from the question that produced it, which is the
-          distinction a reader makes anyway and the one the layout was not making for them. */}
+      {/* Names the half below, which the undifferentiated stack never did. */}
       <PanelSectionHeading>Change the run</PanelSectionHeading>
 
       {rows.map((r) => (

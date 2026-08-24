@@ -114,8 +114,7 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
   if (indexStatus === 'failed') {
     return (
       <SearchNotice role="alert">
-        {/* The reason is the sentence: naming the index as well said the same thing twice, in
-            jargon, and made a pill wide enough to push this button off the screen. */}
+        {/* The reason is the sentence; naming the index too said it twice, in jargon. */}
         <span>{reason ? `Search unavailable: ${reason}` : 'Search unavailable'}</span>
         <button type="button" onClick={() => setAttempt((n) => n + 1)}>
           Try again

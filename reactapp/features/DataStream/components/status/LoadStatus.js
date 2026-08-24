@@ -43,9 +43,7 @@ export const LoadStatus = React.memo(function LoadStatus() {
 
   return (
     <StatusStrip role="status" aria-live="polite" $failed={failed} data-error-kind={errorKind || undefined}>
-      {/* pending as well as loading: the click writes its message before the load starts, and
-          that gap is the slowest part of a vpu switch. A message with no spinner beside it reads
-          as a label rather than as work in progress. */}
+      {/* pending as well as loading: see the docstring for the gap this covers. */}
       {(loading || pending) && !failed && <Spinner size={14} />}
       {loadingText && <span>{loadingText}</span>}
     </StatusStrip>

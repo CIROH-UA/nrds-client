@@ -80,9 +80,7 @@ const StaticSvgLayer = React.memo(function StaticSvgLayer({
 
       <Group left={margin.left} top={margin.top}>
 
-        {/* A hydrograph with no value axis is a shape, not a reading. The left margin already
-            reserved room for this and leftTickLabelProps was already written and handed in; the
-            axis itself was never added, so the props were dropped on the floor. */}
+        {/* A hydrograph with no value axis is a shape, not a reading. */}
         <GridRows
           scale={yScale}
           width={innerWidth}

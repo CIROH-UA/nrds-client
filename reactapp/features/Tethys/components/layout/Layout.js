@@ -29,6 +29,11 @@ const isExternal = (to, externalFlag) =>
  * full 100% of its own. With height: 100% on both, the banner that preceded this modal pushed
  * the map 52px past the bottom of the window and took the attribution control off screen.
  *
+ * The h1 is visually hidden rather than absent. The app had no main landmark and no h1 at all --
+ * both existed only on the error page -- so a screen reader had nothing to jump to and the
+ * heading tree started at h2. This design has no visible headline by choice, the largest type in
+ * it being 18px, but the document still needs a name.
+ *
  * The skip link comes first in the tab order on purpose: the nav, the notice and its dismiss
  * button all sit between the header and the map, so without it every page load costs a keyboard
  * reader three stops before they reach anything they came for.
@@ -86,10 +91,7 @@ export default function Layout({ navLinks = [], routes = [], children }) {
 
       </NavMenu>
 
-      {/* The app had no main landmark and no h1. Both existed only on the error page, so a
-          screen reader had nothing to jump to and the heading tree started at h2. The heading is
-          hidden rather than absent: this design has no visible headline by choice, the largest
-          type in it being 18px, but the document still needs a name. */}
+      {/* Hidden rather than absent: the document still needs a name. */}
       <main id="main-content" className="h-100 d-flex flex-column" style={{ minHeight: 0 }}>
         <VisuallyHidden>{tethysApp.title}</VisuallyHidden>
 
