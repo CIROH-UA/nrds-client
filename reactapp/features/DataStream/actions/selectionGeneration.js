@@ -1,3 +1,5 @@
+import { createSequence } from 'features/DataStream/lib/sequence';
+
 /**
  * Which run of the selection chain is the current one.
  *
@@ -20,16 +22,13 @@
  * is deliberately separate from it: a vpu change invalidates both, but a model change has no
  * business cancelling a running vpu load.
  */
-let selectionGeneration = 0;
+const selections = createSequence();
 
 /** Claim the chain for a new selection. Every write in that chain checks the number back. */
-export const beginSelection = () => {
-  selectionGeneration += 1;
-  return selectionGeneration;
-};
+export const beginSelection = () => selections.next();
 
 /** Whether the chain that took this number is still the one the user is waiting on. */
-export const isCurrentSelection = (generation) => generation === selectionGeneration;
+export const isCurrentSelection = (generation) => selections.isCurrent(generation);
 
 /**
  * Invalidate whatever chain is in flight without starting one.
@@ -37,7 +36,4 @@ export const isCurrentSelection = (generation) => generation === selectionGenera
  * For leaving a vpu: the listings a chain is midway through are all for the vpu being left, and
  * its output-file answer would otherwise arrive after the move and describe the wrong place.
  */
-export const cancelSelections = () => {
-  selectionGeneration += 1;
-  return selectionGeneration;
-};
+export const cancelSelections = () => selections.next();

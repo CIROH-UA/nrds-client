@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { sameArrayValues, sameObjectValues } from 'features/DataStream/lib/equality';
 import { subscribeWithSelector } from 'zustand/middleware';
 
 /**
@@ -13,24 +14,6 @@ import { subscribeWithSelector } from 'zustand/middleware';
  * say which way.
  */
 
-const sameArrayRefOrValues = (a, b) =>
-  a === b ||
-  (!!a &&
-    !!b &&
-    a.length === b.length &&
-    a.every((v, i) => v === b[i]));
-
-const shallowEqualObj = (a, b) => {
-  if (a === b) return true;
-  if (!a || !b) return false;
-  const aKeys = Object.keys(a);
-  const bKeys = Object.keys(b);
-  if (aKeys.length !== bKeys.length) return false;
-  for (const k of aKeys) {
-    if (a[k] !== b[k]) return false;
-  }
-  return true;
-};
 
 const buildFeatureIdToIndex = (featureIds) => {
   const m = {};
@@ -55,9 +38,9 @@ export const useVPUStore = create(
 
     // Optional convenience getters
     getVarData: (variable) => get().valuesByVar?.[variable],
-    set_feature_ids: (featureIds) =>
+    setFeatureIds: (featureIds) =>
       set((s) => {
-        if (sameArrayRefOrValues(s.featureIds, featureIds)) return s;
+        if (sameArrayValues(s.featureIds, featureIds)) return s;
         return { featureIds };
       }),
 
@@ -68,8 +51,8 @@ export const useVPUStore = create(
      */
     setAnimationIndex: (featureIds, times) =>
       set((s) => {
-        const sameIds = sameArrayRefOrValues(s.featureIds, featureIds);
-        const sameTimes = sameArrayRefOrValues(s.times, times);
+        const sameIds = sameArrayValues(s.featureIds, featureIds);
+        const sameTimes = sameArrayValues(s.times, times);
 
         // if both are same, do nothing
         if (sameIds && sameTimes) return s;
@@ -78,7 +61,7 @@ export const useVPUStore = create(
         let nextMap = s.featureIdToIndex;
         if (!sameIds) {
           const built = buildFeatureIdToIndex(featureIds);
-          nextMap = shallowEqualObj(s.featureIdToIndex, built) ? s.featureIdToIndex : built;
+          nextMap = sameObjectValues(s.featureIdToIndex, built) ? s.featureIdToIndex : built;
         }
 
         return {
@@ -111,9 +94,9 @@ export const useVPUStore = create(
           }
         }
 
-        const sameOrder = sameArrayRefOrValues(s.varDataOrder, nextOrder);
+        const sameOrder = sameArrayValues(s.varDataOrder, nextOrder);
         const sameValues =
-          nextValuesByVar === s.valuesByVar || shallowEqualObj(s.valuesByVar, nextValuesByVar);
+          nextValuesByVar === s.valuesByVar || sameObjectValues(s.valuesByVar, nextValuesByVar);
         if (sameOrder && sameValues) return s;
 
         return { valuesByVar: nextValuesByVar, varDataOrder: nextOrder };

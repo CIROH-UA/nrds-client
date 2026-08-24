@@ -1,5 +1,6 @@
-import { useMemo, useSyncExternalStore } from 'react';
+import { useMemo } from 'react';
 
+import { createMediaQuery, useMediaQuery } from 'features/DataStream/lib/matchMedia';
 import { DARK_RAMP, LIGHT_RAMP } from 'features/DataStream/lib/valueRamp';
 
 /**
@@ -24,30 +25,11 @@ const DARK_QUERY = '(prefers-color-scheme: dark)';
 const LIGHT_STYLE =
   'https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/styles/light-style.json';
 
-// One MediaQueryList, rebuilt if matchMedia itself is replaced: the same reasoning as
-// useIsNarrowViewport, so a late polyfill or a test double does not leave a stale list behind.
-let queryListSource;
-let darkQueryList = null;
-const getDarkQueryList = () => {
-  if (queryListSource !== window.matchMedia) {
-    queryListSource = window.matchMedia;
-    darkQueryList = queryListSource ? queryListSource.call(window, DARK_QUERY) : null;
-  }
-  return darkQueryList;
-};
-
-const subscribeToDark = (onChange) => {
-  const mql = getDarkQueryList();
-  if (!mql) return () => {};
-  mql.addEventListener('change', onChange);
-  return () => mql.removeEventListener('change', onChange);
-};
-
 // jsdom has no matchMedia, and a missing query is not a dark one.
-const prefersDarkSnapshot = () => getDarkQueryList()?.matches ?? false;
+const dark = createMediaQuery(DARK_QUERY, () => false);
 
 /** Whether the reader's system asks for a dark interface. */
-export const usePrefersDark = () => useSyncExternalStore(subscribeToDark, prefersDarkSnapshot);
+export const usePrefersDark = () => useMediaQuery(dark);
 
 const readToken = (name, fallback) => {
   const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -78,7 +60,7 @@ export const readMapTheme = () => {
     // Shared: the gauge outline and the cursor legend symbol both read it.
     pointStroke: readToken('--map-point-stroke-color', '#f7fafe'),
     // From the media query, not a token: six stops only work as a set. See the docstring.
-    ramp: prefersDarkSnapshot() ? DARK_RAMP : LIGHT_RAMP,
+    ramp: dark.snapshot() ? DARK_RAMP : LIGHT_RAMP,
   };
 };
 

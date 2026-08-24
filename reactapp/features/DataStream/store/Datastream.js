@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { sameArrayValues } from 'features/DataStream/lib/equality';
 
 import { cancelVpuLoads } from 'features/DataStream/actions/loadState';
 import { cancelSelections } from 'features/DataStream/actions/selectionGeneration';
@@ -61,13 +62,6 @@ const DEFAULTS = {
   index_status: 'loading',
 };
 
-const sameArrayValues = (a, b) => {
-  if (a === b) return true;
-  if (!Array.isArray(a) || !Array.isArray(b)) return false;
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
-  return true;
-};
 
 const useDataStreamStore = create((set) => ({
     ...DEFAULTS,

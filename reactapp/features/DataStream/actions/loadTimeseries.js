@@ -1,5 +1,5 @@
 import { checkForTable, getTimeseries } from 'features/DataStream/lib/queryData';
-import { makeFeatureTitle, makeRunLabel } from 'features/DataStream/lib/utils';
+import { makeFeatureTitle, makeRunLabel, numericPartOf } from 'features/DataStream/lib/utils';
 import { createSequence } from 'features/DataStream/lib/sequence';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
@@ -92,7 +92,7 @@ export async function loadTimeseries({ featureId, variable, vpuGeneration } = {}
   const ticket = series.next();
   // Superseded by a newer series load, or by a vpu load that replaced the table underneath.
   const superseded = () => !series.isCurrent(ticket) || generation !== currentVpuGeneration();
-  const id = targetId.split('-')[1];
+  const id = numericPartOf(targetId);
   // Inside the try for the same reason as loadVpu: the finally is what releases the count.
   try {
     store.getState().reset_series();

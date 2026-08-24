@@ -6,6 +6,21 @@ import { fetchParquetBuffer, isMissing } from "./fetchParquet";
 import { sqlIdent, sqlStr } from "./sql";
 import { getConnection } from "./duckdbClient";
 
+/**
+ * Let go of a connection without waiting for it.
+ *
+ * Released rather than awaited: closing is another round trip to the worker, so on one that has
+ * stopped answering the wait for the close outlasted the timeout meant to escape it, and the
+ * caller still never settled. Every query below ends in this; it was written out eleven times
+ * before it had a name.
+ *
+ * Local rather than exported from duckdbClient, which every test mocks with an exhaustive
+ * factory -- a new export there is undefined in ten mocks and throws from inside a finally.
+ */
+const safeClose = (conn) => {
+  void Promise.resolve(conn?.close?.()).catch(() => {});
+};
+
 const DEBUG = process.env.NODE_ENV !== "production";
 const debugLog = (...args) => {
   if (DEBUG) console.log(...args);
@@ -51,8 +66,7 @@ export async function getTimeseries(id, cacheKey, variable) {
     );
     return rows;
   } finally {
-    // Released, not awaited: closing a worker that stopped answering outlasts the timeout.
-    void Promise.resolve(conn.close()).catch(() => {});
+    safeClose(conn);
   }
 }
 
@@ -81,7 +95,7 @@ export async function getFeatureIDs(cacheKey) {
     );
     return featureIds;
   } finally {
-    void Promise.resolve(conn.close()).catch(() => {});
+    safeClose(conn);
   }
 }
 
@@ -173,7 +187,7 @@ async function buildIndexTable({ remoteUrl, fallbackUrl }) {
       return;
     }
   } finally {
-    void Promise.resolve(conn.close()).catch(() => {});
+    safeClose(conn);
   }
 
   let buffer;
@@ -219,10 +233,10 @@ export async function getFeatureProperties({ cacheKey, feature_id }) {
   const conn = await getConnection();
   // The same helper the table was created with, so the two cannot part company on a key.
   const tableName = tableNameForKey(cacheKey);
-  const inList = candidates.map((id) => `'${id}'`).join(', ');
+  const inList = candidates.map(sqlStr).join(', ');
   // Ranked by the order asked for, so "cat first" is expressed once, at the call site.
   const ranking = candidates
-    .map((id, i) => `WHEN '${id}' THEN ${i}`)
+    .map((id, i) => `WHEN ${sqlStr(id)} THEN ${i}`)
     .join(' ');
   try {
     const stream = await conn.send(`
@@ -250,7 +264,7 @@ export async function getFeatureProperties({ cacheKey, feature_id }) {
     debugLog(`[getFeatureProperties] no row for ${candidates.join(', ')}`);
     return [];
   } finally {
-    void Promise.resolve(conn.close()).catch(() => {});
+    safeClose(conn);
   }
 }
 
@@ -273,7 +287,7 @@ export async function loadVpuData(
       bytes,
     });
   } finally {
-    void Promise.resolve(conn.close()).catch(() => {});
+    safeClose(conn);
   }
 
   return formatBytes(byteLength);
@@ -304,7 +318,7 @@ export async function checkForTable(cacheKey) {
     const exists = existsResult.toArray()[0].cnt > 0;
     return exists;
   } finally {
-    void Promise.resolve(conn.close()).catch(() => {});
+    safeClose(conn);
   }
 }
 
@@ -340,7 +354,7 @@ export async function dropAllVpuDataTables() {
 
     debugLog('Finished dropping VPU cache tables (index_data_table preserved).');
   } finally {
-    void Promise.resolve(conn.close()).catch(() => {});
+    safeClose(conn);
   }
 }
 
@@ -371,7 +385,7 @@ export async function getVariables({ cacheKey }) {
 
     return cols;
   } finally {
-    void Promise.resolve(conn.close()).catch(() => {});
+    safeClose(conn);
   }
 }
 
@@ -402,7 +416,7 @@ export async function getDistinctFeatureIds(cacheKey) {
 
     return featureIds;
   } finally {
-    void Promise.resolve(conn.close()).catch(() => {});
+    safeClose(conn);
   }
 }
 
@@ -433,7 +447,7 @@ export async function getDistinctTimes(cacheKey) {
 
     return times;
   } finally {
-    void Promise.resolve(conn.close()).catch(() => {});
+    safeClose(conn);
   }
 }
 
@@ -483,6 +497,6 @@ export async function getVpuVariableFlat(cacheKey, variable) {
     }
     return resized;
   } finally {
-    void Promise.resolve(conn.close()).catch(() => {});
+    safeClose(conn);
   }
 }
