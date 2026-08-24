@@ -265,3 +265,37 @@ describe('moving the map when the selection changes', () => {
     expect(map.flyTo).toHaveBeenCalledTimes(1);
   });
 });
+
+/**
+ * The handle does not outlive the map it points at.
+ *
+ * Its docstring promised the map is cleared on unload, and nothing cleared it. A stale handle is
+ * worse than none: getMapHandle answers truthfully-looking, and flyTo on a map whose canvas has
+ * been removed throws from inside maplibre rather than returning the false the caller checks.
+ */
+describe('releaseMapHandle', () => {
+  const { setMapHandle, getMapHandle, releaseMapHandle } = require('features/DataStream/lib/mapHandle');
+
+  afterEach(() => setMapHandle(null));
+
+  it('lets go of the map it was given', () => {
+    const map = { flyTo: jest.fn() };
+    setMapHandle(map);
+
+    releaseMapHandle(map);
+
+    expect(getMapHandle()).toBeNull();
+  });
+
+  it('leaves a newer map alone', () => {
+    // Strict-mode double-mounting runs the first map's cleanup after the second has registered.
+    const first = { flyTo: jest.fn() };
+    const second = { flyTo: jest.fn() };
+    setMapHandle(first);
+    setMapHandle(second);
+
+    releaseMapHandle(first);
+
+    expect(getMapHandle()).toBe(second);
+  });
+});
