@@ -13,6 +13,10 @@ import { useVPUStore } from 'features/DataStream/store/VPU';
 jest.mock('features/DataStream/lib/queryData', () => ({ getFeatureProperties: jest.fn() }));
 jest.mock('features/DataStream/actions/loadTimeseries', () => ({ loadTimeseries: jest.fn() }));
 jest.mock('features/DataStream/actions/loadVpu', () => ({ loadVpu: jest.fn() }));
+jest.mock('features/DataStream/actions/showSelection', () => ({
+  ...jest.requireActual('features/DataStream/actions/showSelection'),
+  showSelection: jest.fn(() => true),
+}));
 jest.mock('features/DataStream/actions/loadState', () => ({
   ...jest.requireActual('features/DataStream/actions/loadState'),
   vpuLoadInFlight: jest.fn(() => false),
@@ -22,6 +26,8 @@ const { getFeatureProperties } = require('features/DataStream/lib/queryData');
 const { loadTimeseries } = require('features/DataStream/actions/loadTimeseries');
 const { loadVpu } = require('features/DataStream/actions/loadVpu');
 const { vpuLoadInFlight } = require('features/DataStream/actions/loadState');
+const { showSelection } = require('features/DataStream/actions/showSelection');
+const useTimeSeriesStore = require('features/DataStream/store/Timeseries').default;
 
 const initial = {
   ds: useDataStreamStore.getState(),
@@ -36,6 +42,8 @@ beforeEach(() => {
   vpuLoadInFlight.mockReturnValue(false);
   loadTimeseries.mockResolvedValue(undefined);
   loadVpu.mockResolvedValue(undefined);
+  useTimeSeriesStore.setState({ pending: false, loadingText: '' });
+  showSelection.mockClear();
 });
 
 it('names the vpu from the index, which the caller has no other way to know', async () => {
@@ -152,5 +160,65 @@ describe('recovering an animation the panel took down', () => {
 
     expect(loadTimeseries).toHaveBeenCalledWith({ featureId: 'cat-7' });
     expect(loadVpu).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The search box says something is happening, and always goes to the feature.
+ *
+ * Two gaps the map click does not have. The click sets pending the moment it lands, so the
+ * spinner and the progress bar run for the second or so before the load reports anything; the
+ * search set nothing and looked ignored for exactly as long. And the store ignores a
+ * re-selection of the same id, so the effect that flies the map on a changed selection never
+ * fires -- searching for the feature you are already reading a chart about did nothing at all,
+ * which is the one case where the reader has most obviously asked to be taken back to it.
+ */
+describe('what a search reports', () => {
+  it('says it is working before the load can say anything', async () => {
+    useDataStreamStore.setState({ vpu: 'VPU_01' });
+    getFeatureProperties.mockResolvedValue([{ id: 'cat-7', vpuid: '01', lon: -111, lat: 40 }]);
+
+    await selectIndexedFeature(['cat-7']);
+
+    expect(useTimeSeriesStore.getState().pending).toBe(true);
+    expect(useTimeSeriesStore.getState().loadingText).toMatch(/cat-7/);
+  });
+
+  it('names the vpu it is switching to, not the feature it cannot reach yet', async () => {
+    useDataStreamStore.setState({ vpu: 'VPU_01' });
+    getFeatureProperties.mockResolvedValue([{ id: 'cat-7', vpuid: '16', lon: -111, lat: 40 }]);
+
+    await selectIndexedFeature(['cat-7']);
+
+    expect(useTimeSeriesStore.getState().loadingText).toMatch(/VPU_16/);
+  });
+
+  it('claims nothing when the index holds no such feature', async () => {
+    getFeatureProperties.mockResolvedValue([]);
+
+    await selectIndexedFeature(['cat-nope']);
+
+    expect(useTimeSeriesStore.getState().pending).toBe(false);
+  });
+
+  it('flies to a feature that was already selected', async () => {
+    // The regression the reader reported: the second search for the same id went nowhere.
+    useDataStreamStore.setState({ vpu: 'VPU_01' });
+    getFeatureProperties.mockResolvedValue([{ id: 'cat-7', vpuid: '01', lon: -111, lat: 40 }]);
+    await selectIndexedFeature(['cat-7']);
+    showSelection.mockClear();
+
+    await selectIndexedFeature(['cat-7']);
+
+    expect(showSelection).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves a changed selection to the effect that watches for it, so it flies once', async () => {
+    useDataStreamStore.setState({ vpu: 'VPU_01' });
+    getFeatureProperties.mockResolvedValue([{ id: 'cat-7', vpuid: '01', lon: -111, lat: 40 }]);
+
+    await selectIndexedFeature(['cat-7']);
+
+    expect(showSelection).not.toHaveBeenCalled();
   });
 });

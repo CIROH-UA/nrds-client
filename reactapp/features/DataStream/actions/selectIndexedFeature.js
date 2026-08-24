@@ -1,7 +1,9 @@
 import { getFeatureProperties } from 'features/DataStream/lib/queryData';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
 import { useFeatureStore } from 'features/DataStream/store/Layers';
+import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import { chartSelection } from 'features/DataStream/actions/chartSelection';
+import { showSelection } from 'features/DataStream/actions/showSelection';
 
 /**
  * Select the feature an id names, using the hydrofabric index to fill in what the caller cannot
@@ -26,6 +28,13 @@ import { chartSelection } from 'features/DataStream/actions/chartSelection';
  *
  * Returns the id the index matched, or null when it holds nothing for any candidate. The caller
  * owns what to say about that; the search box says so out loud.
+ *
+ * The two lines it does not share with selectMapFeature are here because the map click does not
+ * need them. pending, because the click's own gesture is visible and a typed search is not: the
+ * second before the load reports anything looked like the search had been ignored. And the
+ * explicit flight, because the store drops a re-selection of the same id, so nothing changes and
+ * the effect that flies on a changed selection never runs -- which is exactly the search a
+ * reader makes after zooming away from the feature they are charting.
  */
 export async function selectIndexedFeature(candidates) {
   const ids = (Array.isArray(candidates) ? candidates : [candidates]).filter(Boolean);
@@ -40,10 +49,20 @@ export async function selectIndexedFeature(candidates) {
   const feature = features[0];
   // The id the index holds, not the one asked for: "2884494" selects cat-2884494.
   const matchedId = feature.id ?? ids[0];
-  useFeatureStore.getState().set_selected_feature({ _id: matchedId, ...feature });
-
   const vpuName = `VPU_${feature.vpuid}`;
   const { vpu, set_vpu } = useDataStreamStore.getState();
+
+  const before = useFeatureStore.getState().selected_feature;
+  useFeatureStore.getState().set_selected_feature({ _id: matchedId, ...feature });
+  // Only when the store kept what it had, or the change moves the map and this flies twice.
+  if (useFeatureStore.getState().selected_feature === before) showSelection();
+
+  useTimeSeriesStore.setState({
+    loadingText: vpuName === vpu ? `Loading ${matchedId}` : `Loading ${vpuName}`,
+    last_error: null,
+    pending: true,
+  });
+
   if (vpuName === vpu) {
     chartSelection({ featureId: matchedId, vpuName });
   }
