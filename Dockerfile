@@ -1,6 +1,14 @@
 
 FROM tethysplatform/tethys-core:dev-py3.12-dj5.2 
 
+# The base image's openssl trails Debian's security update, and the scan gate fails on high.
+# Upgraded here rather than waived: a fix exists in the distro, so there is nothing to waive.
+# Sits above the COPY so an app change does not rebuild it, and a new base image does.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends --only-upgrade \
+      openssl libssl3t64 openssl-provider-legacy \
+ && rm -rf /var/lib/apt/lists/*
+
 
 ###################
 # BUILD ARGUMENTS #
