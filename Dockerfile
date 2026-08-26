@@ -1,6 +1,11 @@
 
 FROM tethysplatform/tethys-core:dev-py3.12-dj5.2 
 
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends --only-upgrade \
+      openssl libssl3t64 openssl-provider-legacy \
+ && rm -rf /var/lib/apt/lists/*
+
 
 ###################
 # BUILD ARGUMENTS #
