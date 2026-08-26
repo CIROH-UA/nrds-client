@@ -111,10 +111,14 @@ const useTimeSeriesStore = create(
       set_variable: (newVariable) => set({ variable: newVariable }),
       reset_series: () =>
         set((s) => {
+          const animating = useVPUStore.getState().times.length > 0;
+          const clock = animating
+            ? { currentTimeIndex: s.currentTimeIndex, isPlaying: s.isPlaying }
+            : { currentTimeIndex: 0, isPlaying: false };
           if (
             s.series === EMPTY_SERIES &&
-            s.currentTimeIndex === 0 &&
-            s.isPlaying === false &&
+            s.currentTimeIndex === clock.currentTimeIndex &&
+            s.isPlaying === clock.isPlaying &&
             s.last_loaded_key === null &&
             s.last_answered_key === null
           ) {
@@ -122,8 +126,7 @@ const useTimeSeriesStore = create(
           }
           return {
             series: EMPTY_SERIES,
-            currentTimeIndex: 0,
-            isPlaying: false,
+            ...clock,
             last_loaded_key: null,
             last_answered_key: null,
           };
@@ -136,10 +139,7 @@ const useTimeSeriesStore = create(
           pending: false,
           loadingText: '',
           feature_id: null,
-          variable: '',
           layout: DEFAULT_LAYOUT,
-          currentTimeIndex: 0,
-          isPlaying: false,
           last_loaded_key: null,
           last_answered_key: null,
           last_error: null,

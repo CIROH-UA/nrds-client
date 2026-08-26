@@ -62,7 +62,6 @@ export const ExperimentalCaveat = () => (
 
 export const DataInfoContent = () => (
   <>
-    <ExperimentalCaveat />
     <p>
       The dates, models and forecasts offered here are read from the{' '}
       <a href="https://datastream.ciroh.org/index.html#v2.2/" target="_blank" rel="noreferrer">
@@ -138,7 +137,7 @@ export const GeneralInfoContent = () => (
           target="_blank"
           rel="noreferrer"
         >
-          the NRDS AWS architecture
+          the NGIAB-NRDS AWS architecture
         </a>
       </li>
       <li>

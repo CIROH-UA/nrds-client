@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { MdClose, MdInfoOutline } from 'react-icons/md';
+import { MdInfoOutline } from 'react-icons/md';
 
 import { SButton } from './styles/Styles';
 
@@ -13,8 +13,9 @@ export const InfoToggle = ({ open, onToggle, controls, label, size = 15 }) => (
     aria-controls={controls}
     aria-label={open ? `Hide ${label}` : `Show ${label}`}
     title={open ? `Hide ${label}` : `Show ${label}`}
+    $active={open}
   >
-    {open ? <MdClose size={size} aria-hidden="true" /> : <MdInfoOutline size={size} aria-hidden="true" />}
+    <MdInfoOutline size={size} aria-hidden="true" />
   </SButton>
 );
 

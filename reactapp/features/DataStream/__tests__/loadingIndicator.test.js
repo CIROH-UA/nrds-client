@@ -33,7 +33,7 @@ describe('the shared spinner', () => {
     // waitFor, not a nested act: the delay is a real timer, and wrapping render in another act
     // to wait it out leaves React's queue in a state the next test inherits.
     const ring = await waitFor(() => screen.getByRole('status'));
-    expect(ring).toHaveAccessibleName('Loading NRDS');
+    expect(ring).toHaveAccessibleName('Loading NGIAB-NRDS');
   });
 
   test('the boot screen shows nothing until its delay elapses', () => {

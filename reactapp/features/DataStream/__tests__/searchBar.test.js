@@ -294,3 +294,48 @@ describe('searching by the numeric part', () => {
       expect(useFeatureStore.getState().selected_feature._id).toBe('cat-2884494'));
   });
 });
+
+/**
+ * The prompt the narrowest phones actually get.
+ *
+ * This was covered only by a regex over SearchBar.js's source, which stays true whatever the
+ * component renders: hardcoding useIsNarrowHeader to return false, disabling the swap outright,
+ * left the whole suite green. Rendering under a matched media query is the version that fails.
+ */
+describe('the prompt on a narrow header', () => {
+  const setViewport = (matches) => {
+    window.matchMedia = (query) => ({
+      get matches() { return matches; },
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    });
+  };
+
+  const original = window.matchMedia;
+  afterEach(() => { window.matchMedia = original; });
+
+  it('spells the prompt out when the row can afford it', async () => {
+    setViewport(false);
+
+    await ready();
+
+    expect(box()).toHaveAttribute('placeholder', 'Search for an id');
+  });
+
+  it('shortens the prompt where the row cannot', async () => {
+    setViewport(true);
+
+    await ready();
+
+    expect(box()).toHaveAttribute('placeholder', 'Find id');
+  });
+
+  it('keeps the full sentence as the accessible name either way', async () => {
+    setViewport(true);
+
+    await ready();
+
+    expect(screen.getByRole('textbox', { name: 'Search for an id' })).toBeInTheDocument();
+  });
+});

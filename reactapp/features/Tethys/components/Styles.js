@@ -122,7 +122,7 @@ export const CustomDiv = styled.div`
   gap: clamp(8px, 3vw, 32px);
   min-width: 0;
 
-  flex: ${({ $fixed }) => ($fixed ? '0 0 auto' : '0 1 auto')};
+  flex: ${({ $fixed }) => ($fixed ? '0 0 auto' : '1 1 auto')};
 
   /* any plain anchor inside this div */
   & a {

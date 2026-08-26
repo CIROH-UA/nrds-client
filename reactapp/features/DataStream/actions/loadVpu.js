@@ -32,9 +32,9 @@ export async function loadVpu() {
   const timeseries = useTimeSeriesStore.getState();
 
   try {
+    useVPUStore.getState().resetVPU();
     timeseries.reset_series();
     useTimeSeriesStore.setState({ last_error: null });
-    useVPUStore.getState().resetVPU();
     beginLoading();
     timeseries.set_loading_text(`Loading ${vpu}`);
 

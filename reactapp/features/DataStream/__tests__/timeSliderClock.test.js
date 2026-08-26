@@ -156,8 +156,8 @@ describe('the slider', () => {
 /**
  * Playback stops when there is nothing left to play.
  *
- * Every path that tears the animation down through resetVPU calls reset_series, which clears
- * isPlaying. Hiding the flowpaths layer is the one that does not: it takes the animation off the
+ * Leaving a vpu clears isPlaying, because reset_series stops the clock once the vpu's times are
+ * gone. Hiding the flowpaths layer is the one path that does not: it takes the animation off the
  * map and unmounts the slider without touching any of it, so playback resumed by itself the
  * moment the layer came back.
  */

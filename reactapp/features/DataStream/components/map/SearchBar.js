@@ -6,19 +6,23 @@ import Spinner from 'features/Tethys/components/loader/Spinner';
 import {
   SearchBarWrapper,
   SearchButton,
+  SearchButtonLabel,
   SearchIcon,
   SearchInput,
   SearchNotice,
+  SearchSubmitIcon,
 } from '../styles/Styles';
 import { loadIndexData } from 'features/DataStream/lib/queryData';
 import { cacheFailureReason, searchCandidates } from 'features/DataStream/lib/utils';
 import { selectIndexedFeature } from 'features/DataStream/actions/selectIndexedFeature';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import useDataStreamStore from 'features/DataStream/store/Datastream';
+import { useIsNarrowHeader } from 'features/DataStream/lib/breakpoints';
 
 /** Find a feature by id and select it. */
 /** A bare number is looked up as the catchment first, then its flowpath. */
-const SearchBar = ({ placeholder = 'Search for an id' }) => {
+const SearchBar = ({ placeholder = 'Search for an id', shortPlaceholder = 'Find id' }) => {
+  const narrow = useIsNarrowHeader();
   const {
     hydrofabric_index_url,
     hydrofabric_index_fallback,
@@ -106,7 +110,7 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
         type="text"
         value={query}
         onChange={(e) => { setQuery(e.target.value); setNotFound(false); }}
-        placeholder={placeholder}
+        placeholder={narrow ? shortPlaceholder : placeholder}
         aria-label={placeholder}
         aria-invalid={notFound || undefined}
         aria-busy={loading || undefined}
@@ -118,7 +122,12 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
         disabled={loading || searching || !query.trim()}
         aria-label={searching ? 'Searching' : 'Search'}
       >
-        {searching ? <Spinner size={13} /> : 'Search'}
+        {searching ? <Spinner size={13} /> : (
+          <>
+            <SearchButtonLabel>Search</SearchButtonLabel>
+            <SearchSubmitIcon aria-hidden="true" />
+          </>
+        )}
       </SearchButton>
     </SearchBarWrapper>
   );
@@ -126,6 +135,7 @@ const SearchBar = ({ placeholder = 'Search for an id' }) => {
 
 SearchBar.propTypes = {
   placeholder: PropTypes.string,
+  shortPlaceholder: PropTypes.string,
 };
 
 export default SearchBar;

@@ -11,7 +11,7 @@ import { LayersMenu } from 'features/DataStream/components/menus/LayersMenu';
 import { AppContext } from 'features/Tethys/context/context';
 import { CustomNavBar, CustomDiv, StyledButton } from 'features/Tethys/components/Styles';
 import { GeneralInfoModal } from 'features/DataStream/components/Modals';
-import { ExperimentalBadge } from 'features/DataStream/components/styles/Styles';
+import { ExperimentalBadge, BadgeFull, BadgeShort, BadgeAssistive } from 'features/DataStream/components/styles/Styles';
 
 const Header = ({onNavChange}) => {
   const {tethysApp} = useContext(AppContext);
@@ -36,7 +36,9 @@ const Header = ({onNavChange}) => {
               </LinkContainer>
 
               <ExperimentalBadge title="These streamflow predictions are preliminary and are not an operational forecast.">
-                Experimental
+                <BadgeFull>Experimental</BadgeFull>
+                <BadgeShort aria-hidden="true">Exp</BadgeShort>
+                <BadgeAssistive>Experimental</BadgeAssistive>
               </ExperimentalBadge>
  
               <SearchBar/>

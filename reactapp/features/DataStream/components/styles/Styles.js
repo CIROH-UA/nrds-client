@@ -2,6 +2,8 @@ import styled, { css, keyframes } from 'styled-components';
 import { Button, Form, Modal } from 'react-bootstrap';
 import { FiSearch } from 'react-icons/fi';
 
+import { NARROW_HEADER_PX } from 'features/DataStream/lib/breakpoints';
+
 const visuallyHiddenRules = css`
   position: absolute;
   width: 1px;
@@ -90,6 +92,10 @@ export const ThemedModal = styled(Modal)`
     border-color: var(--modal-border-color);
   }
 
+  .modal-lg {
+    max-width: min(680px, calc(100vw - 32px));
+  }
+
   .modal-body {
     padding: 18px;
     font-size: var(--text-md);
@@ -100,16 +106,12 @@ export const ThemedModal = styled(Modal)`
 
 /** A note that opens in place, under the control that asked for it. */
 export const InfoPanel = styled.div`
-  margin: 8px 0 4px;
-  padding: 10px 12px;
-  border: 1px solid var(--panel-border-color);
-  border-radius: 6px;
-  background-color: var(--panel-background);
+  margin: 8px 0 12px;
+  padding: 10px 0 0;
+  border-top: 1px solid var(--panel-border-color);
   color: var(--panel-text-muted);
   font-size: var(--text-sm);
   line-height: 1.5;
-  max-height: 40vh;
-  overflow-y: auto;
   ${infoProse}
 
   strong {
@@ -211,14 +213,16 @@ export const Container = styled.div`
   color: var(--map-panel-text);
 
   z-index: 1000;
-  transition: transform 0.25s ease-out;
+  transition: transform 0.25s ease-out, visibility 0.25s;
 
   overflow-y: auto;
+  visibility: ${({ $isOpen }) => ($isOpen ? 'visible' : 'hidden')};
 
   transform: ${({ $isOpen }) =>
     $isOpen ? 'translateX(0)' : 'translateX(-100%)'};
 
   @media (max-width: 768px) {
+    overflow-y: ${({ $collapsed }) => ($collapsed ? 'hidden' : 'auto')};
     inset: auto 0 0 0;
     width: 100%;
     height: var(--sheet-height);
@@ -226,8 +230,15 @@ export const Container = styled.div`
     border-radius: var(--radius-md) var(--radius-md) 0 0;
     border-top: 1px solid var(--panel-border-color);
     box-shadow: var(--elevation-map-control);
-    transform: ${({ $isOpen }) =>
-      $isOpen ? 'translateY(0)' : 'translateY(100%)'};
+    transform: ${({ $isOpen, $collapsed }) => {
+      if (!$isOpen) return 'translateY(100%)';
+      return $collapsed ? 'translateY(max(0px, var(--sheet-height) - var(--sheet-peek)))' : 'translateY(0)';
+    }};
+
+    h2 {
+      white-space: nowrap;
+      overflow: hidden;
+    }
   }
 `;
 
@@ -325,7 +336,7 @@ export const Notice = styled.p`
 export const SButton = styled(Button)`
   border: none;
   color: var(--accent-text);
-  background-color: transparent;
+  background-color: ${({ $active }) => ($active ? 'var(--button-primary-hover-bg)' : 'transparent')};
   z-index: 1001;
   border-radius: 20px;
   &:hover,
@@ -536,6 +547,13 @@ export const Switch = styled(Form.Switch)`
   }
 `;
 
+/** Everything below the sheet's peek row, taken out of the tab order while collapsed. */
+export const CollapsibleRegion = styled.div`
+  @media (max-width: 768px) {
+    visibility: ${({ $collapsed }) => ($collapsed ? 'hidden' : 'visible')};
+  }
+`;
+
 export const Content = styled.div`
   padding: 14px 16px 18px;
   border-block-end: 1px solid var(--panel-border-color);
@@ -603,6 +621,15 @@ export const SearchBarWrapper = styled.div`
     min-height: 44px;
     min-width: 190px;
   }
+
+  @media (max-width: 560px) {
+    min-width: 150px;
+  }
+
+  @media (max-width: ${NARROW_HEADER_PX}px) {
+    min-width: 96px;
+    padding: 6px 6px;
+  }
   border-radius: 6px;
   background-color: var(--search-bg);
   box-sizing: border-box;
@@ -664,6 +691,26 @@ export const SearchIcon = styled(FiSearch)`
   margin-right: 8px;
   color: var(--muted-text);
   font-size: 16px;
+
+  @media (max-width: 560px) {
+    display: none;
+  }
+`;
+
+/** The submit control's text, traded for its icon where the row cannot spare the width. */
+export const SearchButtonLabel = styled.span`
+  @media (max-width: 560px) {
+    display: none;
+  }
+`;
+
+export const SearchSubmitIcon = styled(FiSearch)`
+  display: none;
+
+  @media (max-width: 560px) {
+    display: block;
+    font-size: 16px;
+  }
 `;
 
 export const SearchInput = styled.input`
@@ -686,6 +733,12 @@ export const SearchInput = styled.input`
     color: var(--search-placeholder);
   }
 
+  @media (max-width: ${NARROW_HEADER_PX}px) {
+    &::placeholder {
+      font-size: 0.8rem;
+    }
+  }
+
   &:disabled {
     cursor: default;
   }
@@ -700,6 +753,14 @@ export const SearchButton = styled.button`
   @media (max-width: 768px) {
     min-height: 36px;
     padding: 2px 12px;
+  }
+
+  @media (max-width: 560px) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    padding: 2px 8px;
   }
   border: none;
   border-radius: var(--radius-sm);
@@ -785,7 +846,34 @@ export const ExperimentalBadge = styled.span`
   line-height: 1.5;
   white-space: nowrap;
   @media (max-width: 560px) {
+    padding: 2px 8px;
+    font-size: 0.65rem;
+    letter-spacing: 0;
+  }
+`;
+
+/** The badge's full word, traded for its short form where the row cannot spare the width. */
+export const BadgeFull = styled.span`
+  @media (max-width: ${NARROW_HEADER_PX}px) {
     display: none;
+  }
+`;
+
+export const BadgeShort = styled.span`
+  display: none;
+
+  @media (max-width: ${NARROW_HEADER_PX}px) {
+    display: inline;
+  }
+`;
+
+/** The full word as real text, since aria-label on a generic span is not honoured. */
+export const BadgeAssistive = styled.span`
+  display: none;
+
+  @media (max-width: ${NARROW_HEADER_PX}px) {
+    display: inline;
+    ${visuallyHiddenRules}
   }
 `;
 

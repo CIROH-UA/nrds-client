@@ -81,10 +81,11 @@ describe('selectMapFeature', () => {
   });
 
   /**
-   * Closing the panel calls resetVPU, which empties the animation arrays and the selected
-   * variable while leaving the duckdb table built. A click then found that table and charted
-   * straight from it, leaving a plot with no variable selected, no animated reaches and no
-   * slider. A vpu load over an existing table skips the download and rebuilds all three.
+   * Leaving a vpu empties the animation arrays and the selected variable while leaving the duckdb
+   * table built. A click then found that table and charted straight from it, leaving a plot with
+   * no variable selected, no animated reaches and no slider. A vpu load over an existing table
+   * skips the download and rebuilds all three. Closing the panel no longer does any of this: it
+   * clears the selection and leaves the vpu, and its animation, alone.
    */
   it('rebuilds the view when the animation has been closed away', async () => {
     // A closed panel still has a cache_key: the table stays built, only the arrays are dropped.

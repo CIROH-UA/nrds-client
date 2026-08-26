@@ -32,7 +32,7 @@ const LoadingAnimation = ({ delay }) => {
 
   return (
     <Screen>
-      <Spinner size={40} thickness={3} label="Loading NRDS" />
+      <Spinner size={40} thickness={3} label="Loading NGIAB-NRDS" />
       <span>Loading</span>
     </Screen>
   );
