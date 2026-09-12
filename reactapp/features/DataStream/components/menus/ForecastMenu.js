@@ -1,5 +1,4 @@
 import { Fragment, useMemo, useCallback, useEffect, useState, useRef } from 'react';
-import DataMenu from '../forecast/dataMenu';
 import VariablesMenu from '../forecast/variablesMenu';
 import { Content, Container, CollapsibleRegion } from '../styles/Styles';
 import TimeSeriesCard from '../forecast/TimeseriesCard';
@@ -94,10 +93,9 @@ const ForecastMenu = () => {
                 {isSheet && <TimeSeriesCard />}
                 <VariablesMenu />
               </Content>
-
-              <Content>
-                <DataMenu />
-              </Content>
+              {/* The run selector moved out to the unified ControlMenu (KTD5/KTD8). This panel is
+                  now the mobile sheet host + variable picker; it keeps its body.dataset.sheet /
+                  --sheet-peek geometry effects above. */}
             </CollapsibleRegion>
           </Container>
     </Fragment>

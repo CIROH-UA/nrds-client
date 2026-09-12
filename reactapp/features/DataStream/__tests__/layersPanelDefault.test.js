@@ -1,16 +1,16 @@
 /**
- * The layer panel starts open.
+ * The map-control panel starts open.
  *
- * It is what says which layers exist and lets them be switched, and the catchments toggle inside
- * it governs the only layer a click acts on. Shut by default, a reader who had catchments off
- * saw a map that ignored every click with nothing on screen to explain it.
- *
- * It is 250px pinned to the right of the map, which is most of a phone, so small screens still
- * start closed.
+ * The layer toggles used to live in the Tethys navbar behind their own reveal button; they now
+ * live in the unified ControlMenu over the map (run + layers + theme), which keeps the same
+ * reveal behavior: open by default where there is room, closed on a phone where the panel would
+ * cover the map, and open when the browser will not say. The catchments toggle inside it still
+ * governs the only layer a click acts on, so a reader who had catchments off must be able to see
+ * why.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 
-import { LayersMenu } from 'features/DataStream/components/menus/LayersMenu';
+import { ControlMenu } from 'features/DataStream/components/menus/ControlMenu';
 
 const widthIs = (px) => {
   window.matchMedia = jest.fn().mockImplementation((query) => ({
@@ -21,7 +21,7 @@ const widthIs = (px) => {
   }));
 };
 
-const panel = () => document.getElementById('layer-options');
+const panel = () => document.getElementById('control-options');
 
 afterEach(() => { delete window.matchMedia; });
 
@@ -29,17 +29,17 @@ describe('on a screen with room for it', () => {
   it('is open before anyone clicks anything', () => {
     widthIs(1440);
 
-    render(<LayersMenu />);
+    render(<ControlMenu />);
 
     expect(panel()).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /hide layer options/i })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: /hide map controls/i })).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('can still be closed', () => {
     widthIs(1440);
-    render(<LayersMenu />);
+    render(<ControlMenu />);
 
-    fireEvent.click(screen.getByRole('button', { name: /hide layer options/i }));
+    fireEvent.click(screen.getByRole('button', { name: /hide map controls/i }));
 
     expect(panel()).not.toBeInTheDocument();
   });
@@ -49,10 +49,10 @@ describe('on a small screen', () => {
   it('stays closed, because the panel would cover the map', () => {
     widthIs(375);
 
-    render(<LayersMenu />);
+    render(<ControlMenu />);
 
     expect(panel()).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /show layer options/i })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('button', { name: /show map controls/i })).toHaveAttribute('aria-expanded', 'false');
   });
 });
 
@@ -61,7 +61,7 @@ describe('when the browser will not say', () => {
     // jsdom has no matchMedia by default, and neither does a sufficiently old browser.
     delete window.matchMedia;
 
-    render(<LayersMenu />);
+    render(<ControlMenu />);
 
     expect(panel()).toBeInTheDocument();
   });

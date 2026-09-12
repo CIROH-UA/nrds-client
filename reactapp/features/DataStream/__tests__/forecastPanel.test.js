@@ -72,22 +72,32 @@ describe('the panel still works', () => {
   const ForecastMenu = require('features/DataStream/components/menus/ForecastMenu').default;
   const useTimeSeriesStore = require('features/DataStream/store/Timeseries').default;
 
-  beforeEach(() => useTimeSeriesStore.setState({ feature_id: 'cat-7' }));
+  beforeEach(() =>
+    useTimeSeriesStore.setState({ feature_id: 'cat-7', layout: { title: 'Cat 7', subtitle: '' } })
+  );
 
-  it('opens for a selected feature and offers the run controls', () => {
+  it('opens for a selected feature', () => {
     render(<ForecastMenu />);
 
-    expect(screen.getByRole('heading', { name: /change the run/i })).toBeInTheDocument();
+    expect(screen.getByRole('complementary', { name: /selected feature/i })).toBeInTheDocument();
+  });
+
+  it('no longer carries the run selector, which moved to the unified ControlMenu', () => {
+    // The run cascade lives in ControlMenu now (KTD5/KTD8); the slimmed sheet keeps only the
+    // header, the variable picker, and -- on mobile -- the chart.
+    render(<ForecastMenu />);
+
+    expect(screen.queryByRole('heading', { name: /change the run/i })).not.toBeInTheDocument();
   });
 });
 
 /**
- * The panel is grouped by when a change takes effect.
+ * The slimmed panel keeps the variable picker; the run controls have left for the ControlMenu.
  *
  * Variable applies the moment it is picked: variablesMenu loads the series and sets the layer's
- * variable itself. The run selectors do nothing until Update. Those are two different kinds of
- * control and the panel had them in one run, with Variable last -- below the Update button, so
- * it read as an afterthought to the query rather than a property of the reading.
+ * variable itself. The run selectors do nothing until Update -- a different kind of control -- so
+ * they moved out to the unified ControlMenu (KTD5/KTD8), leaving the sheet as the chart host and
+ * the home of the variable picker.
  */
 describe('the order of the panel', () => {
   const ForecastMenu = require('features/DataStream/components/menus/ForecastMenu').default;
@@ -106,25 +116,19 @@ describe('the order of the panel', () => {
     return all.findIndex((el) => el.children.length === 0 && new RegExp(text, 'i').test(el.textContent));
   };
 
-  it('puts the variable before the run controls', () => {
+  it('still shows the variable picker', () => {
     const { container } = render(<ForecastMenu />);
 
     const variable = positionOf(container, '^Variable$');
-    const heading = positionOf(container, '^Change the run$');
 
     expect(variable).toBeGreaterThan(-1);
-    expect(heading).toBeGreaterThan(-1);
-    expect(variable).toBeLessThan(heading);
   });
 
-  it('puts the variable before Update, not after it', () => {
+  it('no longer shows the run controls or their Update button', () => {
     const { container } = render(<ForecastMenu />);
 
-    const variable = positionOf(container, '^Variable$');
-    const update = positionOf(container, '^Update$');
-
-    expect(update).toBeGreaterThan(-1);
-    expect(variable).toBeLessThan(update);
+    expect(positionOf(container, '^Change the run$')).toBe(-1);
+    expect(positionOf(container, '^Update$')).toBe(-1);
   });
 
   it('keeps the variable in the same block as the chart it changes', () => {

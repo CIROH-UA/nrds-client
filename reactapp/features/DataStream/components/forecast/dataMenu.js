@@ -531,6 +531,13 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
             value={r.value}
             onChangeHandler={r.onChange}
             isLoading={selecting}
+            /* While a selection chain refills the dependent listings, those options are either
+               not yet populated or still describe the superseded selection. Disable everything
+               below the top-level Model so the reader cannot pick against a stale/empty list;
+               Model stays live so a second switch can still supersede the first (the race guard
+               in selectionGeneration handles the ordering). Wired off `selecting`, which is set
+               by runSelection/beginSelection -- the same signal, not a parallel one. */
+            isDisabled={selecting && r.key !== 'model'}
           />
         </Row>
       ))}

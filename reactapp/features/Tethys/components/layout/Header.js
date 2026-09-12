@@ -7,7 +7,6 @@ import { BsInfoCircle } from 'react-icons/bs';
 import { LinkContainer } from 'react-router-bootstrap';
 import SearchBar from 'features/DataStream/components/map/SearchBar';
 import LoadStatus from 'features/DataStream/components/status/LoadStatus';
-import { LayersMenu } from 'features/DataStream/components/menus/LayersMenu';
 import { AppContext } from 'features/Tethys/context/context';
 import { CustomNavBar, CustomDiv, StyledButton } from 'features/Tethys/components/Styles';
 import { GeneralInfoModal } from 'features/DataStream/components/Modals';
@@ -53,7 +52,6 @@ const Header = ({onNavChange}) => {
               >
                 <BsInfoCircle size="1.5rem" aria-hidden="true" />
               </StyledButton>
-              <LayersMenu inline />
             </CustomDiv>
             <GeneralInfoModal
               show={modalGeneralInfoShow}
