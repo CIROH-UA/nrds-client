@@ -1,20 +1,12 @@
 import { useMemo } from 'react';
 
-import { createMediaQuery, useMediaQuery } from 'features/DataStream/lib/matchMedia';
 import { DARK_RAMP, LIGHT_RAMP } from 'features/DataStream/lib/valueRamp';
+import { useEffectiveTheme, useThemeStore } from 'features/DataStream/store/theme';
 
 /** The map's colours, read when they are needed rather than when the module loads. */
-const DARK_QUERY = '(prefers-color-scheme: dark)';
 
 const LIGHT_STYLE =
   'https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/styles/light-style.json';
-
-// jsdom has no matchMedia, and a missing query is not a dark one.
-const dark = createMediaQuery(DARK_QUERY, () => false);
-
-/** Whether the reader's system asks for a dark interface. */
-/** prefersDark looks unused to the linter and is the whole point: the tokens are not observable, so the media query that changes them stands in for them. */
-export const usePrefersDark = () => useMediaQuery(dark);
 
 const readToken = (name, fallback) => {
   const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -33,15 +25,15 @@ export const readMapTheme = () => {
     vpuBoundary: readToken('--map-vpu-boundary-color', '#009988'),
     cursorSymbolFill: readToken('--map-cursor-symbol-fill', '#1f78b4'),
     pointStroke: readToken('--map-point-stroke-color', '#f7fafe'),
-    ramp: dark.snapshot() ? DARK_RAMP : LIGHT_RAMP,
+    ramp: useThemeStore.getState().theme === 'dark' ? DARK_RAMP : LIGHT_RAMP,
   };
 };
 
 /** The map's colours for the current theme, recomputed when the theme changes. */
 export const useMapTheme = () => {
-  const prefersDark = usePrefersDark();
+  const theme = useEffectiveTheme();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  return useMemo(() => readMapTheme(), [prefersDark]);
+  return useMemo(() => readMapTheme(), [theme]);
 };
 
 export default useMapTheme;

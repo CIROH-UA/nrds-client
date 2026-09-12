@@ -81,7 +81,11 @@ $theme-colors: (
 /* === THEME VARIABLES === */
 
 /* Base (light) theme */
-:root {
+/* The same declarations serve the bare :root (the default, which the system @media block below
+   overrides) and an explicit data-theme="light", so a manual light choice is the light theme byte
+   for byte rather than a second copy that can drift from it. */
+:root,
+:root[data-theme='light'] {
   color-scheme: light dark;
   /* core */
   --background-color: oklch(0.992 0.004 250);   /* ngiab --bg      */
@@ -103,6 +107,12 @@ $theme-colors: (
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-pill: 999px;
+
+  // Shared interaction affordances (ngiab parity). The focus ring is the same accent used for
+  // the active nav pill and the map selection, and the tap target is WCAG 2.5.8's comfortable
+  // 44px rather than its 24px floor.
+  --focus-ring: 2px solid var(--nav-pill-active-bg);
+  --tap-min: 44px;
 
   /* Elevation for things floating over the map.
      One shadow was copied into all three overlays: 0 2px 8px rgba(0,0,0,0.25), pure black at 25%
@@ -303,8 +313,10 @@ $theme-colors: (
 
 
 /* Dark theme override */
-@media (prefers-color-scheme: dark) {
-  :root {
+/* The dark values live in one mixin so the manual choice (:root[data-theme="dark"]) and the
+   system preference (@media prefers-color-scheme) apply exactly the same tokens and cannot
+   drift apart. */
+@mixin theme-dark {
     --primary-color: #{$secondary};
     --title-text-color: oklch(0.945 0.006 250);   /* ngiab --fg (dark)      */
     --background-color: oklch(0.205 0.010 250);   /* ngiab --bg (dark)      */
@@ -425,6 +437,18 @@ $theme-colors: (
     --chart-line-2: #e38d3d;
     --chart-line-3: #e86156;
     --chart-line-4: #a780e6;
+}
+
+/* A manual dark choice wins over the system preference. */
+:root[data-theme='dark'] {
+  @include theme-dark;
+}
+
+/* The system preference still applies, but only when the reader has made no explicit choice --
+   an explicit data-theme="light" opts out (ngiab-style guard). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    @include theme-dark;
   }
 }
 

@@ -4,7 +4,7 @@ import { Switch } from  '../styles/Styles';
 import { IoLayers } from "react-icons/io5";
 import { IconLabel, Row, Title, InfoPanel } from '../styles/Styles';
 import { CatchmentSymbol, FlowPathSymbol, GaugeSymbol, VpuSymbol, symbologyColors, CursorSymbol } from '../../lib/layers';
-import { usePrefersDark } from '../../lib/mapTheme';
+import { useEffectiveTheme } from '../../store/theme';
 import { InfoToggle } from '../InfoDisclosure';
 import { LayerInfoContent } from '../InfoContent';
 import { ValueLegendPanel } from './ValueLegend';
@@ -35,9 +35,9 @@ export const LayerControl = () => {
   const vpuLayer = useLayersStore((state) => state.vpu);
   const set_vpu_visibility = useLayersStore((state) => state.set_vpu_visibility);
 
-  const prefersDark = usePrefersDark();
+  const theme = useEffectiveTheme();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const colors = useMemo(() => symbologyColors(), [prefersDark]);
+  const colors = useMemo(() => symbologyColors(), [theme]);
 
   const handleToggleCatchmentLayer = () => {
     set_catchments_visibility(!catchmentLayer.visible);
