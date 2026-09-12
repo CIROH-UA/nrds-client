@@ -33,6 +33,7 @@ export function flowPathLayerProps({
   pathTick,
   zoom,
   ramp,
+  scale,
 }) {
   const numTimes = timesArr?.length || 0;
   if (!valuesByVar || !numTimes || !pathData?.length || !ramp) return null;
@@ -60,8 +61,8 @@ export function flowPathLayerProps({
     jointRounded: true,
     pickable: false,
     updateTriggers: {
-      getColor: [frame, variable, pathTick, ramp],
-      getWidth: [frame, variable, pathTick],
+      getColor: [frame, variable, pathTick, ramp, scale],
+      getWidth: [frame, variable, pathTick, scale],
     },
   };
 }

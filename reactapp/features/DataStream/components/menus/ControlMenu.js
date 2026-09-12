@@ -1,11 +1,15 @@
-import { Fragment, useCallback, useState } from 'react';
+import { Fragment, useCallback, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import { IoOptions, IoClose } from 'react-icons/io5';
+import { useShallow } from 'zustand/react/shallow';
 
 import { DataMenuControls } from '../forecast/dataMenu';
 import { LayerControl } from '../map/LayersControl';
 import { ThemeToggle } from './ThemeToggle';
-import { LayerButton, PanelSectionHeading } from '../styles/Styles';
+import SelectComponent from '../SelectComponent';
+import { LayerButton, PanelSectionHeading, Row, IconLabel } from '../styles/Styles';
+import { useVPUStore } from '../../store/VPU';
+import { SCALE_OPTIONS } from '../../lib/colorScale';
 
 /**
  * The one map-chrome control (KTD5): run selection, layer toggles, and the light/dark theme,
@@ -81,6 +85,38 @@ const shouldStartOpen = () => {
   }
 };
 
+/** The colour-scale selector: how a reach's value maps into the ramp. */
+const ColorScaleControl = () => {
+  const { scale, setScale } = useVPUStore(
+    useShallow((s) => ({ scale: s.scale, setScale: s.setScale }))
+  );
+
+  const selected = useMemo(
+    () => SCALE_OPTIONS.find((o) => o.value === scale) ?? SCALE_OPTIONS[0],
+    [scale]
+  );
+
+  const onChange = useCallback((opt) => opt && setScale(opt.value), [setScale]);
+
+  return (
+    <Fragment>
+      <PanelSectionHeading>Colour scale</PanelSectionHeading>
+      <Row>
+        <IconLabel as="label" htmlFor="color-scale-select">
+          Color scale
+        </IconLabel>
+        <SelectComponent
+          inputId="color-scale-select"
+          compact
+          optionsList={SCALE_OPTIONS}
+          value={selected}
+          onChangeHandler={onChange}
+        />
+      </Row>
+    </Fragment>
+  );
+};
+
 /** The unified run + layers + theme control, and the button that reveals it. */
 export const ControlMenu = () => {
   const [open, setOpen] = useState(shouldStartOpen);
@@ -108,6 +144,10 @@ export const ControlMenu = () => {
 
           <Section aria-label="Layers">
             <LayerControl />
+          </Section>
+
+          <Section aria-label="Colour scale">
+            <ColorScaleControl />
           </Section>
 
           <Section aria-label="Theme">

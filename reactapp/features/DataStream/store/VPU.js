@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { sameArrayValues, sameObjectValues } from 'features/DataStream/lib/equality';
 import { subscribeWithSelector } from 'zustand/middleware';
+import { DEFAULT_SCALE } from 'features/DataStream/lib/colorScale';
 
 /** The animation's data: which features it covers, the clock it runs on, and the values per variable. */
 
@@ -23,8 +24,12 @@ export const useVPUStore = create(
     times: [],
     valuesByVar: {},
     varDataOrder: [],
+    scale: DEFAULT_SCALE,
 
     getVarData: (variable) => get().valuesByVar?.[variable],
+
+    /** Choose how a value is reshaped before it is mapped onto the colour ramp. */
+    setScale: (scale) => set((s) => (s.scale === scale ? s : { scale })),
     setFeatureIds: (featureIds) =>
       set((s) => {
         if (sameArrayValues(s.featureIds, featureIds)) return s;

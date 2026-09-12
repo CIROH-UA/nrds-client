@@ -31,6 +31,7 @@ import {
   selectionLngLat,
   setVpuVisibility,
 } from '../../lib/layers';
+import { scaledBounds } from '../../lib/colorScale';
 import { useMapTheme } from '../../lib/mapTheme';
 import { createPointerCursor } from '../../lib/mapCursor';
 import {
@@ -81,6 +82,7 @@ const FlowPathsOverlay = React.memo(function FlowPathsOverlay({
   pathTick,
   getCursor,
   ramp,
+  scale,
 }) {
   const currentTimeIndex = useTimeSeriesStore((s) => s.currentTimeIndex);
 
@@ -110,9 +112,10 @@ const FlowPathsOverlay = React.memo(function FlowPathsOverlay({
       pathTick,
       zoom,
       ramp,
+      scale,
     });
     return props ? [new PathLayer(props)] : NO_LAYERS;
-  }, [visible, valuesByVar, bounds, variable, timesArr, currentTimeIndex, visiblePaths, zoom, ramp]);
+  }, [visible, valuesByVar, bounds, variable, timesArr, currentTimeIndex, visiblePaths, zoom, ramp, scale]);
 
   return <DeckGLOverlay layers={layers} interleaved getCursor={getCursor} />;
 });
@@ -127,6 +130,7 @@ FlowPathsOverlay.propTypes = {
   pathDataRef: PropTypes.shape({ current: PropTypes.array }).isRequired,
   pathTick: PropTypes.number,
   ramp: PropTypes.arrayOf(PropTypes.array),
+  scale: PropTypes.string,
 };
 
 /** The map and everything docked to it. */
@@ -174,11 +178,12 @@ const MainMap = () => {
 
   const variable = useTimeSeriesStore((s) => s.variable);
 
-  const { featureIdToIndex, timesArr, valuesByVar } = useVPUStore(
+  const { featureIdToIndex, timesArr, valuesByVar, scale } = useVPUStore(
     useShallow((s) => ({
       featureIdToIndex: s.featureIdToIndex,
       timesArr: s.times,
       valuesByVar: s.valuesByVar?.[variable],
+      scale: s.scale,
     }))
   );
 
@@ -193,7 +198,17 @@ const MainMap = () => {
   const [zoom, setZoom] = useState(INITIAL_VIEW.zoom);
   const [mapReady, setMapReady] = useState(false);
 
-  const colorBounds = useMemo(() => boundsFor(valuesByVar), [valuesByVar]);
+  const colorBounds = useMemo(
+    () =>
+      scaledBounds({
+        bounds: boundsFor(valuesByVar),
+        values: valuesByVar,
+        scale,
+        variable,
+        classes: mapTheme.ramp?.length,
+      }),
+    [valuesByVar, scale, variable, mapTheme.ramp]
+  );
 
   const belowFlowpathZoom = useMemo(
     () => shouldPromptZoom({
@@ -484,6 +499,7 @@ const MainMap = () => {
         bounds={colorBounds}
         pathDataRef={pathDataRef}
         pathTick={pathTick}
+        scale={scale}
       />
       {sliderDocked && (
         <TimeSliderDock>
