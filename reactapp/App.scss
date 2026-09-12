@@ -357,3 +357,35 @@ body {
 .modal-backdrop.show {
   opacity: 0.45;
 }
+
+.feature-chart-popup .maplibregl-popup-content {
+  padding: 18px 14px 14px;
+  border-radius: var(--radius-md);
+  background-color: var(--popup-bg);
+  color: var(--popup-text-color);
+  border: 1px solid var(--panel-border-color);
+  box-shadow: var(--elevation-map-control);
+}
+
+.feature-chart-popup .maplibregl-popup-close-button {
+  width: 26px;
+  height: 26px;
+  top: 4px;
+  right: 4px;
+  padding: 0;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--popup-text-color);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+}
+
+.feature-chart-popup .maplibregl-popup-close-button:hover {
+  background: var(--select-option-hover-bg);
+}
+
+.feature-chart-popup .maplibregl-popup-tip {
+  border-top-color: var(--popup-bg);
+  border-bottom-color: var(--popup-bg);
+}

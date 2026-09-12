@@ -250,9 +250,12 @@ export const PopupContent = styled.div`
   ${({ $chart }) =>
     $chart &&
     css`
-      max-width: 380px;
+      padding: 0;
+      box-shadow: none;
+      max-width: 340px;
       max-height: min(60vh, 360px);
       overflow-y: auto;
+      gap: 6px;
     `}
 `;
 
@@ -318,7 +321,7 @@ export const LayersContainer = styled.div`
 
 export const LayerButton = styled(Button)`
   top: 60px;
-  right: 1%;
+  left: 10px;
   position: absolute;
   margin-top: 10px;
   min-width: 44px;
@@ -543,8 +546,8 @@ export const Row = styled.div`
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  min-height: 44px;
-  padding: 6px 0;
+  min-height: ${({ $compact }) => ($compact ? 'auto' : '44px')};
+  padding: ${({ $compact }) => ($compact ? '2px 0' : '6px 0')};
   margin-bottom: 2px;
   font-size: 13px;
 `;

@@ -36,7 +36,8 @@ export const SelectedFeaturePopup = React.memo(() => {
       closeButton
       closeOnClick={false}
       onClose={() => setSelectedFeature(null)}
-      maxWidth="380px"
+      className="feature-chart-popup"
+      maxWidth="360px"
     >
       <PopupContent $chart>
         {header.map(({ label, value }) => (
@@ -45,7 +46,7 @@ export const SelectedFeaturePopup = React.memo(() => {
             <span className="popup-value">{value}</span>
           </div>
         ))}
-        <VariablesMenu />
+        <VariablesMenu compact />
         <TimeSeriesCard width={CHART_WIDTH} height={CHART_HEIGHT} />
       </PopupContent>
     </Popup>

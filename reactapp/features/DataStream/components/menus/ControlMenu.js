@@ -23,7 +23,7 @@ import { LayerButton, PanelSectionHeading } from '../styles/Styles';
 const Panel = styled.div`
   position: absolute;
   top: calc(var(--ts-header-height) + 16px);
-  right: 10px;
+  left: 10px;
   width: min(300px, calc(100vw - 32px));
   max-height: calc(100dvh - var(--ts-header-height) - 90px);
   padding: 14px 16px;

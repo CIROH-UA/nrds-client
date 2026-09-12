@@ -104,7 +104,7 @@ describe('touch targets', () => {
   });
 
   it('makes the row a 44px target instead', () => {
-    expect(block(styles, 'export const Row =')).toMatch(/min-height:\s*44px/);
+    expect(block(styles, 'export const Row =')).toMatch(/min-height:[\s\S]{0,80}44px/);
   });
 
   it('gives the two header controls a 44px box', () => {

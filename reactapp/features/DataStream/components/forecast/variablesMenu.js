@@ -1,4 +1,5 @@
 import React, { useMemo, Fragment, useCallback, useRef } from 'react';
+import PropTypes from 'prop-types';
 import { Row, IconLabel } from '../styles/Styles';
 import SelectComponent from '../SelectComponent';
 import { getVpuVariableFlat } from 'features/DataStream/lib/queryData';
@@ -10,7 +11,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { createSequence } from 'features/DataStream/lib/sequence';
 
 /** The variable selector for the charted feature. */
-function VariablesMenu() {
+function VariablesMenu({ compact = false }) {
   const changes = useRef(createSequence()).current;
 
   const{ variables, cacheKey } = useDataStreamStore(
@@ -93,18 +94,23 @@ function VariablesMenu() {
   return (
     <Fragment>
          { availableVariablesList.length > 0 && (
-          <Row>
+          <Row $compact={compact}>
             <IconLabel as="label" htmlFor="select-variable">Variable</IconLabel>
             <SelectComponent
               inputId="select-variable"
               optionsList={availableVariablesList}
               value={selectedVariableOption}
               onChangeHandler={handleChangeVariable}
+              compact={compact}
             />
           </Row>
         )}
     </Fragment>
   );
 }
+
+VariablesMenu.propTypes = {
+  compact: PropTypes.bool,
+};
 
 export default React.memo(VariablesMenu);
