@@ -10,6 +10,7 @@ import LoadStatus from 'features/DataStream/components/status/LoadStatus';
 import { AppContext } from 'features/Tethys/context/context';
 import { CustomNavBar, CustomDiv, StyledButton } from 'features/Tethys/components/Styles';
 import { GeneralInfoModal } from 'features/DataStream/components/Modals';
+import { ThemeToggle } from 'features/DataStream/components/menus/ThemeToggle';
 import { ExperimentalBadge, BadgeFull, BadgeShort, BadgeAssistive } from 'features/DataStream/components/styles/Styles';
 
 const Header = ({onNavChange}) => {
@@ -44,6 +45,7 @@ const Header = ({onNavChange}) => {
               <LoadStatus/>
             </CustomDiv>
             <CustomDiv $fixed>
+              <ThemeToggle />
               <StyledButton
                 type="button"
                 onClick={() => setModalGeneralInfoShow(true)}

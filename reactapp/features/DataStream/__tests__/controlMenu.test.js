@@ -1,13 +1,12 @@
 /**
- * The unified ControlMenu (U4/KTD5): one map-chrome control that holds the model-run selector,
- * the layer toggles, and the light/dark theme toggle -- previously three disconnected regions
- * (run selector in the forecast sheet, layer menu in the navbar, no manual theme control).
+ * The unified ControlMenu (U4/KTD5): one map-chrome control that holds the model-run selector, the
+ * layer toggles, and the flowpath value ramp (the colour scale and its legend, grouped). The manual
+ * theme toggle now lives in the navbar beside the About control, not in this menu.
  *
  * It composes existing behavior rather than reimplementing it: the run cascade is
- * `DataMenuControls` (`useDataStreamStore` + `useS3DataStreamBucketStore` + `loadVpu`), the
- * toggles are `LayerControl` (`useLayersStore`), the theme control is the U2 `ThemeToggle`. These
- * tests pin that all three are present and that run loading and layer visibility still behave as
- * before (R6).
+ * `DataMenuControls` (`useDataStreamStore` + `useS3DataStreamBucketStore` + `loadVpu`), the toggles
+ * are `LayerControl` (`useLayersStore`). These tests pin that the groups are present and that run
+ * loading and layer visibility still behave as before (R6).
  */
 import fs from 'fs';
 import path from 'path';
@@ -63,8 +62,8 @@ beforeEach(() => {
 
 afterEach(() => { delete window.matchMedia; });
 
-describe('the three groups', () => {
-  it('renders the run selector, the layer toggles, and the theme toggle together', () => {
+describe('the groups', () => {
+  it('renders the run selector, the layer toggles, and the flowpath value ramp together', () => {
     useS3DataStreamBucketStore.setState({ models: [{ value: 'm1', label: 'm1' }] });
 
     render(<ControlMenu />);
@@ -76,9 +75,15 @@ describe('the three groups', () => {
     expect(screen.getByLabelText(/catchments/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/flowpaths/i)).toBeInTheDocument();
 
+    expect(screen.getByRole('heading', { name: /flowpath values/i })).toBeInTheDocument();
+  });
+
+  it('does not render the theme toggle, which now lives in the navbar', () => {
+    render(<ControlMenu />);
+
     expect(
-      screen.getByRole('button', { name: /switch to (light|dark) theme/i })
-    ).toHaveAttribute('aria-pressed');
+      screen.queryByRole('button', { name: /switch to (light|dark) theme/i })
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -136,5 +141,11 @@ describe('the old homes are emptied', () => {
   it('the slimmed ForecastMenu no longer imports or renders the run selector', () => {
     const forecast = read('../components/menus/ForecastMenu.js');
     expect(forecast).not.toMatch(/DataMenu/);
+  });
+
+  it('the navbar now hosts the theme toggle, beside the About control', () => {
+    const header = read('../../Tethys/components/layout/Header.js');
+    expect(header).toMatch(/import \{ ThemeToggle \}/);
+    expect(header).toMatch(/<ThemeToggle \/>/);
   });
 });

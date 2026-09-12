@@ -7,7 +7,6 @@ import { CatchmentSymbol, FlowPathSymbol, GaugeSymbol, VpuSymbol, symbologyColor
 import { useEffectiveTheme } from '../../store/theme';
 import { InfoToggle } from '../InfoDisclosure';
 import { LayerInfoContent } from '../InfoContent';
-import { ValueLegendPanel } from './ValueLegend';
 
 /** The legend reads the same signal the map layers do, so the two cannot describe different themes. It was branching on styled-components' useTheme, and nothing installs a ThemeProvider, so that value was always undefined and the legend was always the light branch. */
 export const LayerControl = () => {
@@ -131,8 +130,6 @@ export const LayerControl = () => {
           title="Toggle VPU boundaries"
         />
       </Row>
-
-      <ValueLegendPanel />
 
       <IconLabel $fontSize={14}>
         <span style={{ fontWeight: 600 }}>Map Interactions</span>

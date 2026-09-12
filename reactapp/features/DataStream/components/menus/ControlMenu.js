@@ -5,7 +5,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { DataMenuControls } from '../forecast/dataMenu';
 import { LayerControl } from '../map/LayersControl';
-import { ThemeToggle } from './ThemeToggle';
+import { ValueLegendPanel } from '../map/ValueLegend';
 import SelectComponent from '../SelectComponent';
 import { LayerButton, PanelSectionHeading, Row, IconLabel } from '../styles/Styles';
 import { useVPUStore } from '../../store/VPU';
@@ -63,17 +63,42 @@ const Section = styled.section`
   }
 `;
 
-const ThemeRow = styled.div`
+const PanelHeader = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  margin-bottom: 8px;
 `;
 
-const ThemeLabel = styled.span`
-  font-size: var(--text-sm);
+const PanelTitle = styled.h2`
+  margin: 0;
+  font-size: var(--text-md);
   font-weight: var(--weight-strong);
   color: var(--map-panel-text);
+`;
+
+const CloseButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--map-panel-text);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--select-option-hover-bg);
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: 2px;
+  }
 `;
 
 /** Open unless the screen is too small to spare the room (mirrors the old LayersMenu default). */
@@ -123,20 +148,35 @@ export const ControlMenu = () => {
 
   return (
     <Fragment>
-      <LayerButton
-        type="button"
-        onClick={toggle}
-        aria-expanded={open}
-        aria-controls="control-options"
-        aria-label={open ? 'Hide map controls' : 'Show map controls'}
-        title={open ? 'Hide map controls' : 'Show map controls'}
-        $bgColor={open ? 'transparent' : undefined}
-      >
-        {open ? <IoClose size={20} aria-hidden="true" /> : <IoOptions size={20} aria-hidden="true" />}
-      </LayerButton>
+      {!open && (
+        <LayerButton
+          type="button"
+          onClick={toggle}
+          aria-expanded={false}
+          aria-controls="control-options"
+          aria-label="Show map controls"
+          title="Show map controls"
+        >
+          <IoOptions size={20} aria-hidden="true" />
+        </LayerButton>
+      )}
 
       {open && (
         <Panel id="control-options" role="group" aria-label="Map controls">
+          <PanelHeader>
+            <PanelTitle>Map controls</PanelTitle>
+            <CloseButton
+              type="button"
+              onClick={toggle}
+              aria-expanded
+              aria-controls="control-options"
+              aria-label="Hide map controls"
+              title="Hide map controls"
+            >
+              <IoClose size={18} aria-hidden="true" />
+            </CloseButton>
+          </PanelHeader>
+
           <Section aria-label="Model run">
             <DataMenuControls />
           </Section>
@@ -145,16 +185,10 @@ export const ControlMenu = () => {
             <LayerControl />
           </Section>
 
-          <Section>
+          <Section aria-label="Flowpath values">
+            <PanelSectionHeading>Flowpath values</PanelSectionHeading>
             <ColorScaleControl />
-          </Section>
-
-          <Section aria-label="Theme">
-            <PanelSectionHeading>Appearance</PanelSectionHeading>
-            <ThemeRow>
-              <ThemeLabel>Theme</ThemeLabel>
-              <ThemeToggle />
-            </ThemeRow>
+            <ValueLegendPanel />
           </Section>
         </Panel>
       )}

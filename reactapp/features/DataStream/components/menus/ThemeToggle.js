@@ -11,7 +11,8 @@ import { useThemeStore } from 'features/DataStream/store/theme';
  * root -- so the CSS chrome swaps -- and is the hook the map, ramp, symbology and legend read, so
  * they restyle with it rather than being stranded on the system `prefers-color-scheme` query.
  *
- * Mounted in `ControlMenu`; kept as a standalone, testable control that owns only the toggle.
+ * Mounted in the navbar header beside the About control; kept as a standalone, testable control
+ * that owns only the toggle.
  *
  * Accessibility: a real <button>, so it is in the tab order and Space/Enter activate it for free;
  * `aria-pressed` reports whether dark is on; the accessible name states the action for the current
@@ -24,19 +25,19 @@ const ToggleButton = styled.button`
   justify-content: center;
   min-width: var(--tap-min, 44px);
   min-height: var(--tap-min, 44px);
-  padding: 0;
-  border: 1px solid var(--panel-border-color);
-  border-radius: var(--radius-pill, 999px);
-  background-color: var(--panel-background);
+  padding: 5px;
+  border: none;
+  border-radius: 20px;
+  background-color: transparent;
   color: var(--text-color);
-  font-size: var(--text-lg, 1.125rem);
+  font-size: 1.5rem;
   line-height: 0;
   cursor: pointer;
   transition: background-color var(--dur, 180ms) ease, color var(--dur, 180ms) ease;
 
   &:hover {
     background-color: var(--button-primary-hover-bg);
-    color: var(--button-primary-text-hover);
+    color: var(--text-color);
   }
 
   &:focus-visible {

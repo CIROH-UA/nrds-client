@@ -260,6 +260,12 @@ export const PopupContent = styled.div`
       .popup-row:first-of-type {
         padding-right: 26px;
       }
+
+      .popup-row:last-of-type {
+        padding-bottom: 8px;
+        margin-bottom: 2px;
+        border-bottom: 1px solid var(--panel-border-color);
+      }
     `}
 `;
 

@@ -45,7 +45,7 @@ const MenuList = React.memo(function MenuList(props) {
 });
 
 const customStyles = (width = 150, compact = false) => {
-  const controlHeight = compact ? 32 : 44;
+  const controlHeight = compact ? 30 : 44;
   return {
     container: (base) => ({
       ...base,
@@ -79,12 +79,13 @@ const customStyles = (width = 150, compact = false) => {
     }),
     dropdownIndicator: (base) => ({
       ...base,
-      padding: '0 4px',
+      padding: compact ? '0 2px' : '0 4px',
     }),
     clearIndicator: (base) => ({
       ...base,
       padding: '0 4px',
     }),
+    indicatorSeparator: (base) => (compact ? { display: 'none' } : base),
     singleValue: (base) => ({
       ...base,
       color: 'var(--select-text-color)',
