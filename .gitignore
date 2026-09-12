@@ -38,7 +38,13 @@ build/*
 
 # Node/React
 node_modules*
-tethysapp/nrds/public/frontend/
+# webpack build output (removed at the vanilla-migration cutover, U8); the vanilla source under
+# public/frontend/ is tracked, so ignore only the generated bundle, its fonts, and vendored deps.
+tethysapp/nrds/public/frontend/main.js
+tethysapp/nrds/public/frontend/main.js.LICENSE.txt
+tethysapp/nrds/public/frontend/*.woff2
+tethysapp/nrds/public/frontend/*.png
+tethysapp/nrds/public/frontend/vendor/
 tethysapp/nrds/public/data/
 reactapp/config/production.env
 coverage
