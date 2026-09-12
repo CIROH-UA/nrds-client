@@ -19,6 +19,53 @@ export const TimeSeriesContainer = styled.div`
   order: 1;
   flex: 1 1 80%;
   background-color: var(--panel-background);
+
+  /* In the anchored popup the size is fixed and given inline: @visx ParentSize cannot measure a
+     surface that sizes itself to its content, so the chart is told its box rather than reading it. */
+  ${({ $fixed }) =>
+    $fixed &&
+    css`
+      width: auto;
+      height: auto;
+      flex: none;
+      background-color: transparent;
+    `}
+
+  .chart-state {
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 12px;
+    text-align: center;
+    font-size: var(--text-sm);
+    color: var(--chart-empty-text-color, #6b7280);
+  }
+
+  .chart-state--error p {
+    margin: 0;
+    color: var(--status-failed-text);
+  }
+
+  .chart-state--error button {
+    min-height: 32px;
+    padding: 4px 12px;
+    border: 1px solid currentColor;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: inherit;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    cursor: pointer;
+  }
+
+  .chart-state--error button:hover {
+    background-color: var(--nav-button-hover-bg);
+  }
 `;
 
 // Themed Modal wrapper - now fully CSS-variable based
@@ -202,6 +249,16 @@ export const PopupContent = styled.div`
     font-family: var(--font-mono);
     word-break: break-all;
   }
+
+  /* Hosting the chart: wider than a bare readout, and capped in height with its own scroll so the
+     chart plus header never clips against a map edge. (KTD6) */
+  ${({ $chart }) =>
+    $chart &&
+    css`
+      max-width: 380px;
+      max-height: min(60vh, 360px);
+      overflow-y: auto;
+    `}
 `;
 
 export const Container = styled.div`

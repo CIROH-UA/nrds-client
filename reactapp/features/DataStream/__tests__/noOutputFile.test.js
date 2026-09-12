@@ -234,7 +234,10 @@ describe('what an empty chart says', () => {
     });
     render(<TimeSeriesCard />);
 
-    expect(screen.getByText(/No data to chart for cat-2884494/i)).toBeInTheDocument();
+    // A failed load now reads as an explicit error rather than as an absence of data or a
+    // load still running: the chart card owns its own loading/empty/error states.
+    expect(screen.queryByText(/loading/i)).toBeNull();
+    expect(screen.getByRole('alert')).toHaveTextContent(/could not load/i);
   });
 });
 

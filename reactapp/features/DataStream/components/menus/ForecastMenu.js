@@ -89,7 +89,9 @@ const ForecastMenu = () => {
               aria-hidden={isCollapsed || undefined}
             >
               <Content>
-                <TimeSeriesCard />
+                {/* The chart lives on the feature: the anchored popup hosts it on desktop, so
+                    only the mobile sheet renders it here. (R4, KTD8) */}
+                {isSheet && <TimeSeriesCard />}
                 <VariablesMenu />
               </Content>
 

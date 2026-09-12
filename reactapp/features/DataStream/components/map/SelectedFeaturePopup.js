@@ -2,24 +2,34 @@ import React, { useMemo, useState } from 'react';
 import { Popup } from 'react-map-gl/maplibre';
 
 import { useFeatureStore } from 'features/DataStream/store/Layers';
-import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import { useIsSheetLayout } from 'features/DataStream/lib/breakpoints';
-import { featureFields } from 'features/DataStream/lib/featureFields';
+import { curatedFeatureFields } from 'features/DataStream/lib/featureFields';
 import { selectionLngLat } from 'features/DataStream/lib/layers';
+import TimeSeriesCard from 'features/DataStream/components/forecast/TimeseriesCard';
 import { PopupContent } from '../styles/Styles';
 
-/** What the selected feature is, shown where the feature is. */
+// Fixed because the popup sizes itself to its content: @visx ParentSize would measure it as it
+// grows and the two would wait on each other, so the chart is told its box. (KTD6)
+const CHART_WIDTH = 340;
+const CHART_HEIGHT = 220;
+
+/** The selected feature, charted where the feature is. Desktop only; the sheet hosts the chart on mobile. */
 export const SelectedFeaturePopup = React.memo(() => {
   const selectedFeature = useFeatureStore((s) => s.selected_feature);
   const [dismissedId, setDismissedId] = useState(null);
   const isSheet = useIsSheetLayout();
-  const chartedId = useTimeSeriesStore((s) => s.feature_id);
 
   const at = useMemo(() => selectionLngLat(selectedFeature), [selectedFeature]);
-  const fields = useMemo(() => featureFields(selectedFeature), [selectedFeature]);
+  const header = useMemo(() => curatedFeatureFields(selectedFeature), [selectedFeature]);
 
   const id = selectedFeature?._id ?? null;
-  if ((isSheet && chartedId === id) || !at || !id || dismissedId === id || !fields.length) return null;
+
+  // Suppressed on the sheet layout: there the bottom sheet is the chart host, and a popup on the
+  // strip of map it leaves visible would be a second copy of the same feature. Opened on
+  // selected_feature (written synchronously on click), not on the timeseries feature_id (written
+  // only once loadTimeseries runs), so a cross-vpu selection shows its header and a loading chart
+  // at once rather than waiting for Update.
+  if (isSheet || !at || !id || dismissedId === id) return null;
 
   return (
     <Popup
@@ -29,16 +39,16 @@ export const SelectedFeaturePopup = React.memo(() => {
       closeButton
       closeOnClick={false}
       onClose={() => setDismissedId(id)}
-      maxWidth="300px"
+      maxWidth="380px"
     >
-      <PopupContent>
-        <div className="popup-title">Feature information</div>
-        {fields.map(({ label, value }) => (
+      <PopupContent $chart>
+        {header.map(({ label, value }) => (
           <div className="popup-row" key={label}>
             <span className="popup-label">{label}</span>
             <span className="popup-value">{value}</span>
           </div>
         ))}
+        <TimeSeriesCard width={CHART_WIDTH} height={CHART_HEIGHT} />
       </PopupContent>
     </Popup>
   );
