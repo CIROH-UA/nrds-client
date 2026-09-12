@@ -257,11 +257,11 @@ export const PopupContent = styled.div`
       overflow-y: auto;
       gap: 6px;
 
-      .popup-row:first-of-type {
-        padding-right: 26px;
-      }
-
-      .popup-row:last-of-type {
+      .popup-header {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding-right: 30px;
         padding-bottom: 8px;
         margin-bottom: 2px;
         border-bottom: 1px solid var(--panel-border-color);

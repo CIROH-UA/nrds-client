@@ -40,12 +40,14 @@ export const SelectedFeaturePopup = React.memo(() => {
       maxWidth="360px"
     >
       <PopupContent $chart>
-        {header.map(({ label, value }) => (
-          <div className="popup-row" key={label}>
-            <span className="popup-label">{label}</span>
-            <span className="popup-value">{value}</span>
-          </div>
-        ))}
+        <div className="popup-header">
+          {header.map(({ label, value }) => (
+            <div className="popup-row" key={label}>
+              <span className="popup-label">{label}</span>
+              <span className="popup-value">{value}</span>
+            </div>
+          ))}
+        </div>
         <VariablesMenu compact />
         <TimeSeriesCard width={CHART_WIDTH} height={CHART_HEIGHT} />
       </PopupContent>
