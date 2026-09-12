@@ -82,15 +82,7 @@ const TimeSeriesCard = ({ width, height } = {}) => {
       </div>
     );
   } else if (fixed) {
-    body = (
-      <LineChart
-        width={width}
-        height={height}
-        data={chartData}
-        layout={layout}
-        emptyMessage={emptyMessage}
-      />
-    );
+    body = renderChart({ width, height });
   } else {
     body = <ParentSize>{renderChart}</ParentSize>;
   }

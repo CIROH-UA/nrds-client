@@ -11,8 +11,7 @@ import { useThemeStore } from 'features/DataStream/store/theme';
  * root -- so the CSS chrome swaps -- and is the hook the map, ramp, symbology and legend read, so
  * they restyle with it rather than being stranded on the system `prefers-color-scheme` query.
  *
- * Built here as a standalone control; it is mounted into the unified menu in a later unit, not
- * wired into the header or forecast menu from here.
+ * Mounted in `ControlMenu`; kept as a standalone, testable control that owns only the toggle.
  *
  * Accessibility: a real <button>, so it is in the tab order and Space/Enter activate it for free;
  * `aria-pressed` reports whether dark is on; the accessible name states the action for the current

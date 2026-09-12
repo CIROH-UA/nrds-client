@@ -553,9 +553,3 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
     </Fragment>
   );
 });
-
-function DataMenu() {
-  return <DataMenuControls />;
-}
-
-export default React.memo(DataMenu);
