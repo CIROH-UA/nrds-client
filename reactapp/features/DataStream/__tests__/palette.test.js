@@ -123,15 +123,17 @@ describe('the selection highlight', () => {
     }
   );
 
-  it('is the app accent rather than a colour of its own', () => {
+  it('is ngiab\'s warm selection hue, so it never reads as a step in the blue ramp', () => {
     // It was #fd00fd -- a pure magenta, the only place that colour appeared, chosen to be
-    // unmissable rather than designed. The point of the change is that the map now uses the
-    // same hue as the focus ring and the active nav pill.
+    // unmissable rather than designed. It then became the teal app accent. Adopting ngiab's
+    // palette splits the two: the interactive accent (focus ring, nav pill) is ngiab's blue,
+    // and the map selection is ngiab's warm --selection (hue ~25), deliberately a different
+    // hue from the accent so the highlight never reads as a step in the blue choropleth ramp.
     // The hue is what has to match. Each theme's lightness is tuned to the basemap it sits on,
     // so they are the same colour in the sense that matters and not the same value.
-    const accentHue = chromaOf(parseColor('oklch(0.540 0.090 175)')).H;
-    expect(Math.abs(chromaOf(lightOutline).H - accentHue)).toBeLessThan(2);
-    expect(Math.abs(chromaOf(darkOutline).H - accentHue)).toBeLessThan(2);
+    const selectionHue = chromaOf(parseColor('oklch(0.600 0.20 25)')).H;
+    expect(Math.abs(chromaOf(lightOutline).H - selectionHue)).toBeLessThan(2);
+    expect(Math.abs(chromaOf(darkOutline).H - selectionHue)).toBeLessThan(2);
   });
 
   it('fills without obscuring, so the catchment underneath still reads', () => {
@@ -161,7 +163,7 @@ describe('the panel hairline', () => {
     const read = (name) => {
       const m = block.match(new RegExp(`${name}:\\s*([^;]+);`))
         || scss.match(new RegExp(`${name}:\\s*([^;]+);`));
-      return parseColor(m[1].replace(/#\{\$light\}/, '#f8f9fa').replace(/#\{\$secondary\}/, '#2c3e50'));
+      return parseColor(m[1].replace(/#\{\$light\}/, '#f0f4f7').replace(/#\{\$secondary\}/, '#1c2126'));
     };
 
     expect(contrastRatio(read(fg), read(bg))).toBeGreaterThan(3.05);
