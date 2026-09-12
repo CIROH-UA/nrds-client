@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { IoOptions, IoClose } from 'react-icons/io5';
 import { useShallow } from 'zustand/react/shallow';
@@ -82,8 +82,9 @@ const CloseButton = styled.button`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  min-width: var(--tap-min, 44px);
+  min-height: var(--tap-min, 44px);
+  margin: -8px -8px -8px 0;
   padding: 0;
   border: none;
   border-radius: var(--radius-sm);
@@ -146,10 +147,22 @@ export const ControlMenu = () => {
   const [open, setOpen] = useState(shouldStartOpen);
   const toggle = useCallback(() => setOpen((o) => !o), []);
 
+  const openerRef = useRef(null);
+  const closeRef = useRef(null);
+  const wasOpen = useRef(open);
+
+  /** Follow the control across the open/close swap so keyboard focus is never dropped on the body. */
+  useEffect(() => {
+    if (open && !wasOpen.current) closeRef.current?.focus();
+    else if (!open && wasOpen.current) openerRef.current?.focus();
+    wasOpen.current = open;
+  }, [open]);
+
   return (
     <Fragment>
       {!open && (
         <LayerButton
+          ref={openerRef}
           type="button"
           onClick={toggle}
           aria-expanded={false}
@@ -166,6 +179,7 @@ export const ControlMenu = () => {
           <PanelHeader>
             <PanelTitle>Map controls</PanelTitle>
             <CloseButton
+              ref={closeRef}
               type="button"
               onClick={toggle}
               aria-expanded
