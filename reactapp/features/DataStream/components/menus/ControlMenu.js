@@ -100,7 +100,6 @@ const ColorScaleControl = () => {
 
   return (
     <Fragment>
-      <PanelSectionHeading>Colour scale</PanelSectionHeading>
       <Row>
         <IconLabel as="label" htmlFor="color-scale-select">
           Color scale
@@ -146,7 +145,7 @@ export const ControlMenu = () => {
             <LayerControl />
           </Section>
 
-          <Section aria-label="Colour scale">
+          <Section>
             <ColorScaleControl />
           </Section>
 
