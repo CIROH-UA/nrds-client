@@ -11,6 +11,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 
 import { useFeatureStore } from 'features/DataStream/store/Layers';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
+import useDataStreamStore from 'features/DataStream/store/Datastream';
 
 /* eslint-disable react/prop-types -- a test stand-in for react-map-gl's Popup, not a component. */
 jest.mock('react-map-gl/maplibre', () => ({
@@ -38,10 +39,15 @@ const { SelectedFeaturePopup } = require('features/DataStream/components/map/Sel
 
 const PLACED = { _id: 'cat-2884494', lat: 40.8, lon: -111.5, area_km2: 12.1 };
 
-const initial = { fs: useFeatureStore.getState(), ts: useTimeSeriesStore.getState() };
+const initial = {
+  fs: useFeatureStore.getState(),
+  ts: useTimeSeriesStore.getState(),
+  ds: useDataStreamStore.getState(),
+};
 beforeEach(() => {
   useFeatureStore.setState(initial.fs, true);
   useTimeSeriesStore.setState(initial.ts, true);
+  useDataStreamStore.setState(initial.ds, true);
   matches = false;
 });
 
@@ -57,6 +63,16 @@ describe('the chart on the selected feature (desktop popup)', () => {
 
     expect(screen.getByText('cat-2884494')).toBeInTheDocument();
     expect(screen.getByText('Area Km2')).toBeInTheDocument();
+  });
+
+  it('carries the variable selector beside the chart', () => {
+    useFeatureStore.setState({ selected_feature: PLACED });
+    useTimeSeriesStore.setState({ feature_id: 'cat-2884494', variable: 'flow' });
+    useDataStreamStore.setState({ variables: ['flow', 'velocity'] });
+
+    render(<SelectedFeaturePopup />);
+
+    expect(screen.getByText('Variable')).toBeInTheDocument();
   });
 
   it('charts the series once it is loaded', () => {

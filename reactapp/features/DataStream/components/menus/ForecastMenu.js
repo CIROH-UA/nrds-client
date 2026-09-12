@@ -27,8 +27,8 @@ const ForecastMenu = () => {
   const rowRef = useRef(null);
 
   useEffect(() => {
-    if (!isopen || !isSheet) {
-      document.body.dataset.sheet = isopen ? 'expanded' : 'closed';
+    if (!isSheet || !isopen) {
+      document.body.dataset.sheet = 'closed';
       setCollapsed(false);
       return;
     }
@@ -54,7 +54,9 @@ const ForecastMenu = () => {
     reset();
     useFeatureStore.getState().set_selected_feature(null);
   }, [reset]);
-  
+
+  if (!isSheet) return null;
+
   return (
     <Fragment>          
           <Container

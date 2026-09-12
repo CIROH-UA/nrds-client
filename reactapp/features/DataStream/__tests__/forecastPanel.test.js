@@ -10,6 +10,15 @@ import path from 'path';
 
 import { render, screen } from '@testing-library/react';
 
+beforeAll(() => {
+  window.matchMedia = (query) => ({
+    matches: true,
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  });
+});
+
 const read = (p) => fs.readFileSync(path.join(__dirname, p), 'utf8');
 const dataMenu = read('../components/forecast/dataMenu.js');
 const plot = read('../components/forecast/Plot.js');

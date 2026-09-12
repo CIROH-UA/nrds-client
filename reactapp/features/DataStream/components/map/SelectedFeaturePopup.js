@@ -6,6 +6,7 @@ import { useIsSheetLayout } from 'features/DataStream/lib/breakpoints';
 import { curatedFeatureFields } from 'features/DataStream/lib/featureFields';
 import { selectionLngLat } from 'features/DataStream/lib/layers';
 import TimeSeriesCard from 'features/DataStream/components/forecast/TimeseriesCard';
+import VariablesMenu from 'features/DataStream/components/forecast/variablesMenu';
 import { PopupContent } from '../styles/Styles';
 
 const CHART_WIDTH = 340;
@@ -44,6 +45,7 @@ export const SelectedFeaturePopup = React.memo(() => {
             <span className="popup-value">{value}</span>
           </div>
         ))}
+        <VariablesMenu />
         <TimeSeriesCard width={CHART_WIDTH} height={CHART_HEIGHT} />
       </PopupContent>
     </Popup>

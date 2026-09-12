@@ -18,6 +18,15 @@ jest.mock('features/DataStream/components/forecast/dataMenu', () => function Dat
 jest.mock('features/DataStream/components/forecast/TimeseriesCard', () => function Card() { return <div />; });
 jest.mock('features/DataStream/components/forecast/variablesMenu', () => function Variables() { return <div />; });
 
+beforeAll(() => {
+  window.matchMedia = (query) => ({
+    matches: true,
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  });
+});
+
 const HOUR = 3600000;
 const loadedVpu = () => {
   useVPUStore.setState({

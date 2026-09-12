@@ -33,19 +33,14 @@ beforeEach(() => {
   matches = false;
 });
 
-describe('the desktop sidebar', () => {
-  it('no longer carries the plot, because the popup does', () => {
+describe('the desktop layout', () => {
+  it('renders no sidebar; the popup carries the chart and the variable picker', () => {
     matches = false;
-    render(<ForecastMenu />);
+    const { container } = render(<ForecastMenu />);
 
     expect(screen.queryByTestId('timeseries-card')).not.toBeInTheDocument();
-  });
-
-  it('still keeps the variable picker', () => {
-    matches = false;
-    render(<ForecastMenu />);
-
-    expect(screen.getByTestId('variables-menu')).toBeInTheDocument();
+    expect(screen.queryByTestId('variables-menu')).not.toBeInTheDocument();
+    expect(container).toBeEmptyDOMElement();
   });
 });
 
