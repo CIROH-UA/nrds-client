@@ -256,6 +256,10 @@ export const PopupContent = styled.div`
       max-height: min(60vh, 360px);
       overflow-y: auto;
       gap: 6px;
+
+      .popup-row:first-of-type {
+        padding-right: 26px;
+      }
     `}
 `;
 
