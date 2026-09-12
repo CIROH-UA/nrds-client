@@ -261,8 +261,7 @@ export const PopupContent = styled.div`
         display: flex;
         flex-direction: column;
         gap: 4px;
-        padding-right: 30px;
-        padding-bottom: 8px;
+        padding: 8px 30px 8px 10px;
         margin-bottom: 2px;
         border-bottom: 1px solid var(--panel-border-color);
       }
@@ -557,7 +556,7 @@ export const Row = styled.div`
   align-items: center;
   justify-content: space-between;
   min-height: ${({ $compact }) => ($compact ? 'auto' : '44px')};
-  padding: ${({ $compact }) => ($compact ? '2px 0' : '6px 0')};
+  padding: ${({ $compact }) => ($compact ? '2px 10px' : '6px 0')};
   margin-bottom: 2px;
   font-size: 13px;
 `;

@@ -141,10 +141,19 @@ describe('changing to a selection with no output file', () => {
 
 describe('how obvious it is', () => {
   test('states the reason as an alert, not a caption', () => {
+    useDataStreamStore.setState({ vpu: 'VPU_01' });
     useS3DataStreamBucketStore.setState({ outputFiles: [] });
     render(<DataMenuControls />);
 
     expect(screen.getByRole('alert')).toHaveTextContent(/No output file for this selection/);
+  });
+
+  test('says nothing before a selection has been made, when the panel first opens', () => {
+    useDataStreamStore.setState({ vpu: null });
+    useS3DataStreamBucketStore.setState({ outputFiles: [] });
+    render(<DataMenuControls />);
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   test('disables Update, because pressing it could only fail', () => {

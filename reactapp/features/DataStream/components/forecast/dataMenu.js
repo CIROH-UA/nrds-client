@@ -534,7 +534,7 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
         </Row>
       ))}
 
-      {availableOutputFiles?.length > 0 ? null : (
+      {vpu && !selecting && !(availableOutputFiles?.length > 0) && (
         <Notice role="alert">
           <FileIcon aria-hidden="true" />
           <span>No output file for this selection</span>
