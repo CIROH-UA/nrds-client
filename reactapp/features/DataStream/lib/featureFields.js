@@ -35,9 +35,6 @@ export const featureFields = (feature) => {
   return fields;
 };
 
-// The keys worth keeping beside the chart: which feature this is, plus the couple of size
-// attributes that place it. The full listing used to live in a panel this chart popup replaces,
-// so the header is deliberately short -- enough to know what is charted, no more.
 const HEADER_KEYS = [
   'area_km2',
   'areasqkm',

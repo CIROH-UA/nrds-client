@@ -22,8 +22,6 @@ jest.mock('features/DataStream/lib/s3Utils', () => ({
   readableDatesNewestFirst: jest.fn(),
 }));
 
-// A stand-in for react-select that reports its loading/disabled state and, crucially, renders no
-// clickable option while disabled -- so "cannot be selected against" is enforced by the DOM.
 /* eslint-disable react/prop-types -- a test stand-in, not a real component. */
 jest.mock('features/DataStream/components/SelectComponent', () => function SelectComponent({
   inputId, optionsList, onChangeHandler, isLoading, isDisabled,
@@ -62,12 +60,8 @@ beforeEach(() => {
   useDataStreamStore.setState(dsInitial, true);
   releaseSlow = null;
 
-  // resetMocks:true wipes factory implementations before each test, so (re)install them here.
-  // The dependent listings resolve empty; the chain's date probe is what the test controls.
   getOptionsFromURL.mockResolvedValue([]);
 
-  // The first (SLOW) model's date probe is held open so the chain's mid-flight state is what the
-  // test decides; the second (FAST) model resolves at once.
   readableDatesNewestFirst.mockImplementation((model) => {
     if (model === 'slow') {
       return new Promise((resolve) => {
@@ -89,8 +83,6 @@ afterEach(() => { delete window.matchMedia; });
 
 describe('while the dependent options refill', () => {
   beforeEach(() => {
-    // Two models to choose between, and pre-existing dependent options that a refill would
-    // supersede -- these are the stale options the reader must not be able to pick.
     useS3DataStreamBucketStore.setState({
       models: [{ value: 'slow', label: 'slow' }, { value: 'fast', label: 'fast' }],
       dates: [{ value: 'old-date', label: 'old-date' }],
@@ -105,16 +97,13 @@ describe('while the dependent options refill', () => {
       screen.getByTestId('select-model-slow').click();
     });
 
-    // Model stays live so a second switch can still win.
     expect(screen.getByTestId('select-model-select')).toHaveAttribute('data-disabled', 'false');
 
-    // The dependent dropdowns are disabled and loading while the chain runs.
     const date = screen.getByTestId('select-date-select');
     expect(date).toHaveAttribute('data-disabled', 'true');
     expect(date).toHaveAttribute('data-loading', 'true');
     expect(screen.getByTestId('select-forecast-select')).toHaveAttribute('data-disabled', 'true');
 
-    // Let the chain finish so the test does not leak a pending promise.
     await act(async () => { releaseSlow(); });
   });
 
@@ -125,7 +114,6 @@ describe('while the dependent options refill', () => {
       screen.getByTestId('select-model-slow').click();
     });
 
-    // The stale date option is not clickable while the dropdown is disabled.
     expect(screen.queryByTestId('select-date-old-date')).not.toBeInTheDocument();
 
     await act(async () => { releaseSlow(); });
@@ -155,14 +143,12 @@ describe('a superseded selection', () => {
   it('is dropped when a later switch overtakes it', async () => {
     render(<ControlMenu />);
 
-    // Start the slow chain, then switch to fast before the slow one answers.
     await act(async () => {
       screen.getByTestId('select-model-slow').click();
     });
     await act(async () => {
       screen.getByTestId('select-model-fast').click();
     });
-    // The slow answer arrives last, but its chain is no longer current, so it writes nothing.
     await act(async () => { releaseSlow(); });
 
     expect(useS3DataStreamBucketStore.getState().dates.map((d) => d.value)).toEqual(['fast-date']);

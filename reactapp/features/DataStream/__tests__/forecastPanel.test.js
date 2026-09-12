@@ -21,8 +21,6 @@ describe('the run controls', () => {
   });
 
   it('use a heading level below the panel title, not a box', () => {
-    // The panel title is an h2. A card inside a panel is the nesting this palette cannot rescue,
-    // so the separation is a heading.
     const i = styles.indexOf('export const PanelSectionHeading');
     const decl = styles.slice(i, styles.indexOf('\n`;', i));
     expect(styles.slice(i, i + 120)).toMatch(/styled\.h3/);
@@ -30,22 +28,17 @@ describe('the run controls', () => {
   });
 
   it('carry no decorative icons', () => {
-    // Five labels, five unrelated metaphors -- a box, a calendar, a tag, a refresh arrow and a
-    // page -- none of which say more than the one word beside them.
     ['ModelIcon', 'DateIcon', 'ForecastIcon', 'CycleIcon', 'EnsembleIcon'].forEach((icon) => {
       expect(dataMenu).not.toContain(`<${icon}`);
     });
   });
 
   it('leaves none on the variable label either', () => {
-    // With the other five gone this was the only icon left on a field label, which is worse
-    // than five: one decorated row among plain ones reads as a mistake.
     const variables = read('../components/forecast/variablesMenu.js');
     expect(variables).not.toContain('<VariableIcon');
   });
 
   it('keeps the icon that carries meaning', () => {
-    // The one in the "no output file" notice is doing a job: it marks a state, not a label.
     expect(dataMenu).toMatch(/<FileIcon aria-hidden/);
   });
 
@@ -58,8 +51,6 @@ describe('the run controls', () => {
 
 describe('the chart tooltip', () => {
   it('is pinned to the top of the plot area', () => {
-    // It used to sit at the data point, which put it over the time axis whenever the reader
-    // scrubbed across a low flow -- and on a hydrograph the recession is most of the chart.
     expect(plot).toMatch(/tooltipTop: margin\.top/);
   });
 
@@ -83,8 +74,6 @@ describe('the panel still works', () => {
   });
 
   it('no longer carries the run selector, which moved to the unified ControlMenu', () => {
-    // The run cascade lives in ControlMenu now (KTD5/KTD8); the slimmed sheet keeps only the
-    // header, the variable picker, and -- on mobile -- the chart.
     render(<ForecastMenu />);
 
     expect(screen.queryByRole('heading', { name: /change the run/i })).not.toBeInTheDocument();
@@ -107,7 +96,6 @@ describe('the order of the panel', () => {
 
   beforeEach(() => {
     useTimeSeriesStore.setState({ feature_id: 'cat-7', variable: 'flow' });
-    // The variable row renders only once a run has told us what variables it has.
     useDataStreamStore.setState({ variables: ['flow', 'velocity'] });
   });
 
@@ -165,7 +153,6 @@ describe('the panel heading', () => {
   });
 
   it('says nothing rather than "Forecast" when there is no run', () => {
-    // A selection whose output listing is empty has no forecast to name.
     render(<ForecastHeader title="Cat 1" subtitle="" onClick={() => {}} />);
 
     expect(screen.getByRole('heading', { level: 2, name: /cat 1/i })).toBeInTheDocument();

@@ -25,7 +25,6 @@ const readStoredPreference = () => {
     const value = window.localStorage.getItem(THEME_STORAGE_KEY);
     return value === 'light' || value === 'dark' ? value : 'system';
   } catch {
-    // A private window, disabled storage, or a security policy: fall back to system.
     return 'system';
   }
 };
@@ -36,7 +35,7 @@ const persistPreference = (preference) => {
     if (preference === 'system') window.localStorage.removeItem(THEME_STORAGE_KEY);
     else window.localStorage.setItem(THEME_STORAGE_KEY, preference);
   } catch {
-    // Nothing to do: the choice still holds for this session in the store.
+    /* empty */
   }
 };
 
@@ -62,8 +61,6 @@ const applyDocumentTheme = (preference) => {
 };
 
 export const useThemeStore = create((set, get) => {
-  // Seed from localStorage, else the system query, and reflect it onto the root at once so the
-  // first paint matches the restored choice rather than flashing the default.
   const preference = readStoredPreference();
   applyDocumentTheme(preference);
 
@@ -94,14 +91,11 @@ export const useThemeStore = create((set, get) => {
   };
 });
 
-// When no manual choice is set, a system change still has to reach the effective-theme signal so
-// the map and legend restyle with the CSS @media block. Subscribed once, at module load.
 try {
   const mql = window.matchMedia?.(DARK_QUERY);
   mql?.addEventListener?.('change', () => useThemeStore.getState().syncSystem());
 } catch {
-  // No matchMedia (older jsdom, or a locked-down environment): the store still works, it just
-  // cannot observe live system changes.
+  /* empty */
 }
 
 /** The effective theme ('light' | 'dark') for the map, ramp, symbology and legend consumers. */

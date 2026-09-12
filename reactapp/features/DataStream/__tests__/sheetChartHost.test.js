@@ -6,7 +6,6 @@
  */
 import { render, screen } from '@testing-library/react';
 
-// Light stand-ins: this test is about which children ForecastMenu renders, not what they do.
 jest.mock('features/DataStream/components/forecast/TimeseriesCard', () =>
   function Card() { return <div data-testid="timeseries-card" />; });
 jest.mock('features/DataStream/components/forecast/dataMenu', () =>

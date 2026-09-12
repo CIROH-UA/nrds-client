@@ -1,24 +1,16 @@
-/* Define color variables (SCSS)
-   Hex approximations of ngiab's OKLCH token palette (hue ~250 neutrals, blue accent, warm
-   selection). Sass colour functions cannot parse oklch(), so bootstrap's theme is fed the
-   hex equivalents; the CSS custom-property layer below carries the oklch() values themselves. */
-$primary:   #2571b5;  /* ngiab --accent (light)         */
-$secondary: #1c2126;  /* ngiab --surface (dark neutral) */
-$success:   #268444;  /* ngiab --series-2 green         */
-$info:      #2571b5;  /* ngiab --accent                */
-$warning:   #9a6100;  /* ngiab --warning               */
-$danger:    #c33f38;  /* ngiab --danger                */
-$light:     #f0f4f7;  /* ngiab --surface-sunken (light)*/
-$dark:      #14181c;  /* ngiab --bg (dark)             */
-$accent:    #de3b3d;  /* ngiab --selection (warm)      */
+$primary:   #2571b5;
+$secondary: #1c2126;
+$success:   #268444;
+$info:      #2571b5;
+$warning:   #9a6100;
+$danger:    #c33f38;
+$light:     #f0f4f7;
+$dark:      #14181c;
+$accent:    #de3b3d;
 
-/* Bootstrap document defaults, so bootstrap components match the token layer, not just
-   the custom-property consumers. */
-$body-bg:    #fafdff; /* ngiab --bg (light)  */
-$body-color: #1a1f24; /* ngiab --fg (light)  */
+$body-bg:    #fafdff;
+$body-color: #1a1f24;
 
-
-/* Bootstrap theme map */
 $theme-colors: (
   primary: $primary,
   secondary: $secondary,
@@ -31,29 +23,8 @@ $theme-colors: (
   accent: $accent,
 );
 
-/* Import Bootstrap SCSS */
 @import "../node_modules/bootstrap/scss/bootstrap";
 
-/* === TYPEFACE === */
-
-/*
- * Public Sans, self-hosted.
- *
- * The app had no font-family at all, so it ran on Bootstrap's system-ui stack and changed
- * personality between macOS, Windows and Linux. Public Sans is the USWDS face, which suits a
- * NOAA/CIROH-funded tool, and it is served from here rather than from Google Fonts: the app
- * already ships its own static assets, and a third-party request is a dependency and a privacy
- * footnote for nothing.
- *
- * Licence: OFL-1.1 in practice, and assets/fonts/LICENSE.md ships with it. GSA's modifications
- * are CC0, but the Libre Franklin base they derive from is OFL, and the licence says the more
- * restrictive terms govern the combined work.
- *
- * Three weights, not nine: 400, 500 and 600 are what the interface actually asks for. There is
- * no variable build in the distribution, which is why --weight-strong is 600 rather than 650 --
- * 650 was never a weight any system font had either, so it silently rounded to 700 on Windows
- * and Linux while rendering true on macOS. Italics are not shipped and nothing declares them.
- */
 @font-face {
   font-family: 'Public Sans';
   src: url('./assets/fonts/PublicSans-Regular.woff2') format('woff2');
@@ -78,28 +49,22 @@ $theme-colors: (
   font-display: swap;
 }
 
-/* === THEME VARIABLES === */
-
 /* Base (light) theme */
-/* The same declarations serve the bare :root (the default, which the system @media block below
-   overrides) and an explicit data-theme="light", so a manual light choice is the light theme byte
-   for byte rather than a second copy that can drift from it. */
+
 :root,
 :root[data-theme='light'] {
   color-scheme: light dark;
-  /* core */
-  --background-color: oklch(0.992 0.004 250);   /* ngiab --bg      */
-  --text-color: oklch(0.235 0.012 250);         /* ngiab --fg      */
-   --primary-color: oklch(0.992 0.004 250);     /* ngiab --bg      */
-  --title-text-color: oklch(0.480 0.014 250);   /* ngiab --fg-muted */
+
+  --background-color: oklch(0.992 0.004 250);
+  --text-color: oklch(0.235 0.012 250);
+   --primary-color: oklch(0.992 0.004 250);
+  --title-text-color: oklch(0.480 0.014 250);
   --ts-header-height: 56px;
   --sheet-height: min(58dvh, calc(100dvh - var(--ts-header-height) - 120px));
   --sheet-peek: 88px;
   --sheet-offset: 0px;
-  --modal-scrim: oklch(0.235 0.012 250);        /* ngiab --fg      */
+  --modal-scrim: oklch(0.235 0.012 250);
 
-  // Referenced by name before they existed: TimeSlider.css asked for --space-sm, --space-md and
-  // --radius-sm, so its hard-coded fallbacks were what actually rendered, in both themes.
   --space-xs: 4px;
   --space-sm: 8px;
   --space-md: 16px;
@@ -108,19 +73,9 @@ $theme-colors: (
   --radius-md: 8px;
   --radius-pill: 999px;
 
-  // Shared interaction affordances (ngiab parity). The focus ring is the same accent used for
-  // the active nav pill and the map selection, and the tap target is WCAG 2.5.8's comfortable
-  // 44px rather than its 24px floor.
   --focus-ring: 2px solid var(--nav-pill-active-bg);
   --tap-min: 44px;
 
-  /* Elevation for things floating over the map.
-     One shadow was copied into all three overlays: 0 2px 8px rgba(0,0,0,0.25), pure black at 25%
-     in both themes. On the dark panel a black shadow is invisible; on the light one it is heavy
-     and muddy. These are tinted with the family hue and split into two levels, so the control
-     the reader operates sits above the readouts that only report. */
-  /* The standing caveat, worn as a badge beside the app name. Amber because it qualifies rather
-     than fails: --status-failed-* is red and reserved for something that actually went wrong. */
   --notice-bg: oklch(0.950 0.055 75);
   --notice-border: oklch(0.620 0.100 75);
   --notice-text: oklch(0.400 0.090 75);
@@ -128,84 +83,45 @@ $theme-colors: (
   --elevation-map-readout: 0 1px 3px oklch(0.235 0.030 250 / 0.10), 0 4px 12px oklch(0.235 0.030 250 / 0.10);
   --elevation-map-control: 0 2px 6px oklch(0.235 0.030 250 / 0.14), 0 10px 28px oklch(0.235 0.030 250 / 0.16);
 
-  /* Muted panel text. The panel used a hard-coded #666, which measures 1.91:1 on the dark
-     surface; both of these clear 5:1 against their own theme. */
-  --panel-text-muted: oklch(0.480 0.014 250);   /* ngiab --fg-muted */
+  --panel-text-muted: oklch(0.480 0.014 250);
 
-  /* Type scale, fixed rem at a 1.2 ratio. Every label in the panel was the same size and
-     weight, which is what made it read as an undifferentiated stack. */
   --text-xs: 0.75rem;
   --text-sm: 0.8125rem;
   --text-md: 0.9375rem;
   --text-lg: 1.125rem;
   --weight-normal: 400;
   --weight-medium: 500;
-  /* 600, because that is a weight the face has. 650 rounded to 700 on Windows and Linux while
-     rendering true on macOS SF, so "strong" meant two different things depending on the reader. */
+
   --weight-strong: 600;
 
-  /* The stacks, declared once. Every fallback is a real face rather than a generic, so a blocked
-     font request degrades to the system UI face and not to a serif. */
   --font-ui: 'Public Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-mono: 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
 
-  /* Header status strip. Values chosen against this theme's header background: the text
-     reaches 14.1:1 normally and 5.8:1 when reporting a failure. $danger itself only makes
-     4.5:1 on white, so failure text is a shade darker than it. */
-  --status-text: oklch(0.235 0.012 250);        /* ngiab --fg      */
-  /* Tinted and a little stronger. At rgba(0,0,0,0.06) the pill was barely a shape, which is
-     part of why a load in progress went unnoticed -- and an untinted black besides. */
+  --status-text: oklch(0.235 0.012 250);
+
   --status-bg: oklch(0.235 0.012 250 / 0.10);
-  --status-failed-text: #c33f38;                /* ngiab --danger (light), hex */
-  --status-failed-bg: rgba(195, 63, 56, 0.08);  /* ngiab --danger tint        */
+  --status-failed-text: #c33f38;
+  --status-failed-bg: rgba(195, 63, 56, 0.08);
   --map-style-url: #{'https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/styles/light-style.json'};
-  
 
-  --map-divides-outline-color: rgba(105, 111, 117, 0.5);  /* ngiab --fg-subtle, rgb for maplibre */
-  /* The app's accent, which is what ties the map to the rest of the interface. The outline was
-     #fd00fd -- a pure magenta picked to be unmissable rather than designed, and the only place
-     that colour appeared anywhere. Both are the same teal as the focus ring and the active nav
-     pill; the fill is the same hue at low alpha so a selected catchment reads as filled rather
-     than obscured.
+  --map-divides-outline-color: rgba(105, 111, 117, 0.5);
 
-     Written as rgba, not oklch. These are handed to maplibre as paint values, and its colour
-     parser is CSS Color 3 only -- oklch() returns undefined and the layer draws nothing at all.
-     Now ngiab's warm --selection (hue 25), a warm hue so the selection never reads as a step in
-     the blue choropleth ramp. Lightness is dropped from ngiab's 0.600 to oklch(0.520 0.16 25) so
-     the outline clears the non-text contrast floor on this app's light basemap, whose water
-     surface is a pale cyan. */
   --map-divides-highlight-fill: rgba(179, 55, 54, 0.28);
   --map-divides-highlight-outline: rgba(179, 55, 54, 0.95);
 
-  /* The static network, in water's own colour. It was #0b0e10, ink on paper; then a blue-grey,
-     which measured well and still read grey. A stream should look like water.
-
-     It clears the basemap by hue rather than by lightness -- 1.9:1 in WCAG terms, which sounds
-     wrong until you notice WCAG contrast is a lightness ratio and cannot see hue at all. In
-     OKLab it sits 0.199 from the nearest basemap surface, about ten times a just-noticeable
-     difference, and 0.199 from the basemap's own water fill, so a stream still reads as separate
-     from the lake it runs into. Lightness is the right instrument for the value ramp, where
-     lightness is what carries the value. It is the wrong one here. */
   --map-flowpaths-color: #1f9ec7;
 
+  --map-gauges-color: #696f75;
 
-  --map-gauges-color: #696f75;  /* ngiab --fg-subtle (light), hex for maplibre */
-
-  /* Mirrors the boundary colour in the basemap style document, which this app toggles but does
-     not draw. It cannot be read from the map, so it is declared here and the legend symbol reads
-     it -- one value to correct if that style ever changes, instead of a literal in a component. */
   --map-vpu-boundary-color: #009988;
 
-  
-  // Shared by the gauge outline and the cursor legend symbol. Named for the nexus layer
-  // until that layer was removed; the colours are unchanged.
-  --map-cursor-symbol-fill: #2571b5;  /* ngiab --accent (light), hex for maplibre */
-  --map-point-stroke-color: #fcfeff;  /* ngiab --surface (light), hex for maplibre */
+  --map-cursor-symbol-fill: #2571b5;
+  --map-point-stroke-color: #fcfeff;
 
   --button-primary-bg: #{$light};
   --button-primary-hover-bg: #{$light};
   --button-primary-text-hover: #{$secondary};
-  --button-primary-text: oklch(0.480 0.014 250);  /* ngiab --fg-muted */
+  --button-primary-text: oklch(0.480 0.014 250);
 
   --switch-active: #{$secondary};
   --switch-inactive: #{$light};
@@ -214,57 +130,47 @@ $theme-colors: (
   --search-border: #{$light};
   --search-text: #{$dark};
   --search-placeholder: #{$dark};
- 
 
-  /* extras used in components */
-  --panel-background: oklch(0.995 0.003 250);      /* ngiab --surface */
-  --panel-border-color: oklch(0.645 0.010 250);    // 3.15:1 on --panel-background; ngiab hue 250
-  --muted-text: oklch(0.235 0.012 250);            /* ngiab --fg      */
+  --panel-background: oklch(0.995 0.003 250);
+  --panel-border-color: oklch(0.645 0.010 250);
+  --muted-text: oklch(0.235 0.012 250);
 
-  --offcanvas-bg: oklch(0.995 0.003 250);          /* ngiab --surface */
-  --offcanvas-border-color: oklch(0.885 0.008 250); /* ngiab --border */
+  --offcanvas-bg: oklch(0.995 0.003 250);
+  --offcanvas-border-color: oklch(0.885 0.008 250);
 
-  --popup-bg: oklch(0.995 0.003 250);              /* ngiab --surface */
-  --popup-text-color: oklch(0.235 0.012 250);      /* ngiab --fg      */
+  --popup-bg: oklch(0.995 0.003 250);
+  --popup-text-color: oklch(0.235 0.012 250);
 
   --map-panel-bg: #{$light};
-  --map-panel-text: oklch(0.235 0.012 250);        /* ngiab --fg      */
+  --map-panel-text: oklch(0.235 0.012 250);
 
-  --select-control-bg: oklch(0.995 0.003 250);     /* ngiab --surface */
-  --select-control-border: oklch(0.800 0.010 250); /* ngiab --border-strong */
-  --select-text-color: oklch(0.235 0.012 250);     /* ngiab --fg      */
-  --select-placeholder-color: oklch(0.539 0.012 250); /* ngiab --fg-subtle */
-  --select-menu-bg: oklch(0.995 0.003 250);        /* ngiab --surface */
-  --select-option-hover-bg: rgba(37, 113, 181, 0.10); /* ngiab --accent tint */
+  --select-control-bg: oklch(0.995 0.003 250);
+  --select-control-border: oklch(0.800 0.010 250);
+  --select-text-color: oklch(0.235 0.012 250);
+  --select-placeholder-color: oklch(0.539 0.012 250);
+  --select-menu-bg: oklch(0.995 0.003 250);
+  --select-option-hover-bg: rgba(37, 113, 181, 0.10);
   --select-option-selected-bg: var(--nav-pill-active-bg);
 
-  --modal-bg: oklch(0.995 0.003 250);              /* ngiab --surface */
-  --modal-text-color: oklch(0.235 0.012 250);      /* ngiab --fg      */
-  --modal-border-color: oklch(0.885 0.008 250);    /* ngiab --border  */
+  --modal-bg: oklch(0.995 0.003 250);
+  --modal-text-color: oklch(0.235 0.012 250);
+  --modal-border-color: oklch(0.885 0.008 250);
 
-  --link-color: #2571b5;                           // ngiab --accent (light), ~4.9:1 on --bg
-  /* Not the accent: this is the muted grey used for secondary labels, and it has never been
-     $accent. Renaming it is a wider change than this pass; the comment is the fix for now. */
-  --accent-text: oklch(0.480 0.014 250);           /* ngiab --fg-muted */
+  --link-color: #2571b5;
+
+  --accent-text: oklch(0.480 0.014 250);
   --hover-text: #{$secondary};
 
-
-    /* navbar buttons */
   --nav-button-text-color: #{$secondary};
   --nav-button-hover-bg: rgba(0, 0, 0, 0.1);
 
-  /* error overlay / box */
-  --error-overlay-bg: oklch(0.992 0.004 250);      /* ngiab --bg      */
-  --error-box-bg: oklch(0.995 0.003 250);          /* ngiab --surface */
-  --error-box-text-color: oklch(0.235 0.012 250);  /* ngiab --fg      */
+  --error-overlay-bg: oklch(0.992 0.004 250);
+  --error-box-bg: oklch(0.995 0.003 250);
+  --error-box-text-color: oklch(0.235 0.012 250);
 
-  /* nav pills active state -- ngiab --accent (blue) */
   --nav-pill-active-bg: oklch(0.536 0.13 250);
-  --nav-pill-active-text-color: oklch(0.995 0.003 250);  /* ngiab --accent-contrast */
+  --nav-pill-active-text-color: oklch(0.995 0.003 250);
 
-  /* line chart colors - light.
-     Read as colour strings by the @visx SVG charts (var(--chart-*) in Plot.js), so kept as
-     hex/rgb, not oklch(). Mapped to ngiab --fg / --grid / --surface and --series-* hues. */
   --chart-axis-label-color: #1a1f24;
   --chart-axis-stroke-color: #1a1f24;
   --chart-axis-tick-color: #1a1f24;
@@ -277,7 +183,6 @@ $theme-colors: (
   --chart-glyph-stroke-color: #fcfeff;
   --chart-empty-text-color: var(--panel-text-muted);
 
-  /* comma-separated line colors -- ngiab --series-1/2/3 then two extensions (danger, violet) */
   --chart-line-colors: #2571b5, #268444, #b95115, #c33f38, #7750b1;
 
   --chart-line-0: #2571b5;
@@ -311,114 +216,93 @@ $theme-colors: (
   }
 }
 
-
 /* Dark theme override */
-/* The dark values live in one mixin so the manual choice (:root[data-theme="dark"]) and the
-   system preference (@media prefers-color-scheme) apply exactly the same tokens and cannot
-   drift apart. */
+
 @mixin theme-dark {
     --primary-color: #{$secondary};
-    --title-text-color: oklch(0.945 0.006 250);   /* ngiab --fg (dark)      */
-    --background-color: oklch(0.205 0.010 250);   /* ngiab --bg (dark)      */
-    --text-color: oklch(0.945 0.006 250);         /* ngiab --fg (dark)      */
-    --panel-text-muted: oklch(0.760 0.010 250);   /* ngiab --fg-muted (dark) */
+    --title-text-color: oklch(0.945 0.006 250);
+    --background-color: oklch(0.205 0.010 250);
+    --text-color: oklch(0.945 0.006 250);
+    --panel-text-muted: oklch(0.760 0.010 250);
 
-    /* 7.2:1 normally and 6.3:1 for failures against the dark header. $danger is far too dark
-       to read on this background, so failure text is lightened rather than reused. */
     --status-text: oklch(0.945 0.006 250);
     --status-bg: oklch(0.945 0.006 250 / 0.16);
 
-    /* Deeper and darker on a dark map: a shadow reads there by darkening the basemap, not by
-       adding a grey halo, so the same alpha that works on white disappears entirely. */
     --notice-bg: oklch(0.330 0.055 75);
     --notice-border: oklch(0.600 0.060 75);
     --notice-text: oklch(0.900 0.055 75);
 
     --elevation-map-readout: 0 1px 3px oklch(0 0 0 / 0.42), 0 4px 14px oklch(0 0 0 / 0.38);
     --elevation-map-control: 0 2px 6px oklch(0 0 0 / 0.52), 0 12px 32px oklch(0 0 0 / 0.48);
-    --status-failed-text: #e25b52;                /* ngiab --danger (dark), hex */
-    --status-failed-bg: rgba(226, 91, 82, 0.16);  /* ngiab --danger tint        */
+    --status-failed-text: #e25b52;
+    --status-failed-bg: rgba(226, 91, 82, 0.16);
     --hover-text: oklch(0.945 0.006 250);
     --map-style-url: #{'https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/styles/dark-style.json'};
-    --map-divides-outline-color: rgba(141, 147, 153, 0.5);  /* ngiab --fg-subtle (dark), rgb */
-    /* ngiab's warm --selection oklch(0.660 0.19 25), lightened for the dark basemap; the same
-       hue as the light theme so the selection reads as one thing across both. rgb for maplibre. */
+    --map-divides-outline-color: rgba(141, 147, 153, 0.5);
+
     --map-divides-highlight-fill: rgba(240, 86, 83, 0.30);
     --map-divides-highlight-outline: rgba(240, 86, 83, 0.95);
 
-    /* The same water, for the dark basemap. Dimmer than the light theme's on purpose: the ramp
-       owns the bright blues here, and the static network has to stay a lane below it or the two
-       become the same layer. 0.236 in OKLab from the nearest basemap surface, about twelve times
-       a just-noticeable difference, and 0.111 from the closest ramp stop. */
     --map-flowpaths-color: #397d9e;
 
-    --map-gauges-color: #acb2b7;  /* ngiab --fg-muted (dark), hex for maplibre */
+    --map-gauges-color: #acb2b7;
 
     --map-vpu-boundary-color: #33bbee;
 
-    --map-cursor-symbol-fill: #428bd2;  /* ngiab --accent (dark), hex for maplibre */
-    --map-point-stroke-color: #eaedf1;  /* ngiab --fg (dark), hex for maplibre    */
-
+    --map-cursor-symbol-fill: #428bd2;
+    --map-point-stroke-color: #eaedf1;
 
     --search-bg: #{$dark};
     --search-border: #{$dark};
     --search-text: #{$light};
     --search-placeholder: #{$light};
 
-  
     --switch-inactive: #{$dark};
 
     --button-primary-bg: #{$dark};
     --button-primary-hover-bg: #{$dark};
     --button-primary-text-hover: oklch(0.945 0.006 250);
-    --button-primary-text: oklch(0.760 0.010 250);  /* ngiab --fg-muted (dark) */
+    --button-primary-text: oklch(0.760 0.010 250);
 
-      --accent-text: oklch(0.760 0.010 250);        /* ngiab --fg-muted (dark) */
+      --accent-text: oklch(0.760 0.010 250);
 
     --panel-background: #{$secondary};
-    /* 3.15:1 on the panel it edges, the same figure the light theme holds. It was 0.619, which
-       measured 2.9979 -- under the 1.4.11 floor and documented as "3.00". A boundary chosen to
-       sit exactly on a threshold has nowhere to go when anything around it moves. Retuned to
-       ngiab hue 250; lightness held for contrast rather than dropped to ngiab --border-strong. */
+
     --panel-border-color: oklch(0.560 0.012 250);
     --muted-text: oklch(0.945 0.006 250);
 
-    --offcanvas-bg: oklch(0.245 0.012 250);         /* ngiab --surface (dark) */
-    --offcanvas-border-color: oklch(0.330 0.012 250); /* ngiab --border (dark) */
+    --offcanvas-bg: oklch(0.245 0.012 250);
+    --offcanvas-border-color: oklch(0.330 0.012 250);
 
-    --popup-bg: oklch(0.245 0.012 250);             /* ngiab --surface (dark) */
-    --popup-text-color: oklch(0.945 0.006 250);     /* ngiab --fg (dark)      */
+    --popup-bg: oklch(0.245 0.012 250);
+    --popup-text-color: oklch(0.945 0.006 250);
 
     --modal-bg: #{$secondary};
     --modal-text-color: var(--text-color);
-    --modal-border-color: oklch(0.330 0.012 250);   /* ngiab --border (dark)  */
+    --modal-border-color: oklch(0.330 0.012 250);
 
-    --link-color: oklch(0.720 0.120 250);           /* ngiab --accent, lifted for dark-bg links */
-    --map-panel-bg: oklch(0.245 0.012 250);         /* ngiab --surface (dark) */
-    --map-panel-text: oklch(0.945 0.006 250);       /* ngiab --fg (dark)      */
+    --link-color: oklch(0.720 0.120 250);
+    --map-panel-bg: oklch(0.245 0.012 250);
+    --map-panel-text: oklch(0.945 0.006 250);
 
-    --select-control-bg: oklch(0.245 0.012 250);    /* ngiab --surface (dark) */
-    --select-control-border: oklch(0.430 0.014 250); /* ngiab --border-strong (dark) */
-    --select-text-color: oklch(0.945 0.006 250);    /* ngiab --fg (dark)      */
-    --select-placeholder-color: oklch(0.760 0.010 250); /* ngiab --fg-muted (dark) */
-    --select-menu-bg: oklch(0.245 0.012 250);       /* ngiab --surface (dark) */
-    --select-option-hover-bg: oklch(0.330 0.012 250); /* ngiab --border (dark) */
+    --select-control-bg: oklch(0.245 0.012 250);
+    --select-control-border: oklch(0.430 0.014 250);
+    --select-text-color: oklch(0.945 0.006 250);
+    --select-placeholder-color: oklch(0.760 0.010 250);
+    --select-menu-bg: oklch(0.245 0.012 250);
+    --select-option-hover-bg: oklch(0.330 0.012 250);
     --select-option-selected-bg: var(--nav-pill-active-bg);
 
-    /* navbar buttons */
     --nav-button-text-color: oklch(0.945 0.006 250);
     --nav-button-hover-bg: rgba(255, 255, 255, 0.08);
 
-    /* error overlay / box for dark mode */
-    --error-overlay-bg: oklch(0.205 0.010 250);     /* ngiab --bg (dark)           */
-    --error-box-bg: oklch(0.180 0.010 250);         /* ngiab --surface-sunken (dark) */
-    --error-box-text-color: oklch(0.945 0.006 250); /* ngiab --fg (dark)           */
+    --error-overlay-bg: oklch(0.205 0.010 250);
+    --error-box-bg: oklch(0.180 0.010 250);
+    --error-box-text-color: oklch(0.945 0.006 250);
 
-    /* nav pills active state -- ngiab --accent (dark) */
     --nav-pill-active-bg: oklch(0.624 0.13 250);
-    --nav-pill-active-text-color: oklch(0.180 0.010 250);  /* ngiab --accent-contrast (dark) */
+    --nav-pill-active-text-color: oklch(0.180 0.010 250);
 
-    /* line chart colors - dark. Kept as hex/rgb for the @visx SVG charts (not oklch). */
     --chart-axis-label-color: #eaedf1;
     --chart-axis-stroke-color: #acb2b7;
     --chart-axis-tick-color: #8d9399;
@@ -439,20 +323,16 @@ $theme-colors: (
     --chart-line-4: #a780e6;
 }
 
-/* A manual dark choice wins over the system preference. */
 :root[data-theme='dark'] {
   @include theme-dark;
 }
 
-/* The system preference still applies, but only when the reader has made no explicit choice --
-   an explicit data-theme="light" opts out (ngiab-style guard). */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     @include theme-dark;
   }
 }
 
-/* Global usage */
 html, body, #root {
   height: 100%;
   background-color: var(--background-color);
@@ -464,17 +344,12 @@ body {
   padding-top: var(--ts-header-height);
 }
 
-
-
-
 .form-switch .form-check-input {
   width: 3em;
   height: 1.5em;
   margin-right: 10px;
 }
 
-/* Bootstrap 5.1 compiles a pure #000 backdrop. Tinted like every other neutral, and a little
-   lighter, so the map stays legible behind a dialog that is only ever informational. */
 .modal-backdrop {
   background-color: var(--modal-scrim);
 }

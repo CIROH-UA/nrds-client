@@ -88,14 +88,9 @@ const ForecastMenu = () => {
               aria-hidden={isCollapsed || undefined}
             >
               <Content>
-                {/* The chart lives on the feature: the anchored popup hosts it on desktop, so
-                    only the mobile sheet renders it here. (R4, KTD8) */}
                 {isSheet && <TimeSeriesCard />}
                 <VariablesMenu />
               </Content>
-              {/* The run selector moved out to the unified ControlMenu (KTD5/KTD8). This panel is
-                  now the mobile sheet host + variable picker; it keeps its body.dataset.sheet /
-                  --sheet-peek geometry effects above. */}
             </CollapsibleRegion>
           </Container>
     </Fragment>

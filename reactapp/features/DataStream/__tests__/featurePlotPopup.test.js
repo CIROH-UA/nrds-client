@@ -19,7 +19,6 @@ jest.mock('react-map-gl/maplibre', () => ({
   },
 }));
 
-// Desktop: the popup is where the chart lives. matchMedia reports the sheet query as not matching.
 let matches = false;
 beforeAll(() => {
   window.matchMedia = (query) => ({
@@ -119,8 +118,6 @@ describe('the chart on the selected feature (desktop popup)', () => {
   });
 
   it('opens with its header for a cross-vpu selection, before Update loads the series', () => {
-    // The tell-tale: selected_feature is set, feature_id is still null because loadTimeseries has
-    // not run. Gating on feature_id would show nothing here.
     useFeatureStore.setState({ selected_feature: PLACED });
     useTimeSeriesStore.setState({ feature_id: null });
 

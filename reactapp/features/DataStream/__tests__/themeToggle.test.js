@@ -15,10 +15,9 @@ beforeEach(() => {
   try {
     window.localStorage.clear();
   } catch {
-    /* storage may be unavailable */
+    /* empty */
   }
   document.documentElement.removeAttribute('data-theme');
-  // Reset to the system default (light in jsdom, which has no dark matchMedia) between tests.
   useThemeStore.getState().setPreference('system');
 });
 
@@ -26,7 +25,6 @@ describe('the theme toggle', () => {
   it('is a button whose accessible name states the action for the current mode', () => {
     render(<ThemeToggle />);
 
-    // Light is showing, so the offer is to switch to dark.
     expect(
       screen.getByRole('button', { name: /switch to dark theme/i })
     ).toBeInTheDocument();
@@ -69,9 +67,6 @@ describe('the theme toggle', () => {
   it('keeps the icon out of the accessible name', () => {
     const { container } = render(<ThemeToggle />);
 
-    // The icon is decorative: hidden from assistive tech, so the button carries exactly one
-    // accessible name (the label), not the icon as well. An aria-hidden node has no role, so it
-    // is reached by attribute rather than by a Testing Library query.
     // eslint-disable-next-line testing-library/no-node-access, testing-library/no-container
     const icon = container.querySelector('svg[aria-hidden="true"]');
     expect(icon).toBeInTheDocument();

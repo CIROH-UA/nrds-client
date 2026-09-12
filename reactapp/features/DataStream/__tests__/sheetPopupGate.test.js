@@ -23,8 +23,6 @@ jest.mock('react-map-gl/maplibre', () => ({
 
 let matches = false;
 beforeAll(() => {
-  // A getter, not a snapshot: createMediaQuery memoizes one MediaQueryList per matchMedia
-  // identity, so a plain value would freeze at whatever the first test set.
   window.matchMedia = (query) => ({
     get matches() { return matches; },
     media: query,
@@ -58,7 +56,6 @@ describe('on a wide viewport', () => {
   });
 
   it('shows the popup for a selection whose series has not loaded yet', () => {
-    // Opened on selected_feature: a cross-vpu tap sets it synchronously, before feature_id.
     matches = false;
     useFeatureStore.setState({ selected_feature: FEATURE });
     useTimeSeriesStore.setState({ feature_id: null });
@@ -81,7 +78,6 @@ describe('on a sheet viewport', () => {
   });
 
   it('suppresses the popup even before anything is charted, since the sheet is the host', () => {
-    // No second copy on the strip of map the sheet leaves visible, whatever the load state.
     matches = true;
     useFeatureStore.setState({ selected_feature: FEATURE });
     useTimeSeriesStore.setState({ feature_id: null });

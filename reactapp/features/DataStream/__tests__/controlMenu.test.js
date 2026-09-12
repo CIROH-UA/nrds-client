@@ -19,7 +19,6 @@ import useDataStreamStore from 'features/DataStream/store/Datastream';
 import useS3DataStreamBucketStore from 'features/DataStream/store/s3Store';
 import { useLayersStore, useFeatureStore } from 'features/DataStream/store/Layers';
 
-// The cascade fetches only on interaction, but stub the boundaries so nothing escapes the test.
 jest.mock('features/DataStream/actions/loadVpu', () => ({ loadVpu: jest.fn() }));
 jest.mock('features/DataStream/lib/duckdbClient', () => ({ terminateDatabase: jest.fn() }));
 jest.mock('features/DataStream/lib/utils', () => ({
@@ -31,7 +30,6 @@ jest.mock('features/DataStream/lib/s3Utils', () => ({
   getOptionsFromURL: jest.fn(async () => []),
   makePrefix: () => 'prefix/',
 }));
-// A light stand-in for react-select: the run-dropdown labels come from the Row, not from here.
 jest.mock('features/DataStream/components/SelectComponent', () => function SelectComponent() {
   return null;
 });
@@ -55,7 +53,6 @@ beforeEach(() => {
   useFeatureStore.setState(initial.fs, true);
   loadVpu.mockReset();
   loadVpu.mockResolvedValue(undefined);
-  // Desktop: the panel opens by default so its contents are on screen.
   window.matchMedia = jest.fn().mockImplementation((query) => ({
     matches: query.includes('min-width: 769px'),
     media: query,
@@ -68,21 +65,17 @@ afterEach(() => { delete window.matchMedia; });
 
 describe('the three groups', () => {
   it('renders the run selector, the layer toggles, and the theme toggle together', () => {
-    // Models present so the run cascade actually draws its dropdown rows.
     useS3DataStreamBucketStore.setState({ models: [{ value: 'm1', label: 'm1' }] });
 
     render(<ControlMenu />);
 
-    // Run: the section heading, plus a labelled run dropdown.
     expect(screen.getByRole('heading', { name: /change the run/i })).toBeInTheDocument();
     expect(screen.getByText('Model')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /update/i })).toBeInTheDocument();
 
-    // Layers: the toggles reused from LayerControl.
     expect(screen.getByLabelText(/catchments/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/flowpaths/i)).toBeInTheDocument();
 
-    // Theme: the U2 toggle, which reports the current mode.
     expect(
       screen.getByRole('button', { name: /switch to (light|dark) theme/i })
     ).toHaveAttribute('aria-pressed');

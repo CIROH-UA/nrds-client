@@ -30,7 +30,6 @@ jest.mock('features/DataStream/lib/s3Utils', () => ({
   initialS3Data: jest.fn(),
 }));
 
-// A stand-in for react-select that exposes each row's change handler as a button.
 /* eslint-disable react/prop-types -- a one-prop stand-in, not a component. */
 jest.mock('features/DataStream/components/SelectComponent', () => function SelectComponent({ inputId, onChangeHandler }) {
   return <button onClick={() => onChangeHandler({ value: 'changed', label: 'changed' })}>{`pick ${inputId}`}</button>;
@@ -47,7 +46,6 @@ const initial = {
   s3: useS3DataStreamBucketStore.getState(),
 };
 
-// What the app looks like with a vpu loaded and its animation running.
 const withLoadedAnimation = () => {
   useFeatureStore.setState({ selected_feature: { _id: 'cat-2884494' } });
   useDataStreamStore.setState({
@@ -108,8 +106,6 @@ describe('changing to a selection with no output file', () => {
 
     await changeDate();
 
-    // Its table is still in duckdb, so leaving the key set meant the next catchment click
-    // charted the previous output file under the new selection's title.
     expect(useDataStreamStore.getState().cache_key).toBe(null);
   });
 
@@ -129,7 +125,6 @@ describe('changing to a selection with no output file', () => {
 
     await changeDate();
 
-    // The panel is open because a feature is selected; clearing that would close it.
     expect(useTimeSeriesStore.getState().feature_id).toBe('cat-2884494');
   });
 
@@ -181,9 +176,6 @@ describe('what an empty chart says', () => {
   });
 
   test('names the selected catchment instead of asking for one already chosen', () => {
-    // Being told to select a catchment while one is selected reads as the app losing track.
-    // last_loaded_key because this is the state a finished load leaves: it read the table and
-    // there was nothing there, which is what makes the message an answer rather than a guess.
     useTimeSeriesStore.setState({
       feature_id: 'cat-2884494', series: [], loading: false,
       last_answered_key: 'key|flow|cat-2884494',
@@ -195,8 +187,6 @@ describe('what an empty chart says', () => {
   });
 
   test('does not call a load in progress an absence of data', () => {
-    // After the cache is cleared the click refetches the whole vpu, several seconds in which
-    // the chart was flatly reporting that the catchment has nothing to show.
     useTimeSeriesStore.setState({ feature_id: 'cat-2884494', series: [], loading: true });
     render(<TimeSeriesCard />);
 
@@ -205,8 +195,6 @@ describe('what an empty chart says', () => {
   });
 
   test('waits through the gap between the click and the load starting', () => {
-    // The click records the selection, then duckdb may have to start before the load flag is
-    // raised. That gap is most of a second, which is long enough to read.
     useTimeSeriesStore.setState({ feature_id: 'cat-2884494', series: [], loading: false });
     render(<TimeSeriesCard />);
 
@@ -215,8 +203,6 @@ describe('what an empty chart says', () => {
   });
 
   test('an answer of "nothing" is an answer, not a load still running', () => {
-    // What a completed empty load leaves: answered, nothing charted. Reading the charted-key
-    // for this made the chart claim to be loading for ever.
     useTimeSeriesStore.setState({
       feature_id: 'cat-2884494', series: [], loading: false,
       last_loaded_key: null, last_answered_key: 'key|flow|cat-2884494',
@@ -234,8 +220,6 @@ describe('what an empty chart says', () => {
     });
     render(<TimeSeriesCard />);
 
-    // A failed load now reads as an explicit error rather than as an absence of data or a
-    // load still running: the chart card owns its own loading/empty/error states.
     expect(screen.queryByText(/loading/i)).toBeNull();
     expect(screen.getByRole('alert')).toHaveTextContent(/could not load/i);
   });
@@ -246,8 +230,6 @@ describe('clicking a catchment while the selection has no output file', () => {
   const { loadTimeseries } = require('features/DataStream/actions/loadTimeseries');
 
   test('charts nothing, rather than the output file that is still cached', async () => {
-    // The previous selection's table outlives the selection, so without a key of its own the
-    // click read whatever was last loaded and labelled it with the current forecast.
     useDataStreamStore.setState({ cache_key: null, forecast: 'MEDIUM_RANGE' });
     useTimeSeriesStore.setState({ feature_id: 'cat-2860749', series: [] });
 
@@ -258,8 +240,6 @@ describe('clicking a catchment while the selection has no output file', () => {
   });
 
   test('leaves the reason on screen rather than replacing it with a load message', async () => {
-    // The listing already said why. A click must not overwrite that with "Loading cat-...",
-    // which would read as work in progress that is never going to finish.
     useDataStreamStore.setState({ cache_key: null });
     useTimeSeriesStore.setState({
       loadingText: 'No output file for this selection',
@@ -279,8 +259,6 @@ describe('the first load of a vpu with no output file', () => {
   const { InitialS3Loader } = require('features/DataStream/views/InitialS3Loader');
 
   test('does not key a table that cannot exist, and says so', async () => {
-    // Built from outputFiles[0]?.value === undefined, the key named a table nothing could have
-    // created, and the previous vpu's chart stayed up as though it belonged to this one.
     s3Utils.initialS3Data.mockResolvedValue({
       models: [{ value: 'cfe_nom' }], dates: [{ value: 'a' }, { value: 'b' }],
       forecasts: [{ value: 'short_range' }], cycles: [{ value: '00' }],
@@ -290,8 +268,6 @@ describe('the first load of a vpu with no output file', () => {
     useTimeSeriesStore.setState({ series: [{ x: 1, y: 2 }] });
 
     render(<InitialS3Loader />);
-    // Its effect resolves an s3 listing; waitFor is what lets that settle without wrapping
-    // render in act, which render already does for itself.
     await waitFor(() => expect(useDataStreamStore.getState().cache_key).toBe(null));
 
     expect(useTimeSeriesStore.getState().series).toHaveLength(0);
@@ -304,8 +280,6 @@ describe('both routes into "nothing to read" agree', () => {
   const { abandonSelectionWithNoOutput } = require('features/DataStream/actions/noOutputFile');
   const useS3Store = require('features/DataStream/store/s3Store').default;
 
-  // The sequence drifted twice while it lived in two places: first the cache key, then the
-  // title. This is the one description of what the state means.
   const stateAfter = () => ({
     cacheKey: useDataStreamStore.getState().cache_key,
     outputFile: useDataStreamStore.getState().outputFile,

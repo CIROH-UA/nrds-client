@@ -20,8 +20,6 @@ export const TimeSeriesContainer = styled.div`
   flex: 1 1 80%;
   background-color: var(--panel-background);
 
-  /* In the anchored popup the size is fixed and given inline: @visx ParentSize cannot measure a
-     surface that sizes itself to its content, so the chart is told its box rather than reading it. */
   ${({ $fixed }) =>
     $fixed &&
     css`
@@ -68,7 +66,6 @@ export const TimeSeriesContainer = styled.div`
   }
 `;
 
-// Themed Modal wrapper - now fully CSS-variable based
 /** How explanatory prose reads, wherever it appears. */
 const infoProse = css`
   p,
@@ -250,8 +247,6 @@ export const PopupContent = styled.div`
     word-break: break-all;
   }
 
-  /* Hosting the chart: wider than a bare readout, and capped in height with its own scroll so the
-     chart plus header never clips against a map edge. (KTD6) */
   ${({ $chart }) =>
     $chart &&
     css`
@@ -467,8 +462,6 @@ export const MapHint = styled(MapSurface).attrs({ as: 'button' })`
   }
 `;
 
-/* A label, not a heading. Uppercase with tracking at weight 650 is the house style of every
-   generated dashboard, and it made a passive caption shout louder than the controls beside it. */
 export const LegendTitle = styled.div`
   margin-bottom: 6px;
   font-size: var(--text-xs);
@@ -801,7 +794,6 @@ export const SearchInput = styled.input`
   }
 `;
 
-// The search wrapper is a flex row, so this sits at its end without disturbing the input.
 export const SearchButton = styled.button`
   flex-shrink: 0;
   margin-left: 8px;

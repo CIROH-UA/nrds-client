@@ -16,8 +16,6 @@ import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 
 /* eslint-disable react/prop-types -- a test stand-in for react-map-gl's Popup, not a component. */
 jest.mock('react-map-gl/maplibre', () => ({
-  // The real Popup needs a live map from context. What matters here is what goes inside it and
-  // whether it renders at all, so this keeps the props visible and drops the map.
   Popup: function Popup({ children, longitude, latitude, onClose }) {
     return (
       <div data-testid="popup" data-lng={longitude} data-lat={latitude}>
@@ -50,12 +48,10 @@ describe('featureFields', () => {
   });
 
   it('keeps a coordinate of zero, rather than dropping the row', () => {
-    // ?? not ||: the equator and the prime meridian are real places.
     expect(featureFields({ lat: 0, lon: 0 })[0].value).toBe('0.000000, 0.000000');
   });
 
   it('says yes and no rather than true and false', () => {
-    // "Has Flowline: true" reads as a value; "Yes" reads as an answer.
     const fields = featureFields({ has_flowline: true, is_gauged: false });
 
     expect(fields).toContainEqual({ label: expect.stringMatching(/flowline/i), value: 'Yes' });
@@ -69,8 +65,6 @@ describe('featureFields', () => {
   });
 
   it('drops empty values instead of showing blank cells', () => {
-    // The index carries columns that are null for most rows, and a half-empty grid reads as
-    // something failing to load.
     const fields = featureFields({ id: 'cat-1', toid: null, order: undefined, note: '' });
 
     expect(fields.map((f) => f.value)).toEqual(['cat-1']);
@@ -107,7 +101,6 @@ describe('curatedFeatureFields', () => {
       some_flag: true,
     });
 
-    // Lat/Long, vpuid and arbitrary flags are not part of the compact header.
     expect(rows.map((r) => r.label)).not.toContain('Lat/Long');
     expect(rows.map((r) => r.label)).not.toContain('Vpuid');
     expect(rows.length).toBeLessThanOrEqual(4);
@@ -134,13 +127,11 @@ describe('the popup on the map', () => {
   });
 
   it('hosts the chart, not a bare field listing', () => {
-    // The full Lat/Long readout belonged to the retired info-only panel; the chart is the point now.
     select({ _id: 'cat-1', lat: 40.80526, lon: -111.544846 });
 
     render(<SelectedFeaturePopup />);
 
     expect(screen.queryByText('40.805260, -111.544846')).not.toBeInTheDocument();
-    // No feature selected yet on the store => the empty chart prompts for one.
     expect(screen.getByText(/select a catchment/i)).toBeInTheDocument();
   });
 
@@ -151,7 +142,6 @@ describe('the popup on the map', () => {
   });
 
   it('shows nothing for a feature it cannot place', () => {
-    // Flying a popup to 0,0 would put it in the Gulf of Guinea, away from anything on screen.
     select({ _id: 'cat-1', vpuid: '16' });
 
     const { container } = render(<SelectedFeaturePopup />);

@@ -12,7 +12,6 @@ import { DARK_RAMP, LIGHT_RAMP } from 'features/DataStream/lib/valueRamp';
 
 const DARK_QUERY = '(prefers-color-scheme: dark)';
 
-// The controllable matchMedia the repo uses elsewhere (see plotBreakpoint.test.js).
 const fakeMatchMedia = (initialDark) => {
   const listeners = new Set();
   const mql = {
@@ -30,7 +29,6 @@ const fakeMatchMedia = (initialDark) => {
 
 const originalMatchMedia = window.matchMedia;
 
-// A "reload": a fresh module load re-runs the store's seed from localStorage and matchMedia.
 const freshStore = () => {
   let mod;
   jest.isolateModules(() => {
@@ -43,7 +41,7 @@ beforeEach(() => {
   try {
     window.localStorage.clear();
   } catch {
-    /* storage may be unavailable in some environments */
+    /* empty */
   }
   document.documentElement.removeAttribute('data-theme');
 });
@@ -55,17 +53,16 @@ afterEach(() => {
 
 describe('the effective-theme signal', () => {
   it('follows the system preference when nothing is stored', () => {
-    window.matchMedia = fakeMatchMedia(true).matchMedia; // system asks for dark
+    window.matchMedia = fakeMatchMedia(true).matchMedia;
     const { useThemeStore } = freshStore();
 
     expect(useThemeStore.getState().preference).toBe('system');
     expect(useThemeStore.getState().theme).toBe('dark');
-    // A system default sets no attribute, so the CSS @media block governs the chrome.
     expect(document.documentElement.getAttribute('data-theme')).toBeNull();
   });
 
   it('toggling to dark sets data-theme="dark" on the root and the signal to dark', () => {
-    window.matchMedia = fakeMatchMedia(false).matchMedia; // system light
+    window.matchMedia = fakeMatchMedia(false).matchMedia;
     const { useThemeStore } = freshStore();
 
     useThemeStore.getState().toggle();
@@ -75,7 +72,7 @@ describe('the effective-theme signal', () => {
   });
 
   it('a manual dark choice overrides a light system preference', () => {
-    window.matchMedia = fakeMatchMedia(false).matchMedia; // system says light
+    window.matchMedia = fakeMatchMedia(false).matchMedia;
     const { useThemeStore } = freshStore();
     expect(useThemeStore.getState().theme).toBe('light');
 
@@ -86,11 +83,10 @@ describe('the effective-theme signal', () => {
   });
 
   it('restores the last manual choice after a reload', () => {
-    window.matchMedia = fakeMatchMedia(false).matchMedia; // system light either way
+    window.matchMedia = fakeMatchMedia(false).matchMedia;
     freshStore().useThemeStore.getState().setPreference('dark');
     expect(window.localStorage.getItem('nrds-theme')).toBe('dark');
 
-    // A second load, as after a page reload, reads localStorage back.
     const { useThemeStore } = freshStore();
 
     expect(useThemeStore.getState().preference).toBe('dark');
@@ -107,7 +103,6 @@ describe('the effective-theme signal', () => {
     mm.setDark(true);
 
     expect(useThemeStore.getState().theme).toBe('dark');
-    // Still a system default: the attribute stays off and the @media block does the chrome.
     expect(document.documentElement.getAttribute('data-theme')).toBeNull();
   });
 
@@ -115,9 +110,9 @@ describe('the effective-theme signal', () => {
     const mm = fakeMatchMedia(false);
     window.matchMedia = mm.matchMedia;
     const { useThemeStore } = freshStore();
-    useThemeStore.getState().setPreference('light'); // explicit light
+    useThemeStore.getState().setPreference('light');
 
-    mm.setDark(true); // system flips to dark
+    mm.setDark(true);
 
     expect(useThemeStore.getState().theme).toBe('light');
   });
@@ -140,7 +135,7 @@ describe('the effective-theme signal', () => {
       .mockImplementation(() => {
         throw new Error('storage blocked');
       });
-    window.matchMedia = fakeMatchMedia(true).matchMedia; // system dark
+    window.matchMedia = fakeMatchMedia(true).matchMedia;
 
     const { useThemeStore } = freshStore();
 
@@ -151,7 +146,7 @@ describe('the effective-theme signal', () => {
 
 describe('the map and legend read the signal, not matchMedia', () => {
   it('recomputes the ramp when the effective theme flips', () => {
-    window.matchMedia = fakeMatchMedia(false).matchMedia; // system light
+    window.matchMedia = fakeMatchMedia(false).matchMedia;
     let theme;
     let mapTheme;
     jest.isolateModules(() => {
@@ -159,7 +154,6 @@ describe('the map and legend read the signal, not matchMedia', () => {
       mapTheme = require('features/DataStream/lib/mapTheme');
     });
 
-    // matchMedia never changed; only the store did, and the ramp follows the store.
     expect(mapTheme.readMapTheme().ramp).toEqual(LIGHT_RAMP);
 
     theme.useThemeStore.getState().toggle();

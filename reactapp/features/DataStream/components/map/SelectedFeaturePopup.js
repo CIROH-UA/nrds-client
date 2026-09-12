@@ -8,8 +8,6 @@ import { selectionLngLat } from 'features/DataStream/lib/layers';
 import TimeSeriesCard from 'features/DataStream/components/forecast/TimeseriesCard';
 import { PopupContent } from '../styles/Styles';
 
-// Fixed because the popup sizes itself to its content: @visx ParentSize would measure it as it
-// grows and the two would wait on each other, so the chart is told its box. (KTD6)
 const CHART_WIDTH = 340;
 const CHART_HEIGHT = 220;
 
@@ -24,11 +22,6 @@ export const SelectedFeaturePopup = React.memo(() => {
 
   const id = selectedFeature?._id ?? null;
 
-  // Suppressed on the sheet layout: there the bottom sheet is the chart host, and a popup on the
-  // strip of map it leaves visible would be a second copy of the same feature. Opened on
-  // selected_feature (written synchronously on click), not on the timeseries feature_id (written
-  // only once loadTimeseries runs), so a cross-vpu selection shows its header and a loading chart
-  // at once rather than waiting for Update.
   if (isSheet || !at || !id || dismissedId === id) return null;
 
   return (

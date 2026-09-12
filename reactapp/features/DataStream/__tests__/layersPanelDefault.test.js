@@ -58,7 +58,6 @@ describe('on a small screen', () => {
 
 describe('when the browser will not say', () => {
   it('opens, rather than throwing or hiding the controls', () => {
-    // jsdom has no matchMedia by default, and neither does a sufficiently old browser.
     delete window.matchMedia;
 
     render(<ControlMenu />);

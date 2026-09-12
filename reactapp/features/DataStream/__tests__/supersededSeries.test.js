@@ -27,8 +27,6 @@ beforeEach(() => {
   queryData.checkForTable.mockResolvedValue(true);
 });
 
-// A macrotask boundary: lets the first load run all the way to its parked getTimeseries (and so
-// take its sequence ticket) before the second selection starts, whatever the microtask ordering.
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 it('the superseded load writes nothing; the current one wins', async () => {
@@ -41,15 +39,12 @@ it('the superseded load writes nothing; the current one wins', async () => {
   await flush();
   await loadTimeseries({ featureId: 'cat-2', variable: 'flow' });
 
-  // The second selection has landed.
   expect(useTimeSeriesStore.getState().feature_id).toBe('cat-2');
   expect(useTimeSeriesStore.getState().series.map((p) => p.y)).toEqual([9]);
 
-  // Now the first, superseded load comes back with different data.
   releaseFirst([{ time: '2026-08-20T00:00:00Z', flow: 1 }]);
   await first;
 
-  // It must not have overwritten the current selection.
   expect(useTimeSeriesStore.getState().feature_id).toBe('cat-2');
   expect(useTimeSeriesStore.getState().series.map((p) => p.y)).toEqual([9]);
 });

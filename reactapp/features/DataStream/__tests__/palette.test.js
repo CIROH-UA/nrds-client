@@ -23,10 +23,7 @@ import { DARK_SURFACES, LIGHT_SURFACES, MIN_CONTRAST } from 'features/DataStream
 const scss = fs.readFileSync(path.join(__dirname, '../../../App.scss'), 'utf8');
 
 const FAMILY_HUE = 249;
-// How far a neutral may lean off the family's hue axis, in OKLab chroma. Perceptually nothing;
-// an eight-bit rounding artefact sits around 0.001 and a genuine stray around 0.009.
 const MAX_OFF_AXIS = 0.004;
-// Above this a colour is a deliberate one -- a chart line, a status, the brand -- not a neutral.
 const NEUTRAL_MAX_CHROMA = 0.05;
 
 /**
@@ -40,7 +37,6 @@ const EXEMPT = new Set(['#f8f9fa', '#2c3e50', '#32465b', '#ffffff', '#000000']);
 
 const chromaOf = ([r, g, b]) => {
   const L = lightness([r, g, b]);
-  // Recovering chroma from the same OKLab the lightness came from.
   const srgb = (c) => (c / 255 <= 0.04045 ? c / 255 / 12.92 : ((c / 255 + 0.055) / 1.055) ** 2.4);
   const [lr, lg, lb] = [srgb(r), srgb(g), srgb(b)];
   const l = Math.cbrt(0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb);
@@ -84,7 +80,6 @@ describe('the neutral family', () => {
   });
 
   it('has no pure grey left in the mid range, where a missing tint shows', () => {
-    // #212121, #666666 and #cccccc were the Material and web-safe holdovers.
     const greys = hexes
       .map((hex) => ({ hex, ...chromaOf(hexToRgb(hex)) }))
       .filter(({ C, L }) => C < 0.004 && L > 0.18 && L < 0.95)
@@ -124,21 +119,12 @@ describe('the selection highlight', () => {
   );
 
   it('is ngiab\'s warm selection hue, so it never reads as a step in the blue ramp', () => {
-    // It was #fd00fd -- a pure magenta, the only place that colour appeared, chosen to be
-    // unmissable rather than designed. It then became the teal app accent. Adopting ngiab's
-    // palette splits the two: the interactive accent (focus ring, nav pill) is ngiab's blue,
-    // and the map selection is ngiab's warm --selection (hue ~25), deliberately a different
-    // hue from the accent so the highlight never reads as a step in the blue choropleth ramp.
-    // The hue is what has to match. Each theme's lightness is tuned to the basemap it sits on,
-    // so they are the same colour in the sense that matters and not the same value.
     const selectionHue = chromaOf(parseColor('oklch(0.600 0.20 25)')).H;
     expect(Math.abs(chromaOf(lightOutline).H - selectionHue)).toBeLessThan(2);
     expect(Math.abs(chromaOf(darkOutline).H - selectionHue)).toBeLessThan(2);
   });
 
   it('fills without obscuring, so the catchment underneath still reads', () => {
-    // rgba rather than oklch: maplibre's parser is CSS Color 3 and returns undefined for the
-    // latter, which is how this fill silently stopped drawing once. See mapColorTokens.test.js.
     const fills = [...scss.matchAll(/--map-divides-highlight-fill:\s*rgba\([^)]*,\s*([\d.]+)\s*\)/g)];
     expect(fills).toHaveLength(2);
     fills.forEach(([, alpha]) => expect(Number(alpha)).toBeLessThanOrEqual(0.35));

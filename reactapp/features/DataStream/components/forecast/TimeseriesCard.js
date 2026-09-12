@@ -30,9 +30,7 @@ const TimeSeriesCard = ({ width, height } = {}) => {
   }, []);
 
   const hasData = series.length > 0;
-  // Work still promised or in flight, with nothing drawn yet.
   const waiting = Boolean(featureId) && (loading || (!hasData && !answered && !failed));
-  // A failed load has no axes to draw, so its message replaces the chart rather than sitting under it.
   const errored = Boolean(failed) && !hasData;
 
   /** What an empty chart says. */
