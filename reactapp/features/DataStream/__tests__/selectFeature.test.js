@@ -142,6 +142,22 @@ describe('selectMapFeature', () => {
     expect(useDataStreamStore.getState().vpu).toBe('VPU_01');
   });
 
+  it('clears the previous series on a cross-vpu click so no stale chart shows under the new feature', () => {
+    useDataStreamStore.setState({ vpu: 'VPU_09' });
+    useTimeSeriesStore.setState({
+      feature_id: 'cat-old',
+      series: [{ x: new Date('2022-08-01T00:00:00Z'), y: 1 }],
+      last_answered_key: 'k|flow|cat-old',
+    });
+
+    selectMapFeature(divide(), 'divides');
+
+    const ts = useTimeSeriesStore.getState();
+    expect(ts.feature_id).toBe('cat-42');
+    expect(ts.series).toHaveLength(0);
+    expect(ts.last_answered_key).toBeNull();
+  });
+
   /**
    * The click has to answer for itself before anything it starts can.
    *

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Popup } from 'react-map-gl/maplibre';
 
 import { useFeatureStore } from 'features/DataStream/store/Layers';
@@ -11,10 +11,13 @@ import { PopupContent } from '../styles/Styles';
 const CHART_WIDTH = 340;
 const CHART_HEIGHT = 220;
 
-/** The selected feature, charted where the feature is. Desktop only; the sheet hosts the chart on mobile. */
+/**
+ * The selected feature, charted where the feature is. Desktop only; the sheet hosts the chart on
+ * mobile. Closing clears the selection, so re-clicking the same catchment reopens it.
+ */
 export const SelectedFeaturePopup = React.memo(() => {
   const selectedFeature = useFeatureStore((s) => s.selected_feature);
-  const [dismissedId, setDismissedId] = useState(null);
+  const setSelectedFeature = useFeatureStore((s) => s.set_selected_feature);
   const isSheet = useIsSheetLayout();
 
   const at = useMemo(() => selectionLngLat(selectedFeature), [selectedFeature]);
@@ -22,7 +25,7 @@ export const SelectedFeaturePopup = React.memo(() => {
 
   const id = selectedFeature?._id ?? null;
 
-  if (isSheet || !at || !id || dismissedId === id) return null;
+  if (isSheet || !at || !id) return null;
 
   return (
     <Popup
@@ -31,7 +34,7 @@ export const SelectedFeaturePopup = React.memo(() => {
       offset={[0, -12]}
       closeButton
       closeOnClick={false}
-      onClose={() => setDismissedId(id)}
+      onClose={() => setSelectedFeature(null)}
       maxWidth="380px"
     >
       <PopupContent $chart>

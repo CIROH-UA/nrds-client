@@ -14,8 +14,13 @@ import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 
 /* eslint-disable react/prop-types -- a test stand-in for react-map-gl's Popup, not a component. */
 jest.mock('react-map-gl/maplibre', () => ({
-  Popup: function Popup({ children }) {
-    return <div data-testid="popup">{children}</div>;
+  Popup: function Popup({ children, onClose }) {
+    return (
+      <div data-testid="popup">
+        <button type="button" aria-label="Close popup" onClick={onClose}>close</button>
+        {children}
+      </div>
+    );
   },
 }));
 
@@ -98,14 +103,16 @@ describe('the chart on the selected feature (desktop popup)', () => {
     expect(screen.getByText(/no data to chart for cat-2884494/i)).toBeInTheDocument();
   });
 
-  it('shows an error affordance with a dismiss when the load failed', () => {
+  it('settles to the empty state after dismissing a failed load, not an endless spinner', () => {
     useFeatureStore.setState({ selected_feature: PLACED });
     useTimeSeriesStore.setState({
       feature_id: 'cat-2884494',
       variable: 'flow',
       loading: false,
+      pending: false,
       series: [],
       last_error: { kind: 'timeseries', featureId: 'cat-2884494' },
+      last_answered_key: 'k|flow|cat-2884494',
     });
 
     render(<SelectedFeaturePopup />);
@@ -115,6 +122,42 @@ describe('the chart on the selected feature (desktop popup)', () => {
     fireEvent.click(screen.getByRole('button', { name: /dismiss/i }));
 
     expect(useTimeSeriesStore.getState().last_error).toBeNull();
+    expect(screen.queryByText(/loading the timeseries/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/no data to chart for cat-2884494/i)).toBeInTheDocument();
+  });
+
+  it('names a no-output-file selection plainly, not as a load failure', () => {
+    useFeatureStore.setState({ selected_feature: PLACED });
+    useTimeSeriesStore.setState({
+      feature_id: 'cat-2884494',
+      variable: 'flow',
+      loading: false,
+      series: [],
+      last_error: { kind: 'no-output-file' },
+    });
+
+    render(<SelectedFeaturePopup />);
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/no output file for this selection/i);
+    expect(screen.queryByText(/could not load/i)).not.toBeInTheDocument();
+  });
+
+  it('reopens when the same catchment is clicked again after closing', () => {
+    useFeatureStore.setState({ selected_feature: PLACED });
+    useTimeSeriesStore.setState({ feature_id: 'cat-2884494' });
+
+    const { rerender } = render(<SelectedFeaturePopup />);
+    expect(screen.getByTestId('popup')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /close popup/i }));
+    expect(useFeatureStore.getState().selected_feature).toBeNull();
+
+    rerender(<SelectedFeaturePopup />);
+    expect(screen.queryByTestId('popup')).not.toBeInTheDocument();
+
+    useFeatureStore.getState().set_selected_feature(PLACED);
+    rerender(<SelectedFeaturePopup />);
+    expect(screen.getByTestId('popup')).toBeInTheDocument();
   });
 
   it('opens with its header for a cross-vpu selection, before Update loads the series', () => {

@@ -25,11 +25,21 @@ export function selectMapFeature(feature, layerId) {
   const { vpu, set_vpu } = useDataStreamStore.getState();
 
   if (featureId != null) {
-    useTimeSeriesStore.setState({
-      loadingText: vpuName === vpu ? `Loading ${featureId}` : `Loading ${vpuName}`,
-      last_error: null,
-      pending: true,
-    });
+    if (vpuName !== vpu) {
+      useTimeSeriesStore.getState().reset_series();
+      useTimeSeriesStore.setState({
+        feature_id: featureId,
+        loadingText: `Loading ${vpuName}`,
+        last_error: null,
+        pending: true,
+      });
+    } else {
+      useTimeSeriesStore.setState({
+        loadingText: `Loading ${featureId}`,
+        last_error: null,
+        pending: true,
+      });
+    }
   }
   if (featureId != null && vpuName === vpu) {
     chartSelection({ featureId, vpuName });

@@ -64,11 +64,16 @@ const TimeSeriesCard = ({ width, height } = {}) => {
 
   const fixed = Number.isFinite(width) && Number.isFinite(height);
 
+  const errorMessage =
+    failed?.kind === 'no-output-file'
+      ? 'No output file for this selection.'
+      : `Could not load the timeseries for ${featureId}.`;
+
   let body;
   if (errored) {
     body = (
       <div className="chart-state chart-state--error" role="alert">
-        <p>Could not load the timeseries for {featureId}.</p>
+        <p>{errorMessage}</p>
         <button type="button" onClick={clearError}>
           Dismiss
         </button>
