@@ -40,6 +40,17 @@ export const numericPartOf = (id) => {
   return match ? match[1] : null;
 };
 
+/** A measurement rounded to something readable at a glance. */
+export const formatMeasurement = (value) => {
+  if (!Number.isFinite(value)) return null;
+  const magnitude = Math.abs(value);
+  if (magnitude === 0) return '0';
+  if (magnitude < 0.01) return value.toExponential(1);
+  if (magnitude < 1) return value.toFixed(2);
+  if (magnitude < 100) return value.toFixed(1);
+  return Math.round(value).toLocaleString();
+};
+
 /** A frame timestamp (epoch ms, or a Date) as a UTC wall-clock label for the time slider readout. */
 export const formatFrameTime = (value) => {
   if (value === null || value === undefined || value === '') return '';

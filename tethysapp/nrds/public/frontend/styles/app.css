@@ -397,3 +397,295 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Map control menu (U5b): the unified panel of layer toggles, colour scale, value legend and the
+ * theme toggle, plus its floating opener. Ported from the React ControlMenu/Styles intent -- a
+ * framed surface over the map with 44px touch targets and token-driven colours. */
+.nrds-control-menu__opener {
+  position: absolute;
+  top: calc(var(--ts-header-height) + 16px);
+  left: 10px;
+  z-index: 1001;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px;
+  border: 1px solid var(--panel-border-color);
+  border-radius: 20px;
+  background-color: var(--button-primary-bg);
+  color: var(--accent-text);
+  box-shadow: var(--elevation-map-control);
+  cursor: pointer;
+}
+
+.nrds-control-menu__opener:hover,
+.nrds-control-menu__opener:focus {
+  color: var(--hover-text);
+  background-color: var(--button-primary-hover-bg);
+}
+
+.nrds-control-menu__opener:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.nrds-control-menu__opener svg {
+  width: 20px;
+  height: 20px;
+}
+
+.nrds-control-menu__panel {
+  position: absolute;
+  top: calc(var(--ts-header-height) + 16px);
+  left: 10px;
+  z-index: 1000;
+  width: min(300px, calc(100vw - 32px));
+  max-height: calc(100dvh - var(--ts-header-height) - 90px);
+  padding: 14px 16px;
+  background-color: var(--map-panel-bg);
+  color: var(--map-panel-text);
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elevation-map-control);
+  overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+  .nrds-control-menu__panel {
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-height: calc(100dvh - var(--ts-header-height) - 32px);
+  }
+}
+
+.nrds-control-menu__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.nrds-control-menu__title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-strong);
+  color: var(--map-panel-text);
+}
+
+.nrds-control-menu__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  margin: -8px -8px -8px 0;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--map-panel-text);
+  cursor: pointer;
+}
+
+.nrds-control-menu__close:hover {
+  background: var(--select-option-hover-bg);
+}
+
+.nrds-control-menu__close:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.nrds-control-menu__close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.nrds-control-menu__section {
+  padding-block: 10px;
+  border-block-end: 1px solid var(--panel-border-color);
+}
+
+.nrds-control-menu__section:first-of-type {
+  padding-top: 0;
+}
+
+.nrds-control-menu__section:last-of-type {
+  padding-bottom: 0;
+  border-block-end: none;
+}
+
+.nrds-control-menu__heading {
+  margin: 0 0 var(--space-xs);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-strong);
+  color: var(--panel-text-muted);
+  text-transform: none;
+}
+
+.nrds-control-menu__subheading {
+  margin: var(--space-sm) 0 var(--space-xs);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-strong);
+  color: var(--accent-text);
+}
+
+.nrds-control-menu__row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  min-height: 44px;
+}
+
+.nrds-control-menu__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow-wrap: break-word;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--accent-text);
+  cursor: pointer;
+}
+
+.nrds-control-menu__swatch {
+  display: inline-flex;
+  flex: 0 0 auto;
+  line-height: 0;
+}
+
+.nrds-control-menu__swatch svg {
+  display: block;
+}
+
+/* The colour-scale row: label on the left, the compact shared select taking the rest. */
+.nrds-control-menu__row--scale {
+  gap: var(--space-md);
+}
+
+.nrds-control-menu__scale-select {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 62%;
+}
+
+/* Toggle switch: a visually-hidden real checkbox (still focusable and keyboard-toggleable) drives a
+ * styled track and thumb. Pseudo-elements do not render on the replaced <input>, so the knob is a
+ * real span. */
+.nrds-switch {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.nrds-switch input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+}
+
+.nrds-switch__track {
+  position: relative;
+  width: 34px;
+  height: 18px;
+  border-radius: var(--radius-pill);
+  background: var(--switch-inactive);
+  border: 1px solid var(--select-control-border);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.nrds-switch__thumb {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid var(--select-control-border);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease;
+}
+
+.nrds-switch input:checked ~ .nrds-switch__track {
+  background: var(--switch-active);
+  border-color: var(--switch-active);
+}
+
+.nrds-switch input:checked ~ .nrds-switch__track .nrds-switch__thumb {
+  transform: translateX(16px);
+}
+
+.nrds-switch input:focus-visible ~ .nrds-switch__track {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Value legend: a gradient bar with three tick labels and a title (variable, units, scale name). */
+.nrds-control-menu__legend {
+  margin-top: var(--space-sm);
+}
+
+.nrds-control-menu__legend-title {
+  margin-bottom: 6px;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--panel-text-muted);
+}
+
+.nrds-control-menu__legend-bar {
+  height: 8px;
+  border-radius: var(--radius-sm);
+}
+
+.nrds-control-menu__legend-scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-xs);
+  color: var(--panel-text-muted);
+}
+
+/* Appearance: the light/dark theme toggle (moves to the navbar when the shell lands). */
+.nrds-control-menu__theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-sm);
+  background: var(--button-primary-bg);
+  color: var(--button-primary-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.nrds-control-menu__theme-toggle:hover {
+  background-color: var(--button-primary-hover-bg);
+  color: var(--button-primary-text-hover);
+}
+
+.nrds-control-menu__theme-toggle:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.nrds-control-menu__theme-toggle svg {
+  width: 18px;
+  height: 18px;
+}

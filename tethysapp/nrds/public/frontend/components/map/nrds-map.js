@@ -30,6 +30,7 @@ import { selectMapFeature } from '../../actions/selectFeature.js';
 import { attachFlowpathColoring } from './coloring.js';
 import { attachFeaturePopup } from './feature-popup.js';
 import { createTimeSlider } from '../time-slider.js';
+import { createControlMenu } from '../menus/control-menu.js';
 
 const INITIAL_VIEW = { center: [-96, 40], zoom: 4 };
 
@@ -279,6 +280,11 @@ export function createMap(container, store) {
   container.append(timeDock);
   const teardownTimeSlider = createTimeSlider(timeDock, store);
 
+  // The unified map control menu (layer toggles, colour scale, value legend, theme). It floats over
+  // the map as a sibling of the canvas and mounts its own opener button; the run-selection cascade
+  // is a marked placeholder inside it, built in a later unit.
+  const teardownControlMenu = createControlMenu(container, store);
+
   map.on('load', () => {
     addHydrofabricLayers(map, store, readMapTheme());
     applyAllVisibility(map, store);
@@ -291,7 +297,9 @@ export function createMap(container, store) {
   subscribeVisibility(map, store);
 
   // Debug/e2e handle: exposes the map and store for browser-console inspection and headless checks.
-  if (typeof window !== 'undefined') window.nrds = { map, store, teardownTimeSlider };
+  if (typeof window !== 'undefined') {
+    window.nrds = { map, store, teardownTimeSlider, teardownControlMenu };
+  }
 
   return map;
 }
