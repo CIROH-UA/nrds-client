@@ -1,0 +1,31 @@
+version: 2.0
+name: NRDS Visualizer
+
+apps: {}
+
+settings:
+  INSTALLED_APPS:
+    - tethysapp.nrds
+
+  DEBUG: false
+
+  DATABASES:
+    default:
+      ENGINE: django.db.backends.sqlite3
+      NAME: /home/tethys/nrds/tethys_platform.sqlite
+
+  ALLOWED_HOSTS:
+    - localhost
+    - 127.0.0.1
+
+  SESSION_EXPIRE_AT_BROWSER_CLOSE: false
+
+  STATIC_ROOT: /home/tethys/nrds/static
+
+  TETHYS_PORTAL_CONFIG:
+    ENABLE_OPEN_SIGNUP: false
+    ENABLE_OPEN_PORTAL: true
+    MULTIPLE_APP_MODE: false
+    STANDALONE_APP: nrds
+    ADDITIONAL_URLPATTERNS:
+      - tethysapp.nrds.static_urls.urlpatterns

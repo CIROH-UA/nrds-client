@@ -1,6 +1,5 @@
 Dockerfile
 .dockerignore
-README.md
 .flake8
 .gitlab
 .gitlab-ci.yml
