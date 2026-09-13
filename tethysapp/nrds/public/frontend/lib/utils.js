@@ -8,6 +8,19 @@ export const formatLabel = (key) =>{
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+const separateWords = (word) => String(word ?? '').replace(/-/g, ' ');
+
+const capitalizeWords = (str) =>
+  str.split(' ').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+
+/** The run, named for the caption under the panel's heading. */
+export const makeRunLabel = (forecast) =>
+  capitalizeWords(`${String(forecast ?? '').replace(/_/g, ' ')} Forecast`);
+
+/** The panel's title when there is no forecast to name. */
+export const makeFeatureTitle = (feature_id) =>
+  capitalizeWords(separateWords(feature_id));
+
 /** A byte count a reader can take in at a glance. */
 export function formatBytes(bytes, decimals = 2) {
   if (bytes === 0) return '0 Bytes';

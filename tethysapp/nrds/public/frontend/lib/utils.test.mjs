@@ -1,7 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { getCacheKey, cacheFailureReason } from './utils.js';
+import {
+  getCacheKey,
+  cacheFailureReason,
+  makeFeatureTitle,
+  makeRunLabel,
+} from './utils.js';
 
 test('getCacheKey joins the selection and appends the output file', () => {
   assert.equal(
@@ -29,4 +34,15 @@ test('cacheFailureReason maps a missing file and a stall to reader-facing text',
   assert.equal(cacheFailureReason({ name: 'AbortError' }), 'the download stopped');
   assert.equal(cacheFailureReason({ name: 'DatabaseTimeoutError' }), 'the database is not responding');
   assert.equal(cacheFailureReason({ name: 'SomethingElse' }), null);
+});
+
+test('makeFeatureTitle turns a hyphenated id into a capitalised title', () => {
+  assert.equal(makeFeatureTitle('cat-123'), 'Cat 123');
+  assert.equal(makeFeatureTitle('wb-42'), 'Wb 42');
+  assert.equal(makeFeatureTitle(null), '');
+});
+
+test('makeRunLabel names the forecast run for the caption', () => {
+  assert.equal(makeRunLabel('analysis_assim_extend'), 'Analysis Assim Extend Forecast');
+  assert.equal(makeRunLabel('short_range'), 'Short Range Forecast');
 });
