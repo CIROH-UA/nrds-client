@@ -40,6 +40,19 @@ export const numericPartOf = (id) => {
   return match ? match[1] : null;
 };
 
+/** A frame timestamp (epoch ms, or a Date) as a UTC wall-clock label for the time slider readout. */
+export const formatFrameTime = (value) => {
+  if (value === null || value === undefined || value === '') return '';
+  const ms = value instanceof Date ? value.getTime() : Number(value);
+  if (!Number.isFinite(ms)) return '';
+  const d = new Date(ms);
+  const pad = (n) => String(n).padStart(2, '0');
+  return (
+    `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ` +
+    `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`
+  );
+};
+
 /** One name for a selection, used as the duckdb table and as what the UI reports. */
 export function getCacheKey(model, date, forecast, cycle, ensemble, vpu, outputFile) {
   const parts = ensemble

@@ -13,6 +13,7 @@
  * stops playback, a chart hover, another view), and the dock shows only while there are frames.
  */
 import { actions } from '../store/app-store.js';
+import { formatFrameTime } from '../lib/utils.js';
 import { createSelect } from './select.js';
 
 /** The range input's maximum index: one less than the frame count, never below zero. */
@@ -139,7 +140,7 @@ export function createTimeSlider(container, store) {
     playBtn.innerHTML = ts.isPlaying ? PAUSE_ICON : PLAY_ICON;
     playBtn.setAttribute('aria-label', ts.isPlaying ? 'Pause the animation' : 'Play the animation');
 
-    timeValue.textContent = actions.getCurrentTimeLabel();
+    timeValue.textContent = formatFrameTime(store.get().vpu.times[idx]);
 
     speed.setValue(ts.playSpeed);
 
