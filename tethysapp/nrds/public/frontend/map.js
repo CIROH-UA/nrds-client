@@ -6,8 +6,18 @@
  * in as U3 through U6 complete.
  */
 import maplibregl from 'maplibre-gl';
+import { Protocol } from 'pmtiles';
 
 import { config } from './config.js';
+
+let pmtilesRegistered = false;
+
+/** Register the pmtiles protocol once; the basemap style and the hydrofabric layers use pmtiles://. */
+function ensurePmtiles() {
+  if (pmtilesRegistered) return;
+  maplibregl.addProtocol('pmtiles', new Protocol().tile);
+  pmtilesRegistered = true;
+}
 
 const STYLE_URLS = {
   light: 'https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/styles/light-style.json',
@@ -38,6 +48,7 @@ function styleUrl() {
 
 /** Create the maplibre map into the given element, styled by the current theme's basemap. */
 export function createMap(container) {
+  ensurePmtiles();
   const map = new maplibregl.Map({
     container,
     style: styleUrl(),
