@@ -1,12 +1,13 @@
 /**
- * The vanilla maplibre map for the build-less NRDS client (migration unit U3): the static
- * hydrofabric layers only, without the animation colouring. `createMap` registers the pmtiles
- * protocol once, builds the map from the current theme's basemap style, and on load adds the two
- * pmtiles vector sources and the five static layers (divides, its highlight, flowpaths, its
+ * The vanilla maplibre map for the build-less NRDS client (migration unit U3). `createMap` registers
+ * the pmtiles protocol once, builds the map from the current theme's basemap style, and on load adds
+ * the two pmtiles vector sources and the five static layers (divides, its highlight, flowpaths, its
  * highlight, and the CONUS gauges) with the paint the React `MapLayers` module used. Initial layer
  * visibility comes from the store's `layers` slice, and a store subscription keeps each layer's
- * `visibility` in step with the toggle it belongs to. The per-frame flowpath colouring is a later
- * unit and is intentionally absent here.
+ * `visibility` in step with the toggle it belongs to. The `flowpath-geometry` source is created with
+ * `promoteId` so each flowpath feature's id is its numeric `divide_id`, and on load
+ * `attachFlowpathColoring` (unit U3c) drives the per-frame feature-state colouring of the `flowpaths`
+ * layer; the static `line-color` stands in until VPU data lands.
  */
 import maplibregl from 'maplibre-gl';
 import { Protocol } from 'pmtiles';
@@ -14,6 +15,7 @@ import { Protocol } from 'pmtiles';
 import { readMapTheme } from '../../lib/mapTheme.js';
 import { FLOWPATHS_WIDTH_STOPS } from '../../lib/flowpaths.js';
 import { numericPartOf } from '../../lib/utils.js';
+import { attachFlowpathColoring } from './coloring.js';
 
 const INITIAL_VIEW = { center: [-96, 40], zoom: 4 };
 
@@ -60,6 +62,7 @@ function addHydrofabricLayers(map, store, theme) {
   map.addSource('flowpath-geometry', {
     type: 'vector',
     url: `pmtiles://${datastream.flowpaths_pmtiles}`,
+    promoteId: { flowpaths: 'divide_id' },
   });
   map.addSource('conus', {
     type: 'vector',
@@ -192,6 +195,7 @@ export function createMap(container, store) {
   map.on('load', () => {
     addHydrofabricLayers(map, store, readMapTheme());
     applyAllVisibility(map, store);
+    attachFlowpathColoring(map, store);
   });
 
   subscribeVisibility(map, store);
