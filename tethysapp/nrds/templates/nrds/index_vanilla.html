@@ -13,6 +13,8 @@
 		<script>
 			window.__NRDS__ = {
 				staticBase: "{% static tethys_app|public:'frontend/' %}",
+				appId: "{{ tethys_app.root_url }}",
+				appRootUrl: "{{ tethys_app.index_url|default:'/' }}",
 				debug: false,
 				loaderDelay: 0,
 				portalHost: ""

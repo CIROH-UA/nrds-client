@@ -27,8 +27,23 @@ body,
   font-family: var(--font-ui);
 }
 
-body {
-  padding-top: var(--ts-header-height);
+/* The shell lays the page out as a column: the navbar on top at --ts-header-height and the map area
+ * filling the rest below it (U6). Everything that floats over the map is a child of the map area. */
+#root {
+  display: flex;
+  flex-direction: column;
+}
+
+.nrds-map-area {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+}
+
+.nrds-map-area:focus {
+  outline: none;
 }
 
 /* Timeseries chart (U4). The factory fills whatever host U5 gives it, so the chart stretches to
@@ -403,7 +418,7 @@ body {
  * framed surface over the map with 44px touch targets and token-driven colours. */
 .nrds-control-menu__opener {
   position: absolute;
-  top: calc(var(--ts-header-height) + 16px);
+  top: 16px;
   left: 10px;
   z-index: 1001;
   display: inline-flex;
@@ -438,11 +453,11 @@ body {
 
 .nrds-control-menu__panel {
   position: absolute;
-  top: calc(var(--ts-header-height) + 16px);
+  top: 16px;
   left: 10px;
   z-index: 1000;
   width: min(300px, calc(100vw - 32px));
-  max-height: calc(100dvh - var(--ts-header-height) - 90px);
+  max-height: calc(100% - 32px);
   padding: 14px 16px;
   background-color: var(--map-panel-bg);
   color: var(--map-panel-text);
@@ -457,7 +472,7 @@ body {
     left: 8px;
     right: 8px;
     width: auto;
-    max-height: calc(100dvh - var(--ts-header-height) - 32px);
+    max-height: calc(100% - 16px);
   }
 }
 
@@ -659,33 +674,621 @@ body {
   color: var(--panel-text-muted);
 }
 
-/* Appearance: the light/dark theme toggle (moves to the navbar when the shell lands). */
-.nrds-control-menu__theme-toggle {
+/* The Appearance/theme-toggle styles that lived here moved to the navbar theme toggle (U6); see
+ * the .nrds-theme-toggle rules in the shell section below. */
+
+/* ================================================================================================
+ * App shell (U6): the navbar, its brand/badge/search-slot/load-status/theme-toggle/info controls,
+ * the skip link, the boot loader and spinner, the modal dialogs, the toasts, and the error view.
+ * Ported from the React Tethys/DataStream styled-components; token-driven and theme-aware.
+ * ============================================================================================== */
+
+/* The first thing a keyboard reaches, and only then. */
+.nrds-skip-link {
+  position: absolute;
+  left: var(--space-sm);
+  top: -100%;
+  z-index: 3000;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  background: var(--nav-pill-active-bg);
+  color: var(--nav-pill-active-text-color);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+}
+
+.nrds-skip-link:focus {
+  top: var(--space-sm);
+}
+
+/* --- Navbar ------------------------------------------------------------------------------------- */
+.nrds-navbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  min-height: var(--ts-header-height);
+  height: var(--ts-header-height);
+  padding: 0 var(--space-md);
+  background-color: var(--background-color);
+  color: var(--title-text-color);
+  border-bottom: 1px solid var(--panel-border-color);
+  box-shadow: var(--elevation-map-readout);
+  z-index: 1100;
+}
+
+.nrds-navbar__group {
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 3vw, 32px);
+  min-width: 0;
+}
+
+.nrds-navbar__group--start {
+  flex: 1 1 auto;
+}
+
+.nrds-navbar__group--end {
+  flex: 0 0 auto;
+  gap: var(--space-xs);
+}
+
+.nrds-navbar__brand {
   display: inline-flex;
   align-items: center;
   gap: var(--space-sm);
-  min-height: 44px;
-  padding: 0 14px;
-  border: 1px solid var(--panel-border-color);
+  flex: 0 1 auto;
+  min-width: 0;
+  color: var(--title-text-color);
+  text-decoration: none;
+}
+
+.nrds-navbar__brand:hover,
+.nrds-navbar__brand:focus {
+  color: var(--title-text-color);
+  text-decoration: none;
+}
+
+.nrds-navbar__brand:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
   border-radius: var(--radius-sm);
-  background: var(--button-primary-bg);
-  color: var(--button-primary-text);
+}
+
+.nrds-navbar__brand-icon {
+  display: block;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+}
+
+.nrds-navbar__brand-name {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 575px) {
+  .nrds-navbar__brand-name {
+    display: none;
+  }
+}
+
+/* Experimental badge: a standing property worn beside the name; the full word gives way to "Exp"
+ * where the row cannot spare the width. */
+.nrds-navbar__badge {
+  flex: 0 0 auto;
+  padding: 1px var(--space-sm);
+  border: 1px solid var(--notice-border);
+  border-radius: var(--radius-pill);
+  background-color: var(--notice-bg);
+  color: var(--notice-text);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.nrds-navbar__badge-short {
+  display: none;
+}
+
+.nrds-navbar__badge-assistive {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .nrds-navbar__badge {
+    padding: 2px 8px;
+    font-size: 0.65rem;
+  }
+
+  .nrds-navbar__badge-full {
+    display: none;
+  }
+
+  .nrds-navbar__badge-short {
+    display: inline;
+  }
+}
+
+/* The feature-id search box slot: an empty, marked placeholder built in a later unit. It gives up
+ * its space until then, and never grows the navbar. */
+.nrds-navbar__search-slot {
+  display: flex;
+  align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.nrds-navbar__search-slot:empty {
+  display: none;
+}
+
+/* Load-status readout: a small pill, spinner plus message, that hides when nothing is loading. */
+.nrds-load-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
+  line-height: 1.2;
+  color: var(--status-text);
+  background-color: var(--status-bg);
+}
+
+.nrds-load-status--failed {
+  color: var(--status-failed-text);
+  background-color: var(--status-failed-bg);
+}
+
+.nrds-load-status__text {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 768px) {
+  .nrds-load-status {
+    max-width: 45vw;
+    font-size: 0.85rem;
+    padding: 4px 10px;
+  }
+}
+
+@media (max-width: 640px) {
+  .nrds-load-status {
+    padding: 4px;
+  }
+
+  .nrds-load-status__text:not(:only-child) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* Navbar theme toggle: the light/dark control, moved here from the map control menu (U6). */
+.nrds-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  padding: 5px;
+  border: none;
+  border-radius: 20px;
+  background-color: transparent;
+  color: var(--text-color);
+  font-size: 1.5rem;
+  line-height: 0;
   cursor: pointer;
+  transition: background-color 180ms ease, color 180ms ease;
 }
 
-.nrds-control-menu__theme-toggle:hover {
+.nrds-theme-toggle:hover {
   background-color: var(--button-primary-hover-bg);
-  color: var(--button-primary-text-hover);
+  color: var(--text-color);
 }
 
-.nrds-control-menu__theme-toggle:focus-visible {
+.nrds-theme-toggle:focus-visible {
   outline: var(--focus-ring);
   outline-offset: 2px;
 }
 
-.nrds-control-menu__theme-toggle svg {
-  width: 18px;
-  height: 18px;
+.nrds-theme-toggle svg {
+  display: block;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+/* Navbar info button. */
+.nrds-navbar__info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  padding: 5px;
+  border: none;
+  border-radius: 20px;
+  background-color: transparent;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+.nrds-navbar__info:hover,
+.nrds-navbar__info:focus {
+  background-color: var(--button-primary-hover-bg);
+  color: var(--text-color);
+}
+
+.nrds-navbar__info:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.nrds-navbar__info svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+/* --- Spinner (boot loader and load status) ----------------------------------------------------- */
+.nrds-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: nrds-spin 0.8s linear infinite;
+}
+
+.nrds-spinner--lg {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+}
+
+.nrds-load-status__spinner {
+  display: inline-flex;
+  line-height: 0;
+}
+
+@keyframes nrds-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nrds-spinner {
+    animation-duration: 2s;
+  }
+}
+
+/* --- Boot loading state ------------------------------------------------------------------------- */
+.nrds-boot {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  color: var(--panel-text-muted);
+}
+
+.nrds-boot__text {
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+}
+
+/* --- Modal dialog ------------------------------------------------------------------------------- */
+.nrds-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md);
+  background-color: color-mix(in oklab, var(--modal-scrim) 55%, transparent);
+}
+
+.nrds-modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: min(680px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  background-color: var(--modal-bg);
+  color: var(--modal-text-color);
+  border: 1px solid var(--modal-border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elevation-map-control);
+  overflow: hidden;
+}
+
+.nrds-modal--md {
+  max-width: min(480px, calc(100vw - 32px));
+}
+
+.nrds-modal__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--modal-border-color);
+}
+
+.nrds-modal__title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-strong);
+  line-height: 1.3;
+}
+
+.nrds-modal__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  margin-left: auto;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  color: var(--modal-text-color);
+  cursor: pointer;
+}
+
+.nrds-modal__close:hover {
+  background-color: var(--nav-button-hover-bg);
+}
+
+.nrds-modal__close:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.nrds-modal__close svg {
+  width: 20px;
+  height: 20px;
+}
+
+.nrds-modal__body {
+  padding: 18px;
+  overflow-y: auto;
+  font-size: var(--text-md);
+  line-height: 1.6;
+}
+
+.nrds-modal__body p,
+.nrds-modal__body li {
+  max-width: 68ch;
+}
+
+.nrds-modal__body p {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.nrds-modal__body p:last-child,
+.nrds-modal__body ul:last-child {
+  margin-bottom: 0;
+}
+
+.nrds-modal__body ul {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nrds-modal__body a {
+  color: var(--link-color);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  overflow-wrap: break-word;
+}
+
+.nrds-modal__body a:hover {
+  text-decoration-thickness: 2px;
+}
+
+.nrds-modal__body a:focus-visible {
+  outline: 2px solid var(--nav-pill-active-bg);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.nrds-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  padding: 12px 18px;
+  border-top: 1px solid var(--modal-border-color);
+}
+
+.nrds-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  width: 100%;
+}
+
+.nrds-modal__action {
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-sm);
+  background-color: var(--nav-pill-active-bg);
+  color: var(--nav-pill-active-text-color);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.nrds-modal__action:hover,
+.nrds-modal__action:focus {
+  filter: brightness(1.08);
+}
+
+.nrds-modal__action:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* --- Toasts ------------------------------------------------------------------------------------- */
+.nrds-toast-host {
+  position: fixed;
+  top: calc(var(--ts-header-height) + 12px);
+  right: 12px;
+  z-index: 2800;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  max-width: min(360px, calc(100vw - 24px));
+  pointer-events: none;
+}
+
+.nrds-toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 10px 12px;
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-md);
+  background-color: var(--map-panel-bg);
+  color: var(--map-panel-text);
+  box-shadow: var(--elevation-map-control);
+  font-size: var(--text-sm);
+  line-height: 1.35;
+  pointer-events: auto;
+}
+
+.nrds-toast--success {
+  border-color: var(--switch-active);
+}
+
+.nrds-toast--error {
+  border-color: var(--status-failed-text);
+  color: var(--status-failed-text);
+  background-color: var(--status-failed-bg);
+}
+
+.nrds-toast__message {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.nrds-toast__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.nrds-toast__close:hover {
+  background-color: var(--nav-button-hover-bg);
+}
+
+.nrds-toast__close:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.nrds-toast__close svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* --- Error view -------------------------------------------------------------------------------- */
+.nrds-error {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+  background-color: var(--error-overlay-bg);
+}
+
+.nrds-error__box {
+  max-width: 520px;
+  padding: 28px 32px;
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-md);
+  background-color: var(--error-box-bg);
+  color: var(--error-box-text-color);
+  box-shadow: var(--elevation-map-control);
+  text-align: center;
+}
+
+.nrds-error__title {
+  margin: 0 0 12px;
+  font-size: 1.75rem;
+  font-weight: var(--weight-strong);
+}
+
+.nrds-error__message {
+  margin: 0 0 12px;
+  font-size: var(--text-md);
+  line-height: 1.5;
+}
+
+.nrds-error__detail {
+  margin: 0 0 20px;
+  font-size: var(--text-sm);
+  color: var(--panel-text-muted);
+  word-break: break-word;
+}
+
+.nrds-error__action {
+  min-height: 44px;
+  padding: 8px 20px;
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-sm);
+  background-color: var(--nav-pill-active-bg);
+  color: var(--nav-pill-active-text-color);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.nrds-error__action:hover,
+.nrds-error__action:focus {
+  filter: brightness(1.08);
+}
+
+.nrds-error__action:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
 }

@@ -8,18 +8,20 @@
  * placeholder here -- the model/date/forecast/... "Change the run" cascade lands in a later unit and
  * is deliberately NOT built), the layer toggles (wired to the store's `layers` slice through
  * set_*_visibility and set_hovered_enabled -- the map already subscribes to those, so toggling
- * recolours/hides live), the flowpath colour scale (a compact shared select over SCALE_OPTIONS wired
- * to actions.setScale, whose change the colouring driver already reacts to) with the value legend
- * below it, and the light/dark theme toggle.
+ * recolours/hides live), and the flowpath colour scale (a compact shared select over SCALE_OPTIONS
+ * wired to actions.setScale, whose change the colouring driver already reacts to) with the value
+ * legend below it.
  *
- * The theme toggle lives in this panel's Appearance section only because the shell/navbar is a later
- * migration unit; in the React client it sits in the navbar, and it moves there once the shell lands.
+ * The light/dark theme toggle used to sit here, in an Appearance section, while the shell/navbar was
+ * a later migration unit; the shell (U6) has landed, so the toggle now lives in the navbar (see
+ * components/shell/theme-toggle.js), matching the React client.
  *
  * This view is pure reflection of the store: a single subscription keeps the switches, the scale
- * select, the theme button, the symbol swatches, and the legend in step with the store, and every
- * control calls a store action rather than holding any state of its own. The legend reads the same
- * bounds/ramp the map layer uses (boundsFor + readMapTheme) and is recomputed whenever the variable,
- * scale, VPU values, theme, flowpaths visibility, or frame count changes.
+ * select, the symbol swatches, and the legend in step with the store, and every control calls a
+ * store action rather than holding any state of its own. The legend reads the same bounds/ramp the
+ * map layer uses (boundsFor + readMapTheme) and is recomputed whenever the variable, scale, VPU
+ * values, theme, flowpaths visibility, or frame count changes; a theme change also refreshes the
+ * symbol swatches, since their colours track the map theme.
  */
 import { SCALE_OPTIONS, SCALE_LABELS } from '../../lib/colorScale.js';
 import { rampGradient } from '../../lib/valueRamp.js';
@@ -110,15 +112,6 @@ const SWATCHES = {
     `<path d="M4 3 L4 18 L8.5 14.5 L11 20 L13 19 L10.5 13.5 L15 13 Z" fill="${c.cursorFill}" ` +
     `stroke="${c.cursorStroke}" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/></svg>`,
 };
-
-const SUN_ICON =
-  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
-  'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-  '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41' +
-  'M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>';
-const MOON_ICON =
-  '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">' +
-  '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
 
 /** Build one layer toggle row: a labelled swatch on the left, a switch on the right. */
 function makeSwitchRow({ id, label, swatchKey, onToggle }) {
@@ -319,22 +312,9 @@ export function createControlMenu(container, store) {
   valuesSection.append(legend);
   panel.append(valuesSection);
 
-  // --- Appearance (theme toggle) -----------------------------------------------------------------
-  // The theme toggle lives here only while the shell/navbar is a later unit; it moves to the navbar
-  // once the shell lands, matching the React client where it sits in the header.
-  const appearanceSection = makeSection({ label: 'Appearance', heading: 'Appearance' });
-  const themeRow = document.createElement('div');
-  themeRow.className = 'nrds-control-menu__row';
-  const themeLabel = document.createElement('span');
-  themeLabel.className = 'nrds-control-menu__label';
-  themeLabel.textContent = 'Theme';
-  const themeBtn = document.createElement('button');
-  themeBtn.type = 'button';
-  themeBtn.className = 'nrds-control-menu__theme-toggle';
-  themeBtn.addEventListener('click', () => actions.toggle());
-  themeRow.append(themeLabel, themeBtn);
-  appearanceSection.append(themeRow);
-  panel.append(appearanceSection);
+  // The theme toggle used to live here, in an Appearance section, while the shell/navbar was a later
+  // unit. The shell (U6) has landed, so the toggle now lives in the navbar; see
+  // components/shell/theme-toggle.js.
 
   container.append(opener, panel);
 
@@ -399,9 +379,6 @@ export function createControlMenu(container, store) {
 
     scaleSelect.setValue(s.vpu.scale);
 
-    const isDark = s.theme.theme === 'dark';
-    themeBtn.setAttribute('aria-pressed', String(isDark));
-
     const variable = s.timeseries.variable;
     const scale = s.vpu.scale;
     const flowVisible = s.layers.flowpaths.visible;
@@ -409,12 +386,9 @@ export function createControlMenu(container, store) {
     const theme = s.theme.theme;
     const valuesRef = s.vpu.valuesByVar?.[variable];
 
+    // The swatch colours track the map theme, so refresh them when the theme changes even though the
+    // theme control itself now lives in the navbar.
     if (theme !== prev.theme) {
-      themeBtn.setAttribute('aria-label', isDark ? 'Switch to light theme' : 'Switch to dark theme');
-      themeBtn.title = isDark ? 'Switch to light theme' : 'Switch to dark theme';
-      themeBtn.innerHTML =
-        (isDark ? MOON_ICON : SUN_ICON) +
-        `<span class="nrds-control-menu__theme-text">${isDark ? 'Dark' : 'Light'}</span>`;
       refreshSwatches();
     }
 
