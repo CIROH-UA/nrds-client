@@ -204,6 +204,9 @@ export function createMap(container, store) {
 
   subscribeVisibility(map, store);
 
+  // Debug/e2e handle: exposes the map and store for browser-console inspection and headless checks.
+  if (typeof window !== 'undefined') window.nrds = { map, store };
+
   return map;
 }
 
