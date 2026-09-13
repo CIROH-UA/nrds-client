@@ -212,6 +212,41 @@ export async function getFeatureProperties({ cacheKey, feature_id }) {
   }
 }
 
+/**
+ * Ids in the index matching a LIKE pattern, for the search box's typeahead. It reads the same
+ * `index_data_table` the selection resolves against, so it needs no connection of its own beyond the
+ * shared one; results come shortest-id first (so `123` precedes `cat-1234`) and are capped at
+ * `limit`. Callers build the pattern with lib/searchQuery's buildSearchPattern, which escapes the
+ * LIKE wildcards, and shape/filter the returned ids with shapeSuggestions.
+ */
+export async function searchIndexIds(pattern, { limit = 8 } = {}) {
+  const like = String(pattern ?? '');
+  if (!like) return [];
+
+  const conn = await getConnection();
+  const tableName = tableNameForKey(INDEX_CACHE_KEY);
+  const cap = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 8;
+  try {
+    const ids = [];
+    const stream = await conn.send(`
+      SELECT id
+      FROM ${sqlIdent(tableName)}
+      WHERE id LIKE ${sqlStr(like)} ESCAPE '\\'
+      ORDER BY length(id), id
+      LIMIT ${cap}
+    `);
+
+    for await (const batch of stream) {
+      const col = batch.getChild('id');
+      if (!col) continue;
+      for (let i = 0; i < col.length; i++) ids.push(col.get(i));
+    }
+    return ids;
+  } finally {
+    safeClose(conn);
+  }
+}
+
 export async function loadVpuData(
   cacheKey,
   prefix,

@@ -1,13 +1,14 @@
 /**
  * The top navbar for the build-less NRDS client (migration unit U6), the vanilla port of the React
  * `Tethys/components/layout/Header`. It builds, left to right: the app brand (icon + name), the
- * standing Experimental badge, a marked NAV slot for the feature-id search box (built in a later
- * unit -- deliberately NOT built here), the load-status readout; and, on the right, the theme
+ * standing Experimental badge, the feature-id search box mounted into its marked slot, the
+ * load-status readout; and, on the right, the theme
  * toggle (moved here from the map control menu) and an info button that opens the general-info
  * dialog. `setBrand` fills the brand once the app data resolves. Returns a teardown.
  */
 import { createThemeToggle } from './theme-toggle.js';
 import { createLoadStatus } from './load-status.js';
+import { createSearchBox } from './search-box.js';
 
 const INFO_ICON =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
@@ -48,16 +49,13 @@ export function createNavbar(container, { store, onInfo } = {}) {
     '<span class="nrds-navbar__badge-short" aria-hidden="true">Exp</span>' +
     '<span class="nrds-navbar__badge-assistive">Experimental</span>';
 
-  // The feature-id search box is a later migration unit. This is its marked slot only; do NOT build
-  // the search box here. It stays empty (and out of the way) until that unit fills it.
+  // The feature-id search box (U5d) fills this marked slot.
   const searchSlot = document.createElement('div');
   searchSlot.className = 'nrds-navbar__search-slot';
   searchSlot.dataset.searchSlot = '';
-  searchSlot.append(
-    document.createComment(' Feature-id search box slot -- built in a later migration unit (do not build here) ')
-  );
 
   left.append(brand, badge, searchSlot);
+  const teardownSearchBox = createSearchBox(searchSlot, store);
   const teardownLoadStatus = createLoadStatus(left, store);
 
   // --- Right group: theme toggle, info ------------------------------------------------------------
@@ -95,6 +93,7 @@ export function createNavbar(container, { store, onInfo } = {}) {
     element: nav,
     setBrand,
     destroy() {
+      teardownSearchBox();
       teardownLoadStatus();
       teardownThemeToggle();
       nav.remove();

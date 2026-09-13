@@ -5,6 +5,7 @@ import { curatedFeatureFields } from '../../lib/featureFields.js';
 import { createChart } from '../chart/nrds-chart.js';
 import { createVariablePicker } from './variable-picker.js';
 import { actions } from '../../store/app-store.js';
+import { watchSheet } from '../../lib/breakpoints.js';
 
 /**
  * The anchored feature popup for the build-less NRDS client (migration unit U5), the vanilla
@@ -18,7 +19,9 @@ import { actions } from '../../store/app-store.js';
  * that draws the highlight is keyed on the same selected_feature, so clearing the selection clears
  * both. The chart is destroyed whenever the popup goes away, from a close, a reselection, or teardown.
  *
- * The mobile bottom sheet is a later increment; this always uses the anchored popup.
+ * On a narrow viewport (<=768px) the bottom sheet (feature-sheet.js) hosts the feature content
+ * instead, so this popup gates itself off there: it never opens while the sheet layout is active, and
+ * it re-renders when the viewport crosses the breakpoint, so exactly one of the two is ever open.
  */
 
 /** The key a selection is recognised by, so an unrelated store change does not rebuild the popup. */
@@ -58,6 +61,7 @@ function buildContent(feature) {
 export function attachFeaturePopup(map, store) {
   let current = null;
   let closingProgrammatically = false;
+  const sheet = watchSheet(() => render());
 
   const onPopupClose = () => {
     const wasProgrammatic = closingProgrammatically;
@@ -99,7 +103,8 @@ export function attachFeaturePopup(map, store) {
     const feature = store.get().feature.selected_feature;
     const at = selectionLngLat(feature);
 
-    if (!feature || !at) {
+    // The bottom sheet owns the feature content on narrow viewports; keep the popup closed there.
+    if (sheet.matches() || !feature || !at) {
       closePopup();
       return;
     }
@@ -114,6 +119,7 @@ export function attachFeaturePopup(map, store) {
 
   return () => {
     unsubscribe();
+    sheet.destroy();
     closePopup();
   };
 }

@@ -10,7 +10,9 @@
  * layer; the static `line-color` stands in until VPU data lands. On load it also wires the click-to-
  * select pipeline (unit U5): a click queries the visible selectable layers and hands the feature to
  * `selectMapFeature`, a store subscription keeps the two highlight layers pointed at the selection,
- * and `attachFeaturePopup` opens the anchored popup with the feature's chart.
+ * and the feature's chart is hosted either in the anchored popup (`attachFeaturePopup`, wide
+ * viewports) or the mobile bottom sheet (`attachFeatureSheet`, <=768px), one or the other by
+ * viewport (unit U5d).
  */
 import maplibregl from 'maplibre-gl';
 import { Protocol } from 'pmtiles';
@@ -29,6 +31,7 @@ import {
 import { selectMapFeature } from '../../actions/selectFeature.js';
 import { attachFlowpathColoring } from './coloring.js';
 import { attachFeaturePopup } from './feature-popup.js';
+import { attachFeatureSheet } from './feature-sheet.js';
 import { createTimeSlider } from '../time-slider.js';
 import { createControlMenu } from '../menus/control-menu.js';
 
@@ -291,7 +294,10 @@ export function createMap(container, store) {
     attachFlowpathColoring(map, store);
     attachClickToSelect(map, store);
     subscribeSelectionHighlight(map, store);
+    // The desktop popup and the mobile sheet each gate themselves on the 768px breakpoint, so exactly
+    // one hosts the selected feature's content and they hand off when the viewport crosses it.
     attachFeaturePopup(map, store);
+    attachFeatureSheet(store);
   });
 
   subscribeVisibility(map, store);
