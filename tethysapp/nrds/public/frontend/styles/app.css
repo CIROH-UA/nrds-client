@@ -1,0 +1,26 @@
+/*
+ * Base layout and component styles for the vanilla NRDS client (U0), ported incrementally from the
+ * styled-components in reactapp as units land. tokens.css owns the design tokens; this file owns
+ * element and component rules. Fonts fall back to the system stack in --font-ui until the Public
+ * Sans faces are wired in a later unit.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  font-family: var(--font-ui);
+}
+
+body {
+  padding-top: var(--ts-header-height);
+}
