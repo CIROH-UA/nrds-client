@@ -9,18 +9,38 @@ import maplibregl from 'maplibre-gl';
 
 import { config } from './config.js';
 
-/** Read a CSS custom property from :root, stripping the quotes CSS keeps around a string token. */
-function readToken(name) {
-  const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  return raw.replace(/^['"]|['"]$/g, '');
+const STYLE_URLS = {
+  light: 'https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/styles/light-style.json',
+  dark: 'https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/styles/dark-style.json',
+};
+
+/** The effective theme from the document, falling back to the system preference. */
+function currentTheme() {
+  const attr = document.documentElement.getAttribute('data-theme');
+  if (attr === 'dark' || attr === 'light') return attr;
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+    ? 'dark'
+    : 'light';
+}
+
+/**
+ * The basemap style URL for the current theme. The `--map-style-url` token is used when it is
+ * already applied, but the entry runs before the external stylesheet is guaranteed to load, so
+ * the known per-theme URLs are the reliable source.
+ */
+function styleUrl() {
+  const token = getComputedStyle(document.documentElement)
+    .getPropertyValue('--map-style-url')
+    .trim()
+    .replace(/^['"]|['"]$/g, '');
+  return token || STYLE_URLS[currentTheme()];
 }
 
 /** Create the maplibre map into the given element, styled by the current theme's basemap. */
 export function createMap(container) {
-  const styleUrl = readToken('--map-style-url');
   const map = new maplibregl.Map({
     container,
-    style: styleUrl,
+    style: styleUrl(),
     center: [-98.5, 39.5],
     zoom: 3.2,
     attributionControl: true,
