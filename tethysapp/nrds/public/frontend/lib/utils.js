@@ -19,3 +19,9 @@ export function formatBytes(bytes, decimals = 2) {
 
 /** The duckdb table a key names: the same key without its extension. */
 export const tableNameForKey = (key) => String(key).replace(/\.parquet$/i, "");
+
+/** The numeric part of a hydrofabric id, which is what the timeseries tables are keyed by. */
+export const numericPartOf = (id) => {
+  const match = /(\d+)\s*$/.exec(String(id ?? ''));
+  return match ? match[1] : null;
+};
