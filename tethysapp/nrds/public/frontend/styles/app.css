@@ -591,6 +591,96 @@ body,
   max-width: 62%;
 }
 
+/* Run cascade (U5c): the model -> date -> forecast -> cycle -> ensemble -> output-file dependent
+ * selects, the no-output notice, and the Update button that live in the "Model run" slot. The label
+ * sits above its select so each value has the panel's full width to spell out. */
+.nrds-run-cascade__row {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 4px;
+  min-height: 0;
+  margin-bottom: var(--space-xs);
+}
+
+.nrds-run-cascade__label {
+  cursor: default;
+}
+
+.nrds-run-cascade__select {
+  width: 100%;
+  min-width: 0;
+}
+
+/* A disabled level: dimmed, and out of the pointer's reach while a cascade is still resolving. */
+.nrds-select.is-disabled {
+  opacity: 0.55;
+}
+
+.nrds-select.is-disabled .nrds-select__control {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.nrds-run-cascade__notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin: var(--space-sm) 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--panel-border-color);
+  border-radius: 6px;
+  background-color: var(--status-failed-bg);
+  color: var(--status-failed-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  line-height: 1.35;
+}
+
+.nrds-run-cascade__notice-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  line-height: 0;
+}
+
+.nrds-run-cascade__notice-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.nrds-run-cascade__actions {
+  margin-top: 10px;
+}
+
+.nrds-run-cascade__update {
+  width: 100%;
+  min-height: 44px;
+  padding: 7px 8px;
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-sm);
+  background: var(--button-primary-bg);
+  color: var(--accent-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.nrds-run-cascade__update:not(:disabled):hover,
+.nrds-run-cascade__update:not(:disabled):focus-visible {
+  background-color: var(--button-primary-hover-bg);
+  color: var(--button-primary-text-hover);
+}
+
+.nrds-run-cascade__update:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.nrds-run-cascade__update:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Toggle switch: a visually-hidden real checkbox (still focusable and keyboard-toggleable) drives a
  * styled track and thumb. Pseudo-elements do not render on the replaced <input>, so the knob is a
  * real span. */

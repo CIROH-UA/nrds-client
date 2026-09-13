@@ -83,6 +83,7 @@ export function createSelect({
   value = null,
   onChange,
   compact = false,
+  disabled = false,
   label,
   id,
 } = {}) {
@@ -93,6 +94,7 @@ export function createSelect({
   let selectedIndex = optionIndexOf(items, value);
   let activeIndex = selectedIndex;
   let open = false;
+  let isDisabled = Boolean(disabled);
   let typeBuffer = '';
   let typeTimer = null;
 
@@ -164,7 +166,7 @@ export function createSelect({
   };
 
   const openList = () => {
-    if (open || !items.length) return;
+    if (open || isDisabled || !items.length) return;
     open = true;
     listbox.hidden = false;
     control.setAttribute('aria-expanded', 'true');
@@ -221,6 +223,7 @@ export function createSelect({
   };
 
   const onControlKeyDown = (event) => {
+    if (isDisabled) return;
     const { key } = event;
     switch (key) {
       case 'ArrowDown':
@@ -290,8 +293,17 @@ export function createSelect({
   };
 
   const onControlClick = () => {
+    if (isDisabled) return;
     if (open) closeList();
     else openList();
+  };
+
+  /** Reflect the disabled state onto the control: no focus stop, no pointer, an ARIA signal. */
+  const applyDisabled = () => {
+    root.classList.toggle('is-disabled', isDisabled);
+    control.setAttribute('tabindex', isDisabled ? '-1' : '0');
+    if (isDisabled) control.setAttribute('aria-disabled', 'true');
+    else control.removeAttribute('aria-disabled');
   };
 
   const onListPointerOver = (event) => {
@@ -316,9 +328,18 @@ export function createSelect({
 
   renderOptions();
   renderValueText();
+  applyDisabled();
 
   return {
     element: root,
+    /** Turn interaction on or off; a disabled control leaves the tab order and closes if open. */
+    setDisabled(next) {
+      const value = Boolean(next);
+      if (value === isDisabled) return;
+      isDisabled = value;
+      if (isDisabled) closeList();
+      applyDisabled();
+    },
     /** Replace the option list, keeping the current value selected when it is still present. */
     setOptions(newOptions) {
       // Remember the current value before the list is replaced; it may or may not still be present.

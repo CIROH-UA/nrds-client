@@ -4,9 +4,10 @@
  * opener button and a framed panel over the map and returns a teardown that unsubscribes, destroys
  * the shared select, and removes its DOM.
  *
- * The panel gathers the map chrome that was previously scattered: the model-run cascade (a marked
- * placeholder here -- the model/date/forecast/... "Change the run" cascade lands in a later unit and
- * is deliberately NOT built), the layer toggles (wired to the store's `layers` slice through
+ * The panel gathers the map chrome that was previously scattered: the model-run cascade (the
+ * model/date/forecast/cycle/ensemble/output-file "Change the run" selects and Update button, built
+ * in components/menus/run-cascade.js and mounted into the run slot here -- U5c), the layer toggles
+ * (wired to the store's `layers` slice through
  * set_*_visibility and set_hovered_enabled -- the map already subscribes to those, so toggling
  * recolours/hides live), and the flowpath colour scale (a compact shared select over SCALE_OPTIONS
  * wired to actions.setScale, whose change the colouring driver already reacts to) with the value
@@ -31,6 +32,7 @@ import { formatMeasurement } from '../../lib/utils.js';
 import { readMapTheme } from '../../lib/mapTheme.js';
 import { actions } from '../../store/app-store.js';
 import { createSelect } from '../select.js';
+import { createRunCascade } from './run-cascade.js';
 
 // Three ticks, not five: this is a key, meant to be read at a glance (mirrors the React ValueLegend).
 export const LEGEND_TICKS = [0, 0.5, 1];
@@ -206,21 +208,18 @@ export function createControlMenu(container, store) {
   header.append(title, closeBtn);
   panel.append(header);
 
-  // --- Model run (placeholder) -------------------------------------------------------------------
-  // The model/date/forecast/cycle/... "Change the run" cascade is a later migration unit; this is
-  // its marked slot only. Do NOT build the cascade here. The slot is hidden until it lands, so the
-  // panel shows no empty box in the meantime.
+  // --- Model run (cascade) -----------------------------------------------------------------------
+  // The model/date/forecast/cycle/ensemble/output-file "Change the run" cascade (U5c). It fills the
+  // marked slot; createRunCascade renders its own "Change the run" heading, so this section carries
+  // only the accessible group label.
   const runSection = makeSection({ label: 'Model run' });
   runSection.classList.add('nrds-control-menu__section--run');
   const runSlot = document.createElement('div');
   runSlot.className = 'nrds-control-menu__run-slot';
   runSlot.dataset.runCascadeSlot = '';
-  runSection.append(
-    document.createComment(' Model run cascade slot -- built in a later migration unit (do not build here) '),
-    runSlot
-  );
-  runSection.hidden = true;
+  runSection.append(runSlot);
   panel.append(runSection);
+  const teardownRunCascade = createRunCascade(runSlot, store);
 
   // --- Layers ------------------------------------------------------------------------------------
   const layersSection = makeSection({ label: 'Layers', heading: 'Layer Options' });
@@ -416,6 +415,7 @@ export function createControlMenu(container, store) {
 
   return () => {
     unsubscribe();
+    teardownRunCascade();
     scaleSelect.destroy();
     opener.remove();
     panel.remove();

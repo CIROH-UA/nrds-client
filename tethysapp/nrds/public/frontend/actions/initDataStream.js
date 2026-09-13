@@ -34,7 +34,7 @@ function wireCancellers() {
 }
 
 /** Give up on a selection whose output-file listing is empty, without charting cosmetics (deferred). */
-function abandonSelectionWithNoOutput() {
+export function abandonSelectionWithNoOutput() {
   cancelVpuLoads();
   actions.set_cache_key(null);
   actions.set_outputFile('');
