@@ -60,8 +60,6 @@ export function typeAheadIndex(options, buffer, fromIndex) {
     const idx = (start + i) % options.length;
     if (String(options[idx].label).toLowerCase().startsWith(needle)) return idx;
   }
-  // A repeat of one character also matches the current option, so a stuck key does not read as "no
-  // match": try the start index itself last.
   if (String(options[start]?.label ?? '').toLowerCase().startsWith(needle)) return start;
   return -1;
 }
@@ -265,8 +263,6 @@ export function createSelect({
         return;
       case ' ':
       case 'Spacebar':
-        // Space opens the closed control and chooses the active option in the open one; either way
-        // it must not scroll the page.
         event.preventDefault();
         if (open) {
           choose(activeIndex);
@@ -342,7 +338,6 @@ export function createSelect({
     },
     /** Replace the option list, keeping the current value selected when it is still present. */
     setOptions(newOptions) {
-      // Remember the current value before the list is replaced; it may or may not still be present.
       const prevValue = selectedIndex >= 0 ? items[selectedIndex].value : null;
       items = toOptions(newOptions);
       selectedIndex = optionIndexOf(items, prevValue);

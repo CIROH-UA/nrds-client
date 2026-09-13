@@ -85,7 +85,6 @@ export function createSearchBox(container, appStore = store) {
   listbox.setAttribute('aria-label', 'Matching feature ids');
   listbox.hidden = true;
 
-  // Stands in for the box when the index cannot be built; carries a retry.
   const notice = document.createElement('div');
   notice.className = 'nrds-search__notice';
   notice.setAttribute('role', 'alert');
@@ -154,7 +153,6 @@ export function createSearchBox(container, appStore = store) {
       const active = i === activeIndex;
       li.setAttribute('aria-selected', active ? 'true' : 'false');
       li.classList.toggle('is-active', active);
-      // mousedown, not click: fire before the input's blur closes the list.
       li.addEventListener('mousedown', (e) => {
         e.preventDefault();
         commit(id);
@@ -286,7 +284,6 @@ export function createSearchBox(container, appStore = store) {
   };
 
   const onBlur = () => {
-    // Let a mousedown on an option land before the list goes away.
     setTimeout(() => {
       if (!destroyed) closeList();
     }, 120);
@@ -319,7 +316,6 @@ export function createSearchBox(container, appStore = store) {
 
   retry.addEventListener('click', () => loadIndex());
 
-  // Keep the input's disabled/placeholder state in step with the index status the store carries.
   const unsubscribe = appStore.subscribe(() => reflectStatus());
 
   reflectStatus();

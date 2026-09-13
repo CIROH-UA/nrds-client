@@ -104,7 +104,6 @@ export function createVariablePicker(container, store) {
     if (variables !== prevVariables) {
       prevVariables = variables;
       select.setOptions(variablesToOptions(variables));
-      // setOptions may drop a value that is gone; keep the select showing the current variable.
       select.setValue(variable);
     }
     if (variable !== prevVariable) {

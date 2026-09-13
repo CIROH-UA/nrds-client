@@ -1,4 +1,3 @@
-// // nexusTimeseries.js
 import { formatBytes, tableNameForKey } from "./utils.js";
 import { makeOutputUrl } from "./s3Utils.js";
 import { fetchParquetBuffer, isMissing } from "./fetchParquet.js";
@@ -89,8 +88,6 @@ export async function getFeatureIDs(cacheKey) {
   }
 }
 
-// Keyed with the extension the cache dispatches on; tableNameForKey strips it, so the table is
-// still called index_data_table.
 const INDEX_CACHE_KEY = "index_data_table.parquet";
 
 /** Where a parquet lives inside duckdb while its table is built. Not an OPFS path: the bytes are registered from memory and dropped as soon as CREATE TABLE has copied the rows out. */
@@ -418,7 +415,6 @@ export async function getDistinctTimes(cacheKey) {
   }
 }
 
-// Returns a flattened array ordered by (feature_id, time)
 export async function getVpuVariableFlat(cacheKey, variable) {
   const conn = await getConnection();
   const tableName = tableNameForKey(cacheKey);

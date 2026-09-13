@@ -22,8 +22,6 @@ import {
  * last_error the way TimeseriesCard reads them.
  */
 
-// Orders series loads against each other. Ordering against a vpu load is a separate question,
-// answered by the shared vpu generation in loadState.
 const series = createSequence();
 
 /** Merge a patch into the timeseries slice without a dedicated action for each field. */

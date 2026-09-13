@@ -187,7 +187,6 @@ export function attachFeatureSheet(store) {
     }
 
     applyState(true);
-    // Let the DOM lay out before measuring the peek row.
     requestAnimationFrame(() => {
       if (!destroyed && !aside.hidden) measurePeek();
     });
@@ -203,7 +202,6 @@ export function attachFeatureSheet(store) {
   collapseBtn.addEventListener('click', toggleCollapsed);
   closeBtn.addEventListener('click', () => actions.set_selected_feature(null));
 
-  // Drag-or-tap on the handle: a short press toggles, a drag past the threshold sets the direction.
   let dragStartY = null;
   const onPointerDown = (e) => {
     dragStartY = e.clientY ?? null;
@@ -228,9 +226,7 @@ export function attachFeatureSheet(store) {
   };
   handle.addEventListener('pointerdown', onPointerDown);
   handle.addEventListener('pointerup', onPointerUp);
-  // A keyboard press on the handle toggles too (it is a button, so click covers Enter/Space).
   handle.addEventListener('click', (e) => {
-    // Ignore the synthetic click that follows a pointer gesture we already handled.
     if (e.detail === 0) toggleCollapsed();
   });
 

@@ -23,7 +23,6 @@ export function createNavbar(container, { store, onInfo } = {}) {
   const nav = document.createElement('header');
   nav.className = 'nrds-navbar';
 
-  // --- Left group: brand, badge, search slot, load status ----------------------------------------
   const left = document.createElement('div');
   left.className = 'nrds-navbar__group nrds-navbar__group--start';
 
@@ -49,7 +48,6 @@ export function createNavbar(container, { store, onInfo } = {}) {
     '<span class="nrds-navbar__badge-short" aria-hidden="true">Exp</span>' +
     '<span class="nrds-navbar__badge-assistive">Experimental</span>';
 
-  // The feature-id search box (U5d) fills this marked slot.
   const searchSlot = document.createElement('div');
   searchSlot.className = 'nrds-navbar__search-slot';
   searchSlot.dataset.searchSlot = '';
@@ -58,7 +56,6 @@ export function createNavbar(container, { store, onInfo } = {}) {
   const teardownSearchBox = createSearchBox(searchSlot, store);
   const teardownLoadStatus = createLoadStatus(left, store);
 
-  // --- Right group: theme toggle, info ------------------------------------------------------------
   const right = document.createElement('div');
   right.className = 'nrds-navbar__group nrds-navbar__group--end';
 

@@ -88,9 +88,6 @@ const FILE_ICON_SVG =
 
 /** Mount the run cascade into `container`, wired to `store`; returns a teardown. */
 export function createRunCascade(container, store) {
-  // Local latest-wins bookkeeping: how many fetch chains are running, and whether to show the
-  // controls as working. `selecting` is view state, not store state, so a render is forced by hand
-  // whenever it changes.
   let chains = 0;
   let selecting = false;
 
@@ -261,7 +258,6 @@ export function createRunCascade(container, store) {
     await loadVpu();
   };
 
-  // --- DOM -----------------------------------------------------------------------------------------
   const heading = document.createElement('h3');
   heading.className = 'nrds-control-menu__heading';
   heading.textContent = 'Change the run';
@@ -317,7 +313,6 @@ export function createRunCascade(container, store) {
   actionsRow.append(updateBtn);
   container.append(actionsRow);
 
-  // --- Reflection: keep every control in step with the store plus the local selecting flag --------
   function render() {
     const s = store.get();
 

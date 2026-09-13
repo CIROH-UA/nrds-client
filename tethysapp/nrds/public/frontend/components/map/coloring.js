@@ -278,8 +278,6 @@ export function attachFlowpathColoring(map, store) {
     lastIdleSig = stateSig(data, store.get().theme.theme);
   };
 
-  // Recolour on the store changes that affect the colouring, choosing a full rewrite when the data
-  // or theme changed and a cheap frame diff when only the time cursor moved.
   const s0 = store.get();
   let prevVariable = s0.timeseries.variable;
   let prevScale = s0.vpu.scale;
@@ -319,10 +317,6 @@ export function attachFlowpathColoring(map, store) {
     paint(dataChanged || themeChanged);
   });
 
-  // Tiles stream in after a paint, and a paint before the source loaded wrote nothing; on idle,
-  // re-apply the full current frame once per distinct state so the streamed features get their
-  // colour. Feature state persists once the source is loaded, so a settled, unchanged view is a
-  // no-op here rather than an O(reaches) sweep every idle.
   const onIdle = () => {
     if (!layerReady()) return;
     const data = activeData();
@@ -334,7 +328,6 @@ export function attachFlowpathColoring(map, store) {
   };
   map.on('idle', onIdle);
 
-  // First paint, in case the layer and source are already present when this is attached.
   paint(true);
 
   return () => {

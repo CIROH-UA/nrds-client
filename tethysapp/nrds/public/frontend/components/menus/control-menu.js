@@ -34,7 +34,6 @@ import { actions } from '../../store/app-store.js';
 import { createSelect } from '../select.js';
 import { createRunCascade } from './run-cascade.js';
 
-// Three ticks, not five: this is a key, meant to be read at a glance (mirrors the React ValueLegend).
 export const LEGEND_TICKS = [0, 0.5, 1];
 
 /** The scale option currently selected, falling back to the first when the value is unknown. */
@@ -171,7 +170,6 @@ function makeSection({ label, heading }) {
 export function createControlMenu(container, store) {
   const PANEL_ID = 'nrds-control-options';
 
-  // --- Opener button -----------------------------------------------------------------------------
   const opener = document.createElement('button');
   opener.type = 'button';
   opener.className = 'nrds-control-menu__opener';
@@ -184,7 +182,6 @@ export function createControlMenu(container, store) {
     '<path d="M4 6h10M4 12h6M4 18h13"/><circle cx="18" cy="6" r="2"/>' +
     '<circle cx="14" cy="12" r="2"/><circle cx="20" cy="18" r="2"/></svg>';
 
-  // --- Panel -------------------------------------------------------------------------------------
   const panel = document.createElement('div');
   panel.className = 'nrds-control-menu__panel';
   panel.id = PANEL_ID;
@@ -208,10 +205,6 @@ export function createControlMenu(container, store) {
   header.append(title, closeBtn);
   panel.append(header);
 
-  // --- Model run (cascade) -----------------------------------------------------------------------
-  // The model/date/forecast/cycle/ensemble/output-file "Change the run" cascade (U5c). It fills the
-  // marked slot; createRunCascade renders its own "Change the run" heading, so this section carries
-  // only the accessible group label.
   const runSection = makeSection({ label: 'Model run' });
   runSection.classList.add('nrds-control-menu__section--run');
   const runSlot = document.createElement('div');
@@ -221,7 +214,6 @@ export function createControlMenu(container, store) {
   panel.append(runSection);
   const teardownRunCascade = createRunCascade(runSlot, store);
 
-  // --- Layers ------------------------------------------------------------------------------------
   const layersSection = makeSection({ label: 'Layers', heading: 'Layer Options' });
 
   const catchmentRow = makeSwitchRow({
@@ -272,7 +264,6 @@ export function createControlMenu(container, store) {
 
   const swatchRows = [catchmentRow, flowpathsRow, gaugesRow, vpuRow, hoverRow];
 
-  // --- Flowpath values (colour scale + legend) ---------------------------------------------------
   const valuesSection = makeSection({ label: 'Flowpath values', heading: 'Flowpath values' });
 
   const scaleRow = document.createElement('div');
@@ -311,13 +302,8 @@ export function createControlMenu(container, store) {
   valuesSection.append(legend);
   panel.append(valuesSection);
 
-  // The theme toggle used to live here, in an Appearance section, while the shell/navbar was a later
-  // unit. The shell (U6) has landed, so the toggle now lives in the navbar; see
-  // components/shell/theme-toggle.js.
-
   container.append(opener, panel);
 
-  // --- Open/close, with focus following the control across the swap --------------------------------
   let open = shouldStartOpen();
   const applyOpen = (moveFocus) => {
     opener.hidden = open;
@@ -338,7 +324,6 @@ export function createControlMenu(container, store) {
   });
   applyOpen(false);
 
-  // --- Reflection: keep every control in step with the store -------------------------------------
   const refreshSwatches = () => {
     const colors = swatchColors();
     for (const { swatch, swatchKey } of swatchRows) {
@@ -385,8 +370,6 @@ export function createControlMenu(container, store) {
     const theme = s.theme.theme;
     const valuesRef = s.vpu.valuesByVar?.[variable];
 
-    // The swatch colours track the map theme, so refresh them when the theme changes even though the
-    // theme control itself now lives in the navbar.
     if (theme !== prev.theme) {
       refreshSwatches();
     }

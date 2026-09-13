@@ -124,7 +124,6 @@ export function createTimeSlider(container, store) {
     const ts = store.get().timeseries;
     const frames = store.get().vpu.times.length;
 
-    // The dock is on the map only while there is something to animate.
     root.hidden = frames === 0;
 
     const max = sliderMax(frames);

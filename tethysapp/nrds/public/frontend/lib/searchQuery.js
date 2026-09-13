@@ -6,12 +6,8 @@
  * drops rows the map can no longer place.
  */
 
-// The prefixes the hydrofabric index uses for things this app can show, in the order it cares about:
-// a catchment is what gets charted and its flowpath is the same reach.
 const ID_PREFIXES = ['cat', 'wb'];
 
-// The nexus family (plain, terminal, coastal, internal). The index still carries these rows, but the
-// nexus layer was removed, so a search naming one is a miss rather than a place to fly to.
 const UNMAPPED_PREFIXES = /^(nex|tnx|cnx|inx)-/;
 
 /** Whether an id names something the map can no longer draw, so it is not worth offering or flying to. */

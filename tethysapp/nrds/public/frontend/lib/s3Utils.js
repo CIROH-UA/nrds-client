@@ -217,11 +217,6 @@ const DATASTREAM_BUCKET = 'https://ciroh-community-ngen-datastream.s3.us-east-1.
 export const makeOutputUrl = (prefix) =>
   /^https?:\/\//i.test(prefix) ? prefix : `${DATASTREAM_BUCKET}/${prefix}`;
 
-// Only the outputFiles listing depends on the vpu, but the effect calling initialS3Data
-// re-runs whenever the vpu changes, so all five listings were refetched every time. This
-// holds the four vpu-independent ones for the life of the page, making a vpu change cost one
-// request instead of five. Cached only when the chain completed, so an empty or failed
-// listing is retried rather than remembered. A reload picks up newly published dates.
 let cachedBaseOptions = null;
 
 /** The model, date, forecast and cycle lists the controls open on. */

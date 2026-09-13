@@ -37,8 +37,6 @@ import { createControlMenu } from '../menus/control-menu.js';
 
 const INITIAL_VIEW = { center: [-96, 40], zoom: 4 };
 
-// Half-width of the click hit box, in pixels. A flowpath renders two pixels wide, so an exact-pixel
-// click is a target most people cannot hit; the box gives the click the same slack React's did.
 const CLICK_TOLERANCE_PX = 4;
 
 /** Which store toggle governs each selectable layer. */
@@ -80,8 +78,6 @@ function addHydrofabricLayers(map, store, theme) {
 
   const divideId = divideIdOf(store.get().feature.selected_feature);
 
-  // The basemap style ships its own 'flowpaths' layer; hide it so our colourable 'flowpaths-line'
-  // layer is the only flowpath network drawn (adding a second 'flowpaths' id would also collide).
   if (map.getLayer('flowpaths')) map.setLayoutProperty('flowpaths', 'visibility', 'none');
 
   map.addLayer({
@@ -249,8 +245,6 @@ function subscribeSelectionHighlight(map, store) {
     applyHighlight(feature);
 
     const at = selectionLngLat(feature);
-    // essential:true keeps the flight for a reader who asked for reduced motion, or the press
-    // does nothing at all.
     if (at) map.flyTo({ center: at, zoom: SELECTION_ZOOM, essential: true });
   });
 }
@@ -276,16 +270,11 @@ export function createMap(container, store) {
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
   map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-right');
 
-  // The animation transport, docked bottom-centre over the map. It is a sibling of the maplibre
-  // canvas (not a maplibre control) and hides itself until a VPU has frames to play.
   const timeDock = document.createElement('div');
   timeDock.className = 'nrds-time-dock';
   container.append(timeDock);
   const teardownTimeSlider = createTimeSlider(timeDock, store);
 
-  // The unified map control menu (layer toggles, colour scale, value legend, theme). It floats over
-  // the map as a sibling of the canvas and mounts its own opener button; the run-selection cascade
-  // is a marked placeholder inside it, built in a later unit.
   const teardownControlMenu = createControlMenu(container, store);
 
   map.on('load', () => {
@@ -294,15 +283,12 @@ export function createMap(container, store) {
     attachFlowpathColoring(map, store);
     attachClickToSelect(map, store);
     subscribeSelectionHighlight(map, store);
-    // The desktop popup and the mobile sheet each gate themselves on the 768px breakpoint, so exactly
-    // one hosts the selected feature's content and they hand off when the viewport crosses it.
     attachFeaturePopup(map, store);
     attachFeatureSheet(store);
   });
 
   subscribeVisibility(map, store);
 
-  // Debug/e2e handle: exposes the map and store for browser-console inspection and headless checks.
   if (typeof window !== 'undefined') {
     window.nrds = { map, store, teardownTimeSlider, teardownControlMenu };
   }

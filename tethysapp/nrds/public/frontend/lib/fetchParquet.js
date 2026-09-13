@@ -2,7 +2,6 @@
 const FIRST_BYTE_MS = 30_000;
 const STALL_MS = 30_000;
 
-// Parquet brackets itself with PAR1 at both ends, which is what makes a wrong body detectable.
 const PARQUET_MAGIC = "PAR1";
 
 /** A response the server answered but had nothing at: a stale deploy, or a bad path. */

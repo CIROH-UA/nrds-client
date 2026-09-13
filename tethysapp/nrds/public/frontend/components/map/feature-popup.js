@@ -68,8 +68,6 @@ export function attachFeaturePopup(map, store) {
     if (current?.teardownPicker) current.teardownPicker();
     if (current?.teardownChart) current.teardownChart();
     current = null;
-    // A close from the popup's own button clears the selection (and with it the highlight); a
-    // programmatic close is the store already having moved on, so it must not write back.
     if (!wasProgrammatic) actions.set_selected_feature(null);
   };
 
@@ -103,7 +101,6 @@ export function attachFeaturePopup(map, store) {
     const feature = store.get().feature.selected_feature;
     const at = selectionLngLat(feature);
 
-    // The bottom sheet owns the feature content on narrow viewports; keep the popup closed there.
     if (sheet.matches() || !feature || !at) {
       closePopup();
       return;
