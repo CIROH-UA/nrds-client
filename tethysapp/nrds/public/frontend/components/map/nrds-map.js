@@ -31,7 +31,7 @@ function ensurePmtiles() {
 /** Which layers each store toggle governs; the vpu toggle is wired in a later unit. */
 const VISIBILITY_GROUPS = [
   { key: 'catchments', layers: ['divides', 'divides-highlight'] },
-  { key: 'flowpaths', layers: ['flowpaths', 'flowpaths-highlight'] },
+  { key: 'flowpaths', layers: ['flowpaths-line', 'flowpaths-highlight'] },
   { key: 'conus_gauges', layers: ['conus-gauges'] },
 ];
 
@@ -71,6 +71,10 @@ function addHydrofabricLayers(map, store, theme) {
 
   const divideId = selectedDivideId(store);
 
+  // The basemap style ships its own 'flowpaths' layer; hide it so our colourable 'flowpaths-line'
+  // layer is the only flowpath network drawn (adding a second 'flowpaths' id would also collide).
+  if (map.getLayer('flowpaths')) map.setLayoutProperty('flowpaths', 'visibility', 'none');
+
   map.addLayer({
     id: 'divides',
     type: 'fill',
@@ -100,7 +104,7 @@ function addHydrofabricLayers(map, store, theme) {
   );
 
   map.addLayer({
-    id: 'flowpaths',
+    id: 'flowpaths-line',
     type: 'line',
     source: 'flowpath-geometry',
     'source-layer': 'flowpaths',

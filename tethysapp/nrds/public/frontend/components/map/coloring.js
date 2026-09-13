@@ -42,7 +42,7 @@ import { numericPartOf } from '../../lib/utils.js';
 /** The pmtiles source, its vector source-layer, and the line layer these all belong to. */
 const SOURCE_ID = 'flowpath-geometry';
 const SOURCE_LAYER = 'flowpaths';
-const LAYER_ID = 'flowpaths';
+const LAYER_ID = 'flowpaths-line';
 
 /** The bin a reach carries when it is in the VPU but has no value at this frame. */
 export const NODATA_BIN = 0;
@@ -154,8 +154,6 @@ export function colorMatchExpression(ramp, baseColor) {
  * reach with a value scales 0.5..3.0x with its width factor, matching the deck.gl layer.
  */
 export function widthExpression(stops = FLOWPATHS_WIDTH_STOPS) {
-  const zoom = ['interpolate', ['linear'], ['zoom']];
-  for (const [z, w] of stops) zoom.push(z, w);
   const factor = [
     'match',
     ['coalesce', ['feature-state', 'bin'], UNSET_BIN],
@@ -165,7 +163,9 @@ export function widthExpression(stops = FLOWPATHS_WIDTH_STOPS) {
     FACTOR_NO_DATA,
     ['+', FACTOR_MIN, ['*', FACTOR_RANGE, ['coalesce', ['feature-state', 'wf'], 0]]],
   ];
-  return ['*', zoom, factor];
+  const expr = ['interpolate', ['linear'], ['zoom']];
+  for (const [z, w] of stops) expr.push(z, ['*', w, factor]);
+  return expr;
 }
 
 /**

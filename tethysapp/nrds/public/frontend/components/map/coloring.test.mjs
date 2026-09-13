@@ -134,9 +134,14 @@ test('colorMatchExpression maps unset to base, bin 0 to grey, and each bin to it
   assert.equal(expr[expr.length - 1], '#000000');
 });
 
-test('widthExpression multiplies a zoom curve by a feature-state factor', () => {
+test('widthExpression is a top-level zoom interpolate whose stops scale by a feature-state factor', () => {
   const expr = widthExpression([[2, 0.6], [10, 2]]);
-  assert.equal(expr[0], '*');
-  assert.deepEqual(expr[1], ['interpolate', ['linear'], ['zoom'], 2, 0.6, 10, 2]);
-  assert.equal(expr[2][0], 'match');
+  // maplibre requires the ['zoom'] expression at top level, not nested inside a multiply.
+  assert.deepEqual(expr.slice(0, 3), ['interpolate', ['linear'], ['zoom']]);
+  assert.equal(expr[3], 2);
+  assert.equal(expr[4][0], '*');
+  assert.equal(expr[4][1], 0.6);
+  assert.equal(expr[4][2][0], 'match');
+  assert.equal(expr[5], 10);
+  assert.equal(expr[6][1], 2);
 });
