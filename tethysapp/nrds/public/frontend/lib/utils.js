@@ -1,4 +1,5 @@
 import { FEATURE_PROPERTIES } from "./data.js";
+import { isMissing, isStalled } from "./fetchParquet.js";
 
 export const formatLabel = (key) =>{
  return FEATURE_PROPERTIES[key] || key
@@ -25,3 +26,28 @@ export const numericPartOf = (id) => {
   const match = /(\d+)\s*$/.exec(String(id ?? ''));
   return match ? match[1] : null;
 };
+
+/** One name for a selection, used as the duckdb table and as what the UI reports. */
+export function getCacheKey(model, date, forecast, cycle, ensemble, vpu, outputFile) {
+  const parts = ensemble
+    ? `${model}_${date}_${forecast}_${cycle}_${ensemble}_${vpu}`
+    : `${model}_${date}_${forecast}_${cycle}_${vpu}`;
+  return parts.replace(/\./g, '_').replace(/\//g, '_') + `_${outputFile}`;
+}
+
+/** What to tell the reader when the cache could not be written or read. */
+export function cacheFailureReason(err) {
+  if (isStalled(err)) return 'the download stopped';
+  if (isMissing(err)) return 'the file is not there';
+
+  switch (err?.name) {
+    case 'TimeoutError':
+      return 'the download stopped';
+    case 'DatabaseTimeoutError':
+      return 'the database is not responding';
+    case 'TypeError':
+      return 'could not fetch it';
+    default:
+      return null;
+  }
+}
