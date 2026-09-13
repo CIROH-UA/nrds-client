@@ -29,6 +29,7 @@ import {
 import { selectMapFeature } from '../../actions/selectFeature.js';
 import { attachFlowpathColoring } from './coloring.js';
 import { attachFeaturePopup } from './feature-popup.js';
+import { createTimeSlider } from '../time-slider.js';
 
 const INITIAL_VIEW = { center: [-96, 40], zoom: 4 };
 
@@ -271,6 +272,13 @@ export function createMap(container, store) {
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
   map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-right');
 
+  // The animation transport, docked bottom-centre over the map. It is a sibling of the maplibre
+  // canvas (not a maplibre control) and hides itself until a VPU has frames to play.
+  const timeDock = document.createElement('div');
+  timeDock.className = 'nrds-time-dock';
+  container.append(timeDock);
+  const teardownTimeSlider = createTimeSlider(timeDock, store);
+
   map.on('load', () => {
     addHydrofabricLayers(map, store, readMapTheme());
     applyAllVisibility(map, store);
@@ -283,7 +291,7 @@ export function createMap(container, store) {
   subscribeVisibility(map, store);
 
   // Debug/e2e handle: exposes the map and store for browser-console inspection and headless checks.
-  if (typeof window !== 'undefined') window.nrds = { map, store };
+  if (typeof window !== 'undefined') window.nrds = { map, store, teardownTimeSlider };
 
   return map;
 }

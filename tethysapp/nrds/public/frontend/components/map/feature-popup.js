@@ -3,6 +3,7 @@ import maplibregl from 'maplibre-gl';
 import { selectionLngLat } from '../../lib/flowpathValues.js';
 import { curatedFeatureFields } from '../../lib/featureFields.js';
 import { createChart } from '../chart/nrds-chart.js';
+import { createVariablePicker } from './variable-picker.js';
 import { actions } from '../../store/app-store.js';
 
 /**
@@ -43,11 +44,14 @@ function buildContent(feature) {
     header.append(row);
   }
 
+  const pickerHost = document.createElement('div');
+  pickerHost.className = 'nrds-feature-popup__picker';
+
   const chartHost = document.createElement('div');
   chartHost.className = 'nrds-feature-popup__chart';
 
-  root.append(header, chartHost);
-  return { root, chartHost };
+  root.append(header, pickerHost, chartHost);
+  return { root, pickerHost, chartHost };
 }
 
 /** Open the popup on the selected feature, and update/close it as the selection changes. */
@@ -57,6 +61,7 @@ export function attachFeaturePopup(map, store) {
 
   const onPopupClose = () => {
     const wasProgrammatic = closingProgrammatically;
+    if (current?.teardownPicker) current.teardownPicker();
     if (current?.teardownChart) current.teardownChart();
     current = null;
     // A close from the popup's own button clears the selection (and with it the highlight); a
@@ -72,7 +77,7 @@ export function attachFeaturePopup(map, store) {
   };
 
   const openPopup = (feature, at) => {
-    const { root, chartHost } = buildContent(feature);
+    const { root, pickerHost, chartHost } = buildContent(feature);
     const popup = new maplibregl.Popup({
       closeButton: true,
       closeOnClick: false,
@@ -84,9 +89,10 @@ export function attachFeaturePopup(map, store) {
       .setDOMContent(root)
       .addTo(map);
 
+    const teardownPicker = createVariablePicker(pickerHost, store);
     const teardownChart = createChart(chartHost, store);
     popup.on('close', onPopupClose);
-    current = { popup, teardownChart, featureKey: featureKeyOf(feature) };
+    current = { popup, teardownPicker, teardownChart, featureKey: featureKeyOf(feature) };
   };
 
   const render = () => {

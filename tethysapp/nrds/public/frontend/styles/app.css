@@ -138,3 +138,262 @@ body {
   height: 220px;
   padding: 0 6px 6px;
 }
+
+/* Shared select (KTD6), the vanilla replacement for react-select. A select-only combobox: a control
+ * that opens a listbox, themed from the --select-* tokens and sized 44px normal / 30px compact to
+ * match the React control heights. */
+.nrds-select {
+  position: relative;
+  width: 100%;
+  font-size: var(--text-sm);
+}
+
+.nrds-select__control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  min-height: 44px;
+  height: 44px;
+  padding: 0 var(--space-sm);
+  border: 1px solid var(--select-control-border);
+  border-radius: var(--radius-sm);
+  background: var(--select-control-bg);
+  color: var(--select-text-color);
+  cursor: pointer;
+  user-select: none;
+}
+
+.nrds-select[data-compact] .nrds-select__control {
+  min-height: 30px;
+  height: 30px;
+}
+
+.nrds-select__control:hover {
+  border-color: var(--nav-pill-active-bg);
+}
+
+.nrds-select__control:focus-visible {
+  outline: none;
+  border-color: var(--nav-pill-active-bg);
+  box-shadow: 0 0 0 2px var(--nav-pill-active-bg);
+}
+
+.nrds-select__value {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.nrds-select__arrow {
+  display: flex;
+  flex: 0 0 auto;
+  color: var(--select-placeholder-color);
+  transition: transform 0.12s ease;
+}
+
+.nrds-select__arrow svg {
+  width: 16px;
+  height: 16px;
+}
+
+.nrds-select__control[aria-expanded='true'] .nrds-select__arrow {
+  transform: rotate(180deg);
+}
+
+.nrds-select__listbox {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  margin: 0;
+  padding: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  list-style: none;
+  background: var(--select-menu-bg);
+  border: 1px solid var(--select-control-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--elevation-map-control);
+}
+
+.nrds-select__option {
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--text-xs);
+  color: var(--select-text-color);
+  white-space: normal;
+  overflow-wrap: break-word;
+  cursor: pointer;
+}
+
+.nrds-select__option.is-active {
+  background: var(--select-option-hover-bg);
+}
+
+/* Selected wins over active, so the chosen row keeps its fill while the pointer moves over it. */
+.nrds-select__option[aria-selected='true'] {
+  background: var(--select-option-selected-bg);
+  color: var(--nav-pill-active-text-color);
+}
+
+/* Variable picker (U5a): a compact select above the popup chart. */
+.nrds-variable-picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-xs) 10px 2px;
+}
+
+.nrds-variable-picker__label {
+  flex: 0 0 auto;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--popup-text-color);
+}
+
+.nrds-variable-picker__select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Time slider dock (U5a): the animation transport, docked bottom-centre over the map. Ported from
+ * the React TimeSlider.css intent -- one row of a play button, a range input, a readout, and a
+ * speed select -- now on a floating panel rather than in the sidebar. */
+.nrds-time-dock {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(560px, calc(100% - 32px));
+  z-index: 5;
+}
+
+.nrds-time-dock .time-dock {
+  padding: var(--space-sm) var(--space-md);
+  background: var(--map-panel-bg);
+  color: var(--map-panel-text);
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elevation-map-control);
+  container-type: inline-size;
+}
+
+.nrds-time-dock .dock-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.nrds-time-dock .time-value {
+  flex: 0 0 auto;
+  min-width: 60px;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-sm);
+  color: var(--map-panel-text);
+}
+
+.nrds-time-dock .speed-select-host {
+  flex: 0 0 auto;
+  width: 72px;
+}
+
+/* The play/pause button is the row's height and a 44px touch target, as the React audit set it. */
+.nrds-time-dock .play-btn {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: var(--space-sm);
+  background: var(--button-primary-bg);
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-sm);
+  color: var(--button-primary-text);
+  cursor: pointer;
+}
+
+.nrds-time-dock .play-btn:hover:not(:disabled) {
+  background-color: var(--button-primary-hover-bg);
+  color: var(--button-primary-text-hover);
+}
+
+.nrds-time-dock .play-btn:focus-visible {
+  outline: 2px solid var(--nav-pill-active-bg);
+  outline-offset: 2px;
+}
+
+.nrds-time-dock .play-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.nrds-time-dock .play-btn.active {
+  background: var(--nav-pill-active-bg);
+  border-color: transparent;
+  color: var(--nav-pill-active-text-color);
+}
+
+.nrds-time-dock .play-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Scoped to this dock so it does not reach every range input in the app. The input is a tall,
+ * transparent hit area; the visible bar is the track pseudo-element. */
+.nrds-time-dock .time-slider {
+  flex: 1 1 auto;
+  min-width: 60px;
+  height: 44px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  outline: none;
+}
+
+.nrds-time-dock .time-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  background: var(--panel-border-color);
+  border-radius: var(--radius-sm);
+}
+
+.nrds-time-dock .time-slider::-moz-range-track {
+  height: 6px;
+  background: var(--panel-border-color);
+  border-radius: var(--radius-sm);
+}
+
+.nrds-time-dock .time-slider:focus-visible {
+  outline: 2px solid var(--nav-pill-active-bg);
+  outline-offset: 2px;
+}
+
+.nrds-time-dock .time-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: var(--space-md);
+  height: var(--space-md);
+  margin-top: -5px;
+  background: var(--nav-pill-active-bg);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.nrds-time-dock .time-slider::-moz-range-thumb {
+  width: var(--space-md);
+  height: var(--space-md);
+  background: var(--nav-pill-active-bg);
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.nrds-time-dock .time-slider:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
