@@ -7,10 +7,10 @@ from .app import App
 def home(request):
     """Controller for the app home page.
 
-    Serves the React app by default. During the vanilla-JS migration the build-less client is
-    reachable at ``?ui=vanilla`` so it can be exercised without displacing React; the cutover
-    (U7) makes the vanilla template the default.
+    Serves the build-less vanilla client by default (migration cutover, U7). The React client is
+    kept as a reversible fallback at ``?ui=react`` until a production soak; flipping the default
+    back is this one condition.
     """
-    if request.GET.get("ui") == "vanilla":
-        return App.render(request, "index_vanilla.html")
-    return App.render(request, "index.html")
+    if request.GET.get("ui") == "react":
+        return App.render(request, "index.html")
+    return App.render(request, "index_vanilla.html")
