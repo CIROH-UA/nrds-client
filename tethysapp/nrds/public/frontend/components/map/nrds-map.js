@@ -7,17 +7,41 @@
  * `visibility` in step with the toggle it belongs to. The `flowpath-geometry` source is created with
  * `promoteId` so each flowpath feature's id is its numeric `divide_id`, and on load
  * `attachFlowpathColoring` (unit U3c) drives the per-frame feature-state colouring of the `flowpaths`
- * layer; the static `line-color` stands in until VPU data lands.
+ * layer; the static `line-color` stands in until VPU data lands. On load it also wires the click-to-
+ * select pipeline (unit U5): a click queries the visible selectable layers and hands the feature to
+ * `selectMapFeature`, a store subscription keeps the two highlight layers pointed at the selection,
+ * and `attachFeaturePopup` opens the anchored popup with the feature's chart.
  */
 import maplibregl from 'maplibre-gl';
 import { Protocol } from 'pmtiles';
 
 import { readMapTheme } from '../../lib/mapTheme.js';
 import { FLOWPATHS_WIDTH_STOPS } from '../../lib/flowpaths.js';
-import { numericPartOf } from '../../lib/utils.js';
+import { selectionLngLat } from '../../lib/flowpathValues.js';
+import {
+  SELECTABLE_LAYERS,
+  SELECTION_ZOOM,
+  divideIdOf,
+  dividesHighlightFilter,
+  flowpathsHighlightFilter,
+  pickClickedFeature,
+} from '../../lib/selection.js';
+import { selectMapFeature } from '../../actions/selectFeature.js';
 import { attachFlowpathColoring } from './coloring.js';
+import { attachFeaturePopup } from './feature-popup.js';
 
 const INITIAL_VIEW = { center: [-96, 40], zoom: 4 };
+
+// Half-width of the click hit box, in pixels. A flowpath renders two pixels wide, so an exact-pixel
+// click is a target most people cannot hit; the box gives the click the same slack React's did.
+const CLICK_TOLERANCE_PX = 4;
+
+/** Which store toggle governs each selectable layer. */
+const SELECTABLE_LAYER_TOGGLE = {
+  divides: 'catchments',
+  'flowpaths-line': 'flowpaths',
+  'conus-gauges': 'conus_gauges',
+};
 
 let pmtilesRegistered = false;
 
@@ -35,26 +59,6 @@ const VISIBILITY_GROUPS = [
   { key: 'conus_gauges', layers: ['conus-gauges'] },
 ];
 
-/** The divide_id of the current selection, or null when nothing is selected. */
-function selectedDivideId(store) {
-  const feature = store.get().feature.selected_feature;
-  if (!feature) return null;
-  return feature.divide_id ?? feature.properties?.divide_id ?? null;
-}
-
-/** The divides-highlight filter: the selected divide, or an expression that matches nothing. */
-function dividesHighlightFilter(divideId) {
-  return divideId != null
-    ? ['any', ['==', ['get', 'divide_id'], divideId]]
-    : ['==', ['get', 'divide_id'], ''];
-}
-
-/** The flowpaths-highlight filter, keyed by the numeric part of the selected id. */
-function flowpathsHighlightFilter(divideId) {
-  const numeric = numericPartOf(divideId);
-  return numeric ? ['==', ['get', 'divide_id'], Number(numeric)] : ['==', ['get', 'divide_id'], -1];
-}
-
 /** Add the two pmtiles sources and the five static hydrofabric layers to a loaded map. */
 function addHydrofabricLayers(map, store, theme) {
   const { datastream } = store.get();
@@ -69,7 +73,7 @@ function addHydrofabricLayers(map, store, theme) {
     url: `pmtiles://${datastream.community_pmtiles}`,
   });
 
-  const divideId = selectedDivideId(store);
+  const divideId = divideIdOf(store.get().feature.selected_feature);
 
   // The basemap style ships its own 'flowpaths' layer; hide it so our colourable 'flowpaths-line'
   // layer is the only flowpath network drawn (adding a second 'flowpaths' id would also collide).
@@ -176,10 +180,81 @@ function subscribeVisibility(map, store) {
   });
 }
 
+/** The selectable layers that are both toggled on and present on the map, top of the stack first. */
+function selectableLayersOn(map, store) {
+  const { layers } = store.get();
+  return SELECTABLE_LAYERS.filter((id) => {
+    const toggle = SELECTABLE_LAYER_TOGGLE[id];
+    return layers[toggle]?.visible && map.getLayer(id);
+  });
+}
+
+/**
+ * Turn a map click into a selection: query the visible selectable layers within a small tolerance
+ * box, pick the feature worth acting on, and hand it to selectMapFeature. Registered once on load.
+ */
+function attachClickToSelect(map, store) {
+  map.on('click', (event) => {
+    const layers = selectableLayersOn(map, store);
+    if (!layers.length) return;
+
+    const { x, y } = event.point;
+    const box = [
+      [x - CLICK_TOLERANCE_PX, y - CLICK_TOLERANCE_PX],
+      [x + CLICK_TOLERANCE_PX, y + CLICK_TOLERANCE_PX],
+    ];
+
+    let features;
+    try {
+      features = map.queryRenderedFeatures(box, { layers });
+    } catch {
+      return;
+    }
+
+    const feature = pickClickedFeature(features);
+    if (!feature) return;
+    selectMapFeature(feature, feature.layer.id);
+  });
+}
+
+/**
+ * Follow the selection: on every change, point the two highlight layers' filters at the selected
+ * divide (or clear them on deselect) and, for a placeable selection, fly the map to it at a zoom
+ * where the catchment is actually drawn. The highlight is applied once up front so a selection made
+ * before the map loaded is drawn; the flight runs only on real changes, never on that first sync,
+ * so wiring the map does not move it. Returns the store's unsubscribe closure.
+ */
+function subscribeSelectionHighlight(map, store) {
+  const applyHighlight = (feature) => {
+    const divideId = divideIdOf(feature);
+    if (map.getLayer('divides-highlight')) {
+      map.setFilter('divides-highlight', dividesHighlightFilter(divideId));
+    }
+    if (map.getLayer('flowpaths-highlight')) {
+      map.setFilter('flowpaths-highlight', flowpathsHighlightFilter(divideId));
+    }
+  };
+
+  let prev = store.get().feature.selected_feature;
+  applyHighlight(prev);
+  return store.subscribe((state) => {
+    const feature = state.feature.selected_feature;
+    if (feature === prev) return;
+    prev = feature;
+    applyHighlight(feature);
+
+    const at = selectionLngLat(feature);
+    // essential:true keeps the flight for a reader who asked for reduced motion, or the press
+    // does nothing at all.
+    if (at) map.flyTo({ center: at, zoom: SELECTION_ZOOM, essential: true });
+  });
+}
+
 /**
  * Create the maplibre map into the given element, wired to the store: the basemap follows the
- * current theme, the static hydrofabric sources and layers are added on load, and layer
- * visibility tracks the store's layer toggles. Returns the map.
+ * current theme, the static hydrofabric sources and layers are added on load, layer visibility
+ * tracks the store's layer toggles, a click selects the feature under it, and the selection drives
+ * the highlight layers and an anchored popup with the feature's chart. Returns the map.
  */
 export function createMap(container, store) {
   ensurePmtiles();
@@ -200,6 +275,9 @@ export function createMap(container, store) {
     addHydrofabricLayers(map, store, readMapTheme());
     applyAllVisibility(map, store);
     attachFlowpathColoring(map, store);
+    attachClickToSelect(map, store);
+    subscribeSelectionHighlight(map, store);
+    attachFeaturePopup(map, store);
   });
 
   subscribeVisibility(map, store);

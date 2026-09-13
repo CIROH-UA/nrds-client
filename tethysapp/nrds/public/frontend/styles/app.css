@@ -76,3 +76,59 @@ body {
 .nrds-chart__tooltip-value {
   font-weight: var(--weight-strong);
 }
+
+/* Anchored feature popup (U5). maplibre paints the callout; these rules dress the content it holds:
+ * a curated header above a fixed-size host the chart factory fills. Tokens match the React popup. */
+.maplibregl-popup.nrds-feature-popup-shell .maplibregl-popup-content {
+  padding: 0;
+  background-color: var(--popup-bg);
+  color: var(--popup-text-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elevation-map-readout);
+}
+
+.maplibregl-popup.nrds-feature-popup-shell .maplibregl-popup-tip {
+  border-top-color: var(--popup-bg);
+  border-bottom-color: var(--popup-bg);
+}
+
+.nrds-feature-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 340px;
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+
+.nrds-feature-popup .popup-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 30px 8px 10px;
+  border-bottom: 1px solid var(--panel-border-color);
+}
+
+.nrds-feature-popup .popup-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.nrds-feature-popup .popup-label {
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.nrds-feature-popup .popup-value {
+  font-family: var(--font-mono);
+  word-break: break-all;
+}
+
+.nrds-feature-popup__chart {
+  position: relative;
+  width: 340px;
+  max-width: 100%;
+  height: 220px;
+  padding: 0 6px 6px;
+}

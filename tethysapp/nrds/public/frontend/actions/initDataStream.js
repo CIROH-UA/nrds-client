@@ -53,6 +53,70 @@ function abandonSelectionWithNoOutput() {
 }
 
 /**
+ * Resolve a vpu's run and bring its animation in: fetch the S3 option lists for the vpu, seed the
+ * datastream/s3 slices with the first choice of each, compute the same cache key and prefix the
+ * React app built, and call loadVpu. Shared by the startup path and a cross-vpu map click.
+ *
+ * The default run (first of each list) is used rather than the reader's current run because the run
+ * menu that would change it is not yet ported; every vpu therefore opens on its newest readable run.
+ * `shouldContinue` lets a caller abandon a load a newer selection has overtaken: it is checked after
+ * the one S3 round trip, before anything is written, so a superseded cross-vpu click never rewrites
+ * the cache key out from under the click that replaced it.
+ */
+export async function loadVpuSelection(vpu, { signal, shouldContinue = () => true } = {}) {
+  const { models, dates, forecasts, cycles, ensembles, outputFiles } = await initialS3Data(vpu, {
+    signal,
+  });
+  if (!shouldContinue()) return;
+
+  const _models = models.filter((m) => m.value !== 'test');
+  const defaultDate = dates[0]?.value;
+
+  if (!outputFiles.length) {
+    actions.setInitialData({ models: _models, dates, forecasts, cycles, outputFiles, prefix: '' });
+    actions.set_model(_models[0]?.value);
+    actions.set_forecast(forecasts[0]?.value);
+    actions.set_cycle(cycles[0]?.value);
+    actions.set_date(defaultDate);
+    actions.set_ensemble(ensembles[0]?.value || null);
+    abandonSelectionWithNoOutput();
+    return;
+  }
+
+  const selection = [
+    _models[0]?.value,
+    defaultDate,
+    forecasts[0]?.value,
+    cycles[0]?.value,
+    ensembles[0]?.value || null,
+    vpu,
+    outputFiles[0]?.value,
+  ];
+  const cacheKey = getCacheKey(...selection);
+
+  actions.set_vpu(vpu);
+  actions.set_model(_models[0]?.value);
+  actions.set_forecast(forecasts[0]?.value);
+  actions.set_cycle(cycles[0]?.value);
+  actions.set_outputFile(outputFiles[0]?.value);
+  actions.set_date(defaultDate);
+  actions.set_ensemble(ensembles[0]?.value || null);
+  actions.set_cache_key(cacheKey);
+
+  const _prefix = makePrefix(...selection);
+  actions.setInitialData({
+    models: _models,
+    dates,
+    forecasts,
+    cycles,
+    outputFiles,
+    prefix: _prefix,
+  });
+
+  await loadVpu();
+}
+
+/**
  * Resolve the initial selection and load the default vpu once. Runs at most once per page. The store
  * argument defaults to the app singleton the actions are bound to; it is accepted so the entry can
  * pass the same store it hands the map, matching the app's other components.
@@ -64,55 +128,7 @@ export async function initDataStream(store = appStore, { vpu = DEFAULT_VPU, sign
   if (!vpu) return;
 
   try {
-    const { models, dates, forecasts, cycles, ensembles, outputFiles } = await initialS3Data(vpu, {
-      signal,
-    });
-
-    const _models = models.filter((m) => m.value !== 'test');
-    const defaultDate = dates[0]?.value;
-
-    if (!outputFiles.length) {
-      actions.setInitialData({ models: _models, dates, forecasts, cycles, outputFiles, prefix: '' });
-      actions.set_model(_models[0]?.value);
-      actions.set_forecast(forecasts[0]?.value);
-      actions.set_cycle(cycles[0]?.value);
-      actions.set_date(defaultDate);
-      actions.set_ensemble(ensembles[0]?.value || null);
-      abandonSelectionWithNoOutput();
-      return;
-    }
-
-    const selection = [
-      _models[0]?.value,
-      defaultDate,
-      forecasts[0]?.value,
-      cycles[0]?.value,
-      ensembles[0]?.value || null,
-      vpu,
-      outputFiles[0]?.value,
-    ];
-    const cacheKey = getCacheKey(...selection);
-
-    actions.set_vpu(vpu);
-    actions.set_model(_models[0]?.value);
-    actions.set_forecast(forecasts[0]?.value);
-    actions.set_cycle(cycles[0]?.value);
-    actions.set_outputFile(outputFiles[0]?.value);
-    actions.set_date(defaultDate);
-    actions.set_ensemble(ensembles[0]?.value || null);
-    actions.set_cache_key(cacheKey);
-
-    const _prefix = makePrefix(...selection);
-    actions.setInitialData({
-      models: _models,
-      dates,
-      forecasts,
-      cycles,
-      outputFiles,
-      prefix: _prefix,
-    });
-
-    await loadVpu();
+    await loadVpuSelection(vpu, { signal });
   } catch (error) {
     if (error?.name === 'AbortError') return;
     console.error('Error fetching initial S3 data:', error);
