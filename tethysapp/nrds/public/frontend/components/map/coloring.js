@@ -212,10 +212,16 @@ export function attachFlowpathColoring(map, store) {
   const stateSig = (data, theme) =>
     `${data.variable}|${data.scale}|${data.timeIndex}|${theme}`;
 
+  /** Clear every reach's feature-state on the source, so no stale bins survive a data change. */
+  const clearFeatureState = () => {
+    if (layerReady()) map.removeFeatureState({ source: SOURCE_ID, sourceLayer: SOURCE_LAYER });
+  };
+
   /** Restore the plain static look when there is no VPU data to colour. */
   const restoreStatic = () => {
     prevStates = new Map();
     lastIdleSig = null;
+    clearFeatureState();
     if (!expressionsApplied || !layerReady()) return;
     const theme = readMapTheme();
     map.setPaintProperty(LAYER_ID, 'line-color', theme.flowpaths);
@@ -237,13 +243,19 @@ export function attachFlowpathColoring(map, store) {
   /**
    * Recolour for the current store state. ``full`` rewrites every reach (first paint, and after a
    * data or theme change); otherwise only the reaches whose bin changed since the last frame.
+   * ``resetState`` first clears every reach's feature-state, so a VPU switch never leaves the
+   * previous VPU's reaches frozen at their stale bins (their ids are absent from the new frame).
    */
-  const paint = (full) => {
+  const paint = (full, resetState = false) => {
     if (!layerReady()) return;
     const data = activeData();
     if (!data) {
       restoreStatic();
       return;
+    }
+    if (resetState) {
+      clearFeatureState();
+      prevStates = new Map();
     }
     const theme = readMapTheme();
     ensureExpressions(theme);
@@ -296,11 +308,12 @@ export function attachFlowpathColoring(map, store) {
     const timeIndex = s.timeseries.currentTimeIndex;
     const theme = s.theme.theme;
 
+    const reachesChanged = featureIds !== prevFeatureIds;
     const dataChanged =
       variable !== prevVariable ||
       scale !== prevScale ||
       values !== prevValues ||
-      featureIds !== prevFeatureIds;
+      reachesChanged;
     const themeChanged = theme !== prevTheme;
     const frameChanged = timeIndex !== prevTimeIndex;
     if (!dataChanged && !themeChanged && !frameChanged) return;
@@ -316,7 +329,7 @@ export function attachFlowpathColoring(map, store) {
       expressionsApplied = false;
       appliedThemeKey = null;
     }
-    paint(dataChanged || themeChanged);
+    paint(dataChanged || themeChanged, reachesChanged);
   });
 
   const onIdle = () => {
