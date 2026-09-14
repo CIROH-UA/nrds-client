@@ -181,7 +181,6 @@ const INITIAL_STATE = {
     hovered_enabled: false,
   },
   feature: {
-    hovered_feature: null,
     selected_feature: null,
   },
   s3: {
@@ -410,13 +409,6 @@ export const actions = {
     if (sameFeature(s.selected_feature, feature)) return;
     patchSlice('feature', { ...s, selected_feature: feature });
   },
-  set_hovered_feature: (feature) => {
-    const s = store.get().feature;
-    if (s.hovered_feature === feature) return;
-    if (sameFeature(s.hovered_feature, feature)) return;
-    patchSlice('feature', { ...s, hovered_feature: feature });
-  },
-
   set_s3_bucket: (newBucket) => {
     const s = store.get().s3;
     patchSlice('s3', samePrimitive(s.bucket, newBucket) ? s : { ...s, bucket: newBucket });

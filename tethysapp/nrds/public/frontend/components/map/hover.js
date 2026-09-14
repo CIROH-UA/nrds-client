@@ -2,7 +2,6 @@ import maplibregl from 'maplibre-gl';
 
 import { pickHoverFeature, hoveredFeatureOf, hoverReading, HOVER_TARGET_ORDER } from '../../lib/hover.js';
 import { curatedFeatureFields } from '../../lib/featureFields.js';
-import { actions } from '../../store/app-store.js';
 
 /**
  * The hover readout for the build-less NRDS client, the vanilla replacement for the React hover
@@ -12,9 +11,10 @@ import { actions } from '../../store/app-store.js';
  * VPU arrays by feature index, so the readout does not depend on tile feature-state.
  *
  * The popup is driven directly from the mousemove handler rather than through a store subscription,
- * so following the cursor never floods every store subscriber; the store's `hovered_feature` is still
- * updated for parity. A light subscription only watches the toggle so turning hovering off clears the
- * popup at once. Returns a teardown that removes the listeners, the subscription, and the popup.
+ * so following the cursor never floods every store subscriber. A light subscription only watches the
+ * hovering toggle and the current frame, so turning hovering off clears the popup at once and a frame
+ * advance re-renders it in place. Returns a teardown that removes the listeners, the subscription, and
+ * the popup.
  */
 
 /** Half-width of the hover hit box, matching the React HOVER_TOLERANCE_PX; a flowpath is ~2px wide. */
@@ -33,6 +33,20 @@ function readingFromStore(store, hoverId) {
   });
 }
 
+/** Build one label/value popup row; `extraClass` marks the animated measure row. */
+function buildRow(label, value, extraClass) {
+  const row = document.createElement('div');
+  row.className = extraClass ? `popup-row ${extraClass}` : 'popup-row';
+  const labelEl = document.createElement('span');
+  labelEl.className = 'popup-label';
+  labelEl.textContent = label;
+  const valueEl = document.createElement('span');
+  valueEl.className = 'popup-value';
+  valueEl.textContent = value;
+  row.append(labelEl, valueEl);
+  return row;
+}
+
 /** Build the hover popup DOM: a title, the animated reading, then the feature's key attributes. */
 function buildContent(store, hovered) {
   const root = document.createElement('div');
@@ -44,30 +58,10 @@ function buildContent(store, hovered) {
   root.append(title);
 
   const reading = readingFromStore(store, hovered.hoverId);
-  if (reading) {
-    const row = document.createElement('div');
-    row.className = 'popup-row popup-measure';
-    const label = document.createElement('span');
-    label.className = 'popup-label';
-    label.textContent = reading.label;
-    const value = document.createElement('span');
-    value.className = 'popup-value';
-    value.textContent = reading.value;
-    row.append(label, value);
-    root.append(row);
-  }
+  if (reading) root.append(buildRow(reading.label, reading.value, 'popup-measure'));
 
   for (const { label, value } of curatedFeatureFields(hovered)) {
-    const row = document.createElement('div');
-    row.className = 'popup-row';
-    const labelEl = document.createElement('span');
-    labelEl.className = 'popup-label';
-    labelEl.textContent = label;
-    const valueEl = document.createElement('span');
-    valueEl.className = 'popup-value';
-    valueEl.textContent = value;
-    row.append(labelEl, valueEl);
-    root.append(row);
+    root.append(buildRow(label, value));
   }
   return root;
 }
@@ -90,7 +84,6 @@ export function attachHover(map, store) {
 
   const clearHover = () => {
     removePopup();
-    if (store.get().feature.hovered_feature) actions.set_hovered_feature(null);
   };
 
   /** Rebuild the popup body from the store's current frame, without moving it. */
@@ -141,7 +134,6 @@ export function attachHover(map, store) {
       clearHover();
       return;
     }
-    actions.set_hovered_feature(hovered);
     showPopup(hovered);
   };
 

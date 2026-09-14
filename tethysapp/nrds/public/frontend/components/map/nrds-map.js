@@ -22,6 +22,7 @@ import { Protocol } from 'pmtiles';
 import { readMapTheme } from '../../lib/mapTheme.js';
 import { FLOWPATHS_WIDTH_STOPS } from '../../lib/flowpaths.js';
 import { selectionLngLat } from '../../lib/flowpathValues.js';
+import { createSequence } from '../../lib/sequence.js';
 import {
   SELECTABLE_LAYERS,
   SELECTION_ZOOM,
@@ -307,18 +308,18 @@ function subscribeSelectionHighlight(map, store) {
 function subscribeMapTheme(map, store, initialColoringTeardown) {
   let teardownColoring = initialColoringTeardown;
   let prev = store.get().theme.theme;
-  let generation = 0;
+  const swaps = createSequence();
   return store.subscribe((state) => {
     const theme = state.theme.theme;
     if (theme === prev) return;
     prev = theme;
 
-    const gen = ++generation;
+    const ticket = swaps.next();
     teardownColoring();
     teardownColoring = () => {};
     map.setStyle(readMapTheme().styleUrl);
     map.once('idle', () => {
-      if (gen !== generation) return;
+      if (!swaps.isCurrent(ticket)) return;
       addHydrofabricLayers(map, store, readMapTheme());
       applyAllVisibility(map, store);
       teardownColoring = attachFlowpathColoring(map, store);

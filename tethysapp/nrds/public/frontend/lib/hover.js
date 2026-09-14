@@ -13,9 +13,6 @@ import { NO_DATA_VALUE } from './valueRamp.js';
 /** How hard a layer is to aim at, smallest target first, so a gauge wins over the flowpath over it. */
 export const HOVER_TARGET_ORDER = ['conus-gauges', 'flowpaths-line', 'divides'];
 
-/** The id a rendered map feature is known by, re-exported so the hover pipeline shares one source. */
-export { mapFeatureId };
-
 /** The feature the reader most likely meant, out of everything under the pointer. */
 export function pickHoverFeature(features) {
   if (!features?.length) return null;

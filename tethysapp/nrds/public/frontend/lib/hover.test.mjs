@@ -3,11 +3,11 @@ import assert from 'node:assert/strict';
 
 import {
   HOVER_TARGET_ORDER,
-  mapFeatureId,
   pickHoverFeature,
   hoveredFeatureOf,
   hoverReading,
 } from './hover.js';
+import { mapFeatureId } from './flowpathValues.js';
 
 const feat = (layerId, properties = {}, id) => ({ layer: { id: layerId }, id, properties });
 

@@ -221,8 +221,8 @@ export function attachFlowpathColoring(map, store) {
   const restoreStatic = () => {
     prevStates = new Map();
     lastIdleSig = null;
-    clearFeatureState();
     if (!expressionsApplied || !layerReady()) return;
+    clearFeatureState();
     const theme = readMapTheme();
     map.setPaintProperty(LAYER_ID, 'line-color', theme.flowpaths);
     map.setPaintProperty(LAYER_ID, 'line-width', { stops: FLOWPATHS_WIDTH_STOPS });
