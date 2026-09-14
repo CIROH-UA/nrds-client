@@ -72,10 +72,10 @@ test('dividesHighlightFilter matches the selected divide, or nothing when none i
   assert.deepEqual(dividesHighlightFilter(null), ['==', ['get', 'divide_id'], '']);
 });
 
-test('flowpathsHighlightFilter keys on the numeric part of the id, or nothing when none is selected', () => {
-  assert.deepEqual(flowpathsHighlightFilter('cat-42'), ['==', ['get', 'divide_id'], 42]);
-  assert.deepEqual(flowpathsHighlightFilter('wb-1057'), ['==', ['get', 'divide_id'], 1057]);
-  assert.deepEqual(flowpathsHighlightFilter(null), ['==', ['get', 'divide_id'], -1]);
+test('flowpathsHighlightFilter keys on the native feature id, or nothing when none is selected', () => {
+  assert.deepEqual(flowpathsHighlightFilter('cat-42'), ['==', ['id'], 42]);
+  assert.deepEqual(flowpathsHighlightFilter('wb-1057'), ['==', ['id'], 1057]);
+  assert.deepEqual(flowpathsHighlightFilter(null), ['==', ['id'], -1]);
 });
 
 test('pickClickedFeature prefers a chartable divide over a flowpath drawn above it', () => {

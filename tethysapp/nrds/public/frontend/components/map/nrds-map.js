@@ -4,8 +4,10 @@
  * the two pmtiles vector sources and the five static layers (divides, its highlight, flowpaths, its
  * highlight, and the CONUS gauges) with the paint the React `MapLayers` module used. Initial layer
  * visibility comes from the store's `layers` slice, and a store subscription keeps each layer's
- * `visibility` in step with the toggle it belongs to. The `flowpath-geometry` source is created with
- * `promoteId` so each flowpath feature's id is its numeric `divide_id`, and on load
+ * `visibility` in step with the toggle it belongs to. The `flowpath-geometry` source keeps the tiles'
+ * native feature id (no `promoteId`): that id equals each reach's numeric `divide_id` and, unlike the
+ * `divide_id` property, is present at every zoom, so the feature-state colouring reaches the whole
+ * network at CONUS scale rather than only above zoom 7 where the property survives. On load
  * `attachFlowpathColoring` (unit U3c) drives the per-frame feature-state colouring of the `flowpaths`
  * layer; the static `line-color` stands in until VPU data lands. On load it also wires the click-to-
  * select pipeline (unit U5): a click queries the visible selectable layers and hands the feature to
@@ -70,7 +72,6 @@ function addHydrofabricLayers(map, store, theme) {
   map.addSource('flowpath-geometry', {
     type: 'vector',
     url: `pmtiles://${datastream.flowpaths_pmtiles}`,
-    promoteId: { flowpaths: 'divide_id' },
   });
   map.addSource('conus', {
     type: 'vector',

@@ -67,10 +67,15 @@ export const dividesHighlightFilter = (divideId) =>
     ? ['any', ['==', ['get', 'divide_id'], divideId]]
     : ['==', ['get', 'divide_id'], ''];
 
-/** The flowpaths-highlight filter, keyed by the numeric part of the selected id. */
+/**
+ * The flowpaths-highlight filter, keyed on the tile's native feature id (which equals the numeric
+ * `divide_id`). The native id is used rather than the `divide_id` property because the property is
+ * dropped below zoom 7, so a property filter would lose the highlight at low zoom; the native id is
+ * present at every zoom.
+ */
 export const flowpathsHighlightFilter = (divideId) => {
   const numeric = numericPartOf(divideId);
-  return numeric ? ['==', ['get', 'divide_id'], Number(numeric)] : ['==', ['get', 'divide_id'], -1];
+  return numeric ? ['==', ['id'], Number(numeric)] : ['==', ['id'], -1];
 };
 
 /**

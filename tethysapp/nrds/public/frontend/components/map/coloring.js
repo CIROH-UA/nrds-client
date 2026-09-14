@@ -20,9 +20,11 @@
  * path (`writeColorInto`) remains available in `lib/valueRamp.js` if smoother gradients are wanted
  * later; it is deliberately not built here.
  *
- * Reach-id mapping. The `flowpath-geometry` source is created with `promoteId: { flowpaths:
- * 'divide_id' }`, so each rendered feature's `id` is its numeric `divide_id` -- the same numeric key
- * the flowpaths-highlight filter uses. The VPU animation arrays are keyed by `feature_id` (the
+ * Reach-id mapping. The `flowpath-geometry` source keeps the tiles' native feature id (no
+ * `promoteId`); that id is each reach's numeric `divide_id` and, unlike the `divide_id` property, is
+ * present at every zoom, so the colouring reaches the whole network at CONUS scale rather than only
+ * above zoom 7 where the property survives. It is the same numeric key the flowpaths-highlight filter
+ * uses. The VPU animation arrays are keyed by `feature_id` (the
  * distinct, sorted ids from the timeseries table), whose numeric part equals that `divide_id`; the
  * flat value array is ordered by (feature_id, time), so a reach's row block index is its position in
  * `vpu.featureIds` and also its `vpu.featureIdToIndex` value. This module therefore looks each
