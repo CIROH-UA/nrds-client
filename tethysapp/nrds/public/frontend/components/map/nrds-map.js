@@ -30,6 +30,7 @@ import {
 } from '../../lib/selection.js';
 import { selectMapFeature } from '../../actions/selectFeature.js';
 import { attachFlowpathColoring } from './coloring.js';
+import { attachHover } from './hover.js';
 import { attachFeaturePopup } from './feature-popup.js';
 import { attachFeatureSheet } from './feature-sheet.js';
 import { createTimeSlider } from '../time-slider.js';
@@ -224,8 +225,31 @@ function attachClickToSelect(map, store) {
  * where the catchment is actually drawn. The highlight is applied once up front so a selection made
  * before the map loaded is drawn; the flight runs only on real changes, never on that first sync,
  * so wiring the map does not move it. Returns the store's unsubscribe closure.
+ *
+ * The highlight layers only draw at high zoom (the divides fill fades out below zoom 7 and the
+ * flowpaths tiles drop `divide_id` there), so a marker at the selection centroid gives a locator
+ * that stays visible at every zoom, including CONUS scale where the highlight alone would vanish.
  */
 function subscribeSelectionHighlight(map, store) {
+  let marker = null;
+
+  const updateMarker = (feature) => {
+    const at = selectionLngLat(feature);
+    if (!at) {
+      if (marker) {
+        marker.remove();
+        marker = null;
+      }
+      return;
+    }
+    if (!marker) {
+      const el = document.createElement('div');
+      el.className = 'nrds-selection-marker';
+      marker = new maplibregl.Marker({ element: el, anchor: 'center' });
+    }
+    marker.setLngLat(at).addTo(map);
+  };
+
   const applyHighlight = (feature) => {
     const divideId = divideIdOf(feature);
     if (map.getLayer('divides-highlight')) {
@@ -238,11 +262,13 @@ function subscribeSelectionHighlight(map, store) {
 
   let prev = store.get().feature.selected_feature;
   applyHighlight(prev);
+  updateMarker(prev);
   return store.subscribe((state) => {
     const feature = state.feature.selected_feature;
     if (feature === prev) return;
     prev = feature;
     applyHighlight(feature);
+    updateMarker(feature);
 
     const at = selectionLngLat(feature);
     if (at) map.flyTo({ center: at, zoom: SELECTION_ZOOM, essential: true });
@@ -282,6 +308,7 @@ export function createMap(container, store) {
     applyAllVisibility(map, store);
     attachFlowpathColoring(map, store);
     attachClickToSelect(map, store);
+    attachHover(map, store);
     subscribeSelectionHighlight(map, store);
     attachFeaturePopup(map, store);
     attachFeatureSheet(store);

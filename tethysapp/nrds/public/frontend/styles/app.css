@@ -154,6 +154,70 @@ body,
   padding: 0 6px 6px;
 }
 
+/* Hover readout (Enable Hovering). A small following popup that mirrors the feature popup's dressing,
+ * showing the animated value and the reach's key attributes under the pointer. */
+.maplibregl-popup.nrds-hover-popup-shell .maplibregl-popup-content {
+  padding: 8px 10px;
+  background-color: var(--popup-bg);
+  color: var(--popup-text-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elevation-map-readout);
+}
+
+.maplibregl-popup.nrds-hover-popup-shell .maplibregl-popup-tip {
+  border-top-color: var(--popup-bg);
+  border-bottom-color: var(--popup-bg);
+}
+
+.nrds-hover-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 260px;
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+.nrds-hover-popup .popup-title {
+  font-weight: 600;
+  opacity: 0.7;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.nrds-hover-popup .popup-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.nrds-hover-popup .popup-label {
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.nrds-hover-popup .popup-value {
+  font-family: var(--font-mono);
+}
+
+.nrds-hover-popup .popup-measure .popup-value {
+  font-weight: 600;
+}
+
+/* Selection locator. The highlight layers fade out below zoom 7, so this marker keeps the selected
+ * feature findable at every zoom, including CONUS scale. */
+.nrds-selection-marker {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: var(--map-divides-highlight-outline);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px var(--map-divides-highlight-outline), 0 1px 4px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
 /* Shared select (KTD6), the vanilla replacement for react-select. A select-only combobox: a control
  * that opens a listbox, themed from the --select-* tokens and sized 44px normal / 30px compact to
  * match the React control heights. */
