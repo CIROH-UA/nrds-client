@@ -536,7 +536,21 @@ body,
     left: 8px;
     right: 8px;
     width: auto;
-    max-height: calc(100% - 16px);
+    /* Cap the height so the panel does not swallow the whole screen: the map stays visible behind
+     * it and the feature sheet keeps room at the bottom instead of colliding with it. */
+    max-height: min(68vh, calc(100% - 16px));
+  }
+}
+
+/* When a feature's bottom sheet is open on a phone it owns the lower half, so tighten the control
+ * panel's height cap to the space above the sheet, keeping both usable instead of overlapping. */
+@media (max-width: 768px) {
+  body[data-sheet='expanded'] .nrds-control-menu__panel {
+    max-height: min(40vh, calc(100% - var(--sheet-offset, 0px) - 24px));
+  }
+
+  body[data-sheet='collapsed'] .nrds-control-menu__panel {
+    max-height: min(56vh, calc(100% - var(--sheet-offset, 0px) - 24px));
   }
 }
 

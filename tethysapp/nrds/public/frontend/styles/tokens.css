@@ -37,7 +37,7 @@
   --notice-text: oklch(0.400 0.090 75);
 
   --elevation-map-readout: 0 1px 3px oklch(0.235 0.030 250 / 0.10), 0 4px 12px oklch(0.235 0.030 250 / 0.10);
-  --elevation-map-control: 0 2px 6px oklch(0.235 0.030 250 / 0.14), 0 10px 28px oklch(0.235 0.030 250 / 0.16);
+  --elevation-map-control: 0 1px 2px oklch(0.235 0.030 250 / 0.10), 0 6px 16px oklch(0.235 0.030 250 / 0.12);
 
   --panel-text-muted: oklch(0.480 0.014 250);
 
@@ -81,7 +81,7 @@
   --search-placeholder: #14181c;
 
   --panel-background: oklch(0.995 0.003 250);
-  --panel-border-color: oklch(0.645 0.010 250);
+  --panel-border-color: oklch(0.885 0.008 250);
   --muted-text: oklch(0.235 0.012 250);
 
   --offcanvas-bg: oklch(0.995 0.003 250);
@@ -143,7 +143,7 @@
 /* Dark theme override */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --primary-color: #1c2126;
+    --primary-color: oklch(0.245 0.012 250);
     --title-text-color: oklch(0.945 0.006 250);
     --background-color: oklch(0.205 0.010 250);
     --text-color: oklch(0.945 0.006 250);
@@ -157,7 +157,7 @@
     --notice-text: oklch(0.900 0.055 75);
 
     --elevation-map-readout: 0 1px 3px oklch(0 0 0 / 0.42), 0 4px 14px oklch(0 0 0 / 0.38);
-    --elevation-map-control: 0 2px 6px oklch(0 0 0 / 0.52), 0 12px 32px oklch(0 0 0 / 0.48);
+    --elevation-map-control: 0 1px 2px oklch(0 0 0 / 0.40), 0 6px 18px oklch(0 0 0 / 0.42);
     --status-failed-text: #e25b52;
     --status-failed-bg: rgba(226, 91, 82, 0.16);
     --hover-text: oklch(0.945 0.006 250);
@@ -185,8 +185,8 @@
 
     --accent-text: oklch(0.760 0.010 250);
 
-    --panel-background: #1c2126;
-    --panel-border-color: oklch(0.560 0.012 250);
+    --panel-background: oklch(0.245 0.012 250);
+    --panel-border-color: oklch(0.330 0.012 250);
     --muted-text: oklch(0.945 0.006 250);
 
     --offcanvas-bg: oklch(0.245 0.012 250);
@@ -195,7 +195,7 @@
     --popup-bg: oklch(0.245 0.012 250);
     --popup-text-color: oklch(0.945 0.006 250);
 
-    --modal-bg: #1c2126;
+    --modal-bg: oklch(0.245 0.012 250);
     --modal-text-color: var(--text-color);
     --modal-border-color: oklch(0.330 0.012 250);
 
@@ -243,7 +243,7 @@
 }
 
 :root[data-theme='dark'] {
-  --primary-color: #1c2126;
+  --primary-color: oklch(0.245 0.012 250);
   --title-text-color: oklch(0.945 0.006 250);
   --background-color: oklch(0.205 0.010 250);
   --text-color: oklch(0.945 0.006 250);
@@ -257,7 +257,7 @@
   --notice-text: oklch(0.900 0.055 75);
 
   --elevation-map-readout: 0 1px 3px oklch(0 0 0 / 0.42), 0 4px 14px oklch(0 0 0 / 0.38);
-  --elevation-map-control: 0 2px 6px oklch(0 0 0 / 0.52), 0 12px 32px oklch(0 0 0 / 0.48);
+  --elevation-map-control: 0 1px 2px oklch(0 0 0 / 0.40), 0 6px 18px oklch(0 0 0 / 0.42);
   --status-failed-text: #e25b52;
   --status-failed-bg: rgba(226, 91, 82, 0.16);
   --hover-text: oklch(0.945 0.006 250);
@@ -285,8 +285,8 @@
 
   --accent-text: oklch(0.760 0.010 250);
 
-  --panel-background: #1c2126;
-  --panel-border-color: oklch(0.560 0.012 250);
+  --panel-background: oklch(0.245 0.012 250);
+  --panel-border-color: oklch(0.330 0.012 250);
   --muted-text: oklch(0.945 0.006 250);
 
   --offcanvas-bg: oklch(0.245 0.012 250);
@@ -295,7 +295,7 @@
   --popup-bg: oklch(0.245 0.012 250);
   --popup-text-color: oklch(0.945 0.006 250);
 
-  --modal-bg: #1c2126;
+  --modal-bg: oklch(0.245 0.012 250);
   --modal-text-color: var(--text-color);
   --modal-border-color: oklch(0.330 0.012 250);
 
