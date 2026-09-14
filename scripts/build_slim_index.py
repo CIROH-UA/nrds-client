@@ -4,8 +4,7 @@
 The browser downloads hydrofabric_index.parquet -- 103,389,785 bytes, 37 columns,
 2,073,171 rows -- to power the search box. Ten of those columns are read. Four resolve and
 position a search (`id`, `vpuid`, `lon`, `lat`); six fill the Feature Information panel, and
-they are exactly the fields FEATURE_PROPERTIES in reactapp/features/DataStream/lib/data.js
-gives a human label to (`toid`, `divide_id`, `has_flowline`, `areasqkm`,
+they are exactly the fields the frontend gives a human label to (`toid`, `divide_id`, `has_flowline`, `areasqkm`,
 `tot_drainage_areasqkm`, `lengthkm`). The other 27 are downloaded and never looked at: weir and
 orifice routing parameters, reservoir_index_* flags, mainstem, hydroseq, flow_order, and the
 rest. Only the search path ever surfaced them, and only as machine names.

@@ -11,9 +11,9 @@ class App(TethysAppBase):
     package = "nrds"  # WARNING: Do not change this value
     index = "home"
     icon = f"{package}/images/icon.png"
-    catch_all = "home"  # Catch all url mapped to home controller, required for react browser routing
+    catch_all = "home"  # Catch all url mapped to home controller, required for client-side routing
     root_url = "nrds"
-    color = ""  # Don't set color here, set it in reactapp/custom-bootstrap.scss
+    color = ""  # Set the theme in the frontend design tokens (public/frontend/styles/tokens.css)
     tags = ""
     enable_feedback = False
     feedback_emails = []

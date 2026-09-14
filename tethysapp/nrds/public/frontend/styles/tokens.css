@@ -1,7 +1,7 @@
 /*
- * OKLCH design-token layer for the vanilla NRDS client (KTD4/U0), ported from reactapp/App.scss
- * with the Bootstrap SCSS variables resolved to hex ($light #f0f4f7, $secondary #1c2126,
- * $dark #14181c). MapLibre and chart tokens stay hex/rgb (the MapLibre parser cannot read oklch).
+ * OKLCH design-token layer for the vanilla NRDS client, with the Bootstrap palette resolved to hex
+ * ($light #f0f4f7, $secondary #1c2126, $dark #14181c). MapLibre and chart tokens stay hex/rgb
+ * (the MapLibre parser cannot read oklch).
  * Light is the base; dark is applied by an explicit [data-theme='dark'] and by the system
  * preference unless [data-theme='light'] opts out, matching the effective-theme signal.
  */

@@ -1,8 +1,6 @@
 /*
- * Base layout and component styles for the vanilla NRDS client (U0), ported incrementally from the
- * styled-components in reactapp as units land. tokens.css owns the design tokens; this file owns
- * element and component rules. Fonts fall back to the system stack in --font-ui until the Public
- * Sans faces are wired in a later unit.
+ * Base layout and component styles for the vanilla NRDS client. tokens.css owns the design tokens;
+ * this file owns element and component rules. Fonts fall back to the system stack in --font-ui.
  */
 
 *,
