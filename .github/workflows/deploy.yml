@@ -66,7 +66,7 @@ jobs:
 
       - name: Health check
         run: |
-          echo "Waiting for app to come up (first boot runs salt setup)..."
+          echo "Waiting for app to come up..."
           for i in $(seq 1 30); do
             if curl -fsSL -o /dev/null http://127.0.0.1:8080/; then
               echo "App is up after ~$((i * 5))s"
