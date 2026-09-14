@@ -256,10 +256,9 @@ run_tethys() {
     # Launch container with explicit error handling
     echo -e "  ${INFO_MARK} Running docker command..."
     docker run --rm -d \
-        -p "$nginx_tethys_port:$nginx_tethys_port" \
+        -p "$nginx_tethys_port:8080" \
         --name "$TETHYS_CONTAINER_NAME" \
         --env SKIP_DB_SETUP="$SKIP_DB_SETUP" \
-        --env NGINX_PORT="$nginx_tethys_port" \
         --env CSRF_TRUSTED_ORIGINS="$CSRF_TRUSTED_ORIGINS" \
         "${TETHYS_REPO}:${TETHYS_TAG}"
     if [ $? -eq 0 ]; then

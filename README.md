@@ -43,10 +43,9 @@ export TETHYS_CONTAINER_NAME="tethys-nrds"               \
 
 ```bash
 docker run --rm -d \
-  -p "$NGINX_PORT:$NGINX_PORT" \
+  -p "$NGINX_PORT:8080" \
   --name "$TETHYS_CONTAINER_NAME" \
   -e SKIP_DB_SETUP="$SKIP_DB_SETUP" \
-  -e NGINX_PORT="$NGINX_PORT" \
   -e CSRF_TRUSTED_ORIGINS="$CSRF_TRUSTED_ORIGINS" \
   "${TETHYS_REPO}:${TETHYS_TAG}"
 ```
