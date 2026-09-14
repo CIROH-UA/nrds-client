@@ -169,8 +169,23 @@ export function createSelect({
     listbox.hidden = false;
     control.setAttribute('aria-expanded', 'true');
     activeIndex = selectedIndex >= 0 ? selectedIndex : 0;
+    flipIfNeeded();
     applyActive();
     document.addEventListener('pointerdown', onDocumentPointerDown, true);
+  };
+
+  /** Open the menu upward when it would otherwise run off the bottom of the viewport. */
+  const flipIfNeeded = () => {
+    root.classList.remove('nrds-select--up');
+    try {
+      const rect = control.getBoundingClientRect();
+      const below = window.innerHeight - rect.bottom;
+      if (below < listbox.offsetHeight && rect.top > below) {
+        root.classList.add('nrds-select--up');
+      }
+    } catch {
+      /* getBoundingClientRect/innerHeight are unavailable off-DOM; the default downward menu stands. */
+    }
   };
 
   const closeList = () => {

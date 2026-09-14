@@ -296,6 +296,13 @@ body,
   box-shadow: var(--elevation-map-control);
 }
 
+/* Open the menu above the control when there is not enough room below, so a select near the bottom
+ * of the screen (the time dock's speed control) never drops its options off-screen. */
+.nrds-select--up .nrds-select__listbox {
+  top: auto;
+  bottom: calc(100% + 2px);
+}
+
 .nrds-select__option {
   padding: var(--space-xs) var(--space-sm);
   font-size: var(--text-xs);
