@@ -1,7 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { HOVER_TARGET_ORDER, mapFeatureId, pickHoverFeature, hoveredFeatureOf } from './hover.js';
+import {
+  HOVER_TARGET_ORDER,
+  mapFeatureId,
+  pickHoverFeature,
+  hoveredFeatureOf,
+  hoverReading,
+} from './hover.js';
 
 const feat = (layerId, properties = {}, id) => ({ layer: { id: layerId }, id, properties });
 
@@ -58,4 +64,39 @@ test('hoveredFeatureOf keeps a zero id (0 is a valid divide_id)', () => {
   const hovered = hoveredFeatureOf(feat('divides', { divide_id: 0 }), { lng: 1, lat: 2 });
   assert.notEqual(hovered, null);
   assert.equal(hovered.hoverId, 0);
+});
+
+// varData is feature-major: featureIndex * numTimes + timeIndex. Feature index 1 over 3 frames
+// reads 10, 20, 30.
+const readingInput = (currentTimeIndex) => ({
+  variable: 'flow',
+  times: [0, 3_600_000, 7_200_000],
+  varData: [0, 0, 0, 10, 20, 30],
+  featureIdToIndex: { 5: 1 },
+  currentTimeIndex,
+  hoverId: 5,
+});
+
+test('hoverReading tracks currentTimeIndex so the value advances with the animation', () => {
+  const first = hoverReading(readingInput(0));
+  const last = hoverReading(readingInput(2));
+  assert.notEqual(first, null);
+  assert.notEqual(last, null);
+  assert.notEqual(first.value, last.value);
+});
+
+test('hoverReading resolves the id through its numeric part when keyed that way', () => {
+  const r = hoverReading({ ...readingInput(1), featureIdToIndex: { 5: 1 }, hoverId: 'wb-5' });
+  assert.notEqual(r, null);
+});
+
+test('hoverReading reports no data for the ngen sentinel', () => {
+  const r = hoverReading({ ...readingInput(0), varData: [0, 0, 0, -9999, -9999, -9999] });
+  assert.equal(r.value, 'no data');
+});
+
+test('hoverReading returns null for an unknown reach or missing data', () => {
+  assert.equal(hoverReading({ ...readingInput(0), hoverId: 999 }), null);
+  assert.equal(hoverReading({ ...readingInput(0), varData: null }), null);
+  assert.equal(hoverReading({ ...readingInput(0), times: [] }), null);
 });

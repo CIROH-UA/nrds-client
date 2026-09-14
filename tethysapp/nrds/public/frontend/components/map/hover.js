@@ -1,11 +1,7 @@
 import maplibregl from 'maplibre-gl';
 
-import { pickHoverFeature, hoveredFeatureOf } from '../../lib/hover.js';
+import { pickHoverFeature, hoveredFeatureOf, hoverReading } from '../../lib/hover.js';
 import { curatedFeatureFields } from '../../lib/featureFields.js';
-import { getValueAtTimeFlat } from '../../lib/flowpathValues.js';
-import { getVariableUnits } from '../../lib/data.js';
-import { formatMeasurement, formatFrameTime, numericPartOf } from '../../lib/utils.js';
-import { NO_DATA_VALUE } from '../../lib/valueRamp.js';
 import { actions } from '../../store/app-store.js';
 
 /**
@@ -27,29 +23,17 @@ const HOVER_TOLERANCE_PX = 4;
 /** The layers a hover may read. */
 const HOVER_LAYERS = ['conus-gauges', 'flowpaths-line', 'divides'];
 
-/** The animated variable's reading for a hovered reach, as { label, value } or null. */
-function hoverReading(store, hoverId) {
-  if (hoverId == null) return null;
+/** The animated reading for a hovered reach at the store's current frame. */
+function readingFromStore(store, hoverId) {
   const s = store.get();
-  const variable = s.timeseries.variable;
-  const times = s.vpu.times;
-  const varData = s.vpu.valuesByVar?.[variable];
-  const featureIdToIndex = s.vpu.featureIdToIndex;
-  if (!variable || !varData || !times?.length || !featureIdToIndex) return null;
-
-  const numeric = numericPartOf(hoverId);
-  const featureIndex =
-    featureIdToIndex[String(hoverId)] ?? (numeric != null ? featureIdToIndex[numeric] : undefined);
-  if (featureIndex === undefined) return null;
-
-  const value = getValueAtTimeFlat(varData, times.length, featureIndex, s.timeseries.currentTimeIndex);
-  if (value === null || value === undefined) return null;
-
-  const units = getVariableUnits(variable);
-  const at = formatFrameTime(times[s.timeseries.currentTimeIndex]);
-  const label = `${variable}${units ? ` (${units})` : ''}${at ? ` @ ${at}` : ''}`;
-  const reading = value <= NO_DATA_VALUE ? 'no data' : formatMeasurement(value);
-  return reading === null ? null : { label, value: reading };
+  return hoverReading({
+    variable: s.timeseries.variable,
+    times: s.vpu.times,
+    varData: s.vpu.valuesByVar?.[s.timeseries.variable],
+    featureIdToIndex: s.vpu.featureIdToIndex,
+    currentTimeIndex: s.timeseries.currentTimeIndex,
+    hoverId,
+  });
 }
 
 /** Build the hover popup DOM: a title, the animated reading, then the feature's key attributes. */
@@ -62,7 +46,7 @@ function buildContent(store, hovered) {
   title.textContent = 'Feature';
   root.append(title);
 
-  const reading = hoverReading(store, hovered.hoverId);
+  const reading = readingFromStore(store, hovered.hoverId);
   if (reading) {
     const row = document.createElement('div');
     row.className = 'popup-row popup-measure';
@@ -96,12 +80,15 @@ export function attachHover(map, store) {
   if (!map) return () => {};
 
   let popup = null;
+  /** The payload the open popup is showing, so a frame advance can re-render it in place. */
+  let currentHover = null;
 
   const removePopup = () => {
     if (popup) {
       popup.remove();
       popup = null;
     }
+    currentHover = null;
     map.getCanvas().style.cursor = '';
   };
 
@@ -121,6 +108,7 @@ export function attachHover(map, store) {
         className: 'nrds-hover-popup-shell',
       }).addTo(map);
     }
+    currentHover = hovered;
     popup.setLngLat(at).setDOMContent(buildContent(store, hovered));
   };
 
@@ -158,11 +146,21 @@ export function attachHover(map, store) {
   map.on('mouseout', onLeave);
 
   let prevEnabled = store.get().layers.hovered_enabled;
+  let prevTimeIndex = store.get().timeseries.currentTimeIndex;
+  let prevVariable = store.get().timeseries.variable;
   const unsubscribe = store.subscribe((state) => {
     const enabled = state.layers.hovered_enabled;
-    if (enabled === prevEnabled) return;
-    prevEnabled = enabled;
-    if (!enabled) clearHover();
+    if (enabled !== prevEnabled) {
+      prevEnabled = enabled;
+      if (!enabled) clearHover();
+    }
+    const timeIndex = state.timeseries.currentTimeIndex;
+    const variable = state.timeseries.variable;
+    if (timeIndex !== prevTimeIndex || variable !== prevVariable) {
+      prevTimeIndex = timeIndex;
+      prevVariable = variable;
+      if (enabled && popup && currentHover) showPopup(currentHover);
+    }
   });
 
   return () => {

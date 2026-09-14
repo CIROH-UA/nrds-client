@@ -276,6 +276,37 @@ function subscribeSelectionHighlight(map, store) {
 }
 
 /**
+ * Re-style the map when the effective theme changes: the light and dark basemaps are separate style
+ * URLs, so swapping them needs `setStyle`, which wipes our sources, layers and feature-state. On the
+ * new style's load the hydrofabric layers are re-added with the new theme's paint, visibility is
+ * re-pushed, and flowpath colouring is re-attached (its previous instance is torn down first so the
+ * idle/store listeners do not accumulate). The selection marker is a DOM overlay and survives the
+ * swap; the highlight filters are restored by `addHydrofabricLayers` from the current selection.
+ * Returns the store's unsubscribe closure.
+ */
+function subscribeMapTheme(map, store, initialColoringTeardown) {
+  let teardownColoring = initialColoringTeardown;
+  let prev = store.get().theme.theme;
+  return store.subscribe((state) => {
+    const theme = state.theme.theme;
+    if (theme === prev) return;
+    prev = theme;
+
+    teardownColoring();
+    map.setStyle(readMapTheme().styleUrl);
+
+    // maplibre-gl 4 does not fire `style.load` after setStyle, and every `styledata` in the swap
+    // reports isStyleLoaded() false; the first `idle` is the point where the new style is fully
+    // loaded and it is safe to re-add the sources and layers.
+    map.once('idle', () => {
+      addHydrofabricLayers(map, store, readMapTheme());
+      applyAllVisibility(map, store);
+      teardownColoring = attachFlowpathColoring(map, store);
+    });
+  });
+}
+
+/**
  * Create the maplibre map into the given element, wired to the store: the basemap follows the
  * current theme, the static hydrofabric sources and layers are added on load, layer visibility
  * tracks the store's layer toggles, a click selects the feature under it, and the selection drives
@@ -306,12 +337,13 @@ export function createMap(container, store) {
   map.on('load', () => {
     addHydrofabricLayers(map, store, readMapTheme());
     applyAllVisibility(map, store);
-    attachFlowpathColoring(map, store);
+    const teardownColoring = attachFlowpathColoring(map, store);
     attachClickToSelect(map, store);
     attachHover(map, store);
     subscribeSelectionHighlight(map, store);
     attachFeaturePopup(map, store);
     attachFeatureSheet(store);
+    subscribeMapTheme(map, store, teardownColoring);
   });
 
   subscribeVisibility(map, store);
