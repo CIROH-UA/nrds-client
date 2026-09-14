@@ -45,10 +45,14 @@ RUN mkdir -p /home/tethys/nrds/static \
     && grep -q '^[[:space:]]*MULTIPLE_APP_MODE:' "${TETHYS_HOME}/portal_config.yml" \
     && "${VIRTUAL_ENV}/bin/tethys" site -f \
     && "${VIRTUAL_ENV}/bin/tethys" manage collectstatic --noinput \
-    # collectstatic has copied the 45 MiB slim index into STATIC_ROOT, which is what static_urls
-    # serves; the installed-package copy is read only at collect time, so drop it rather than ship
-    # it twice in the runtime image. Resolve the path from / so the WORKDIR /build source tree does
-    # not shadow the installed location on sys.path.
+    # Assert the 45 MiB slim index reached STATIC_ROOT, the copy static_urls actually serves, rather
+    # than only the source tree collectstatic read it from; a missing artifact here is a dead search
+    # box, so fail the build loudly instead of shipping green.
+    && test -s /home/tethys/nrds/static/nrds/data/hydrofabric_index_slim.parquet \
+    && [ "$(stat -c%s /home/tethys/nrds/static/nrds/data/hydrofabric_index_slim.parquet)" -gt 30000000 ] \
+    # The index now lives in STATIC_ROOT; the installed-package copy is read only at collect time, so
+    # drop it rather than ship it twice in the runtime image. Resolve the path from / so the WORKDIR
+    # /build source tree does not shadow the installed location on sys.path.
     && rm -rf "$(cd / && "${VIRTUAL_ENV}/bin/python" -c 'import pathlib, tethysapp.nrds as a; print(pathlib.Path(a.__file__).parent)')/public/data" \
     && chown -R 1000:1000 /home/tethys/nrds \
     && test -s /home/tethys/nrds/tethys_platform.sqlite \
