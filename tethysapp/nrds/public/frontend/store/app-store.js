@@ -93,13 +93,13 @@ const MAX_CACHED_VARS = 3;
 export const THEME_STORAGE_KEY = 'nrds-theme';
 const DARK_QUERY = '(prefers-color-scheme: dark)';
 
-/** The stored choice, or 'system' when none is stored or storage is unavailable. */
+/** The stored choice, or 'light' as the default when none is stored or storage is unavailable. */
 const readStoredPreference = () => {
   try {
     const value = window.localStorage.getItem(THEME_STORAGE_KEY);
-    return value === 'light' || value === 'dark' ? value : 'system';
+    return value === 'light' || value === 'dark' ? value : 'light';
   } catch {
-    return 'system';
+    return 'light';
   }
 };
 
