@@ -1,6 +1,6 @@
 import maplibregl from 'maplibre-gl';
 
-import { pickHoverFeature, hoveredFeatureOf, hoverReading } from '../../lib/hover.js';
+import { pickHoverFeature, hoveredFeatureOf, hoverReading, HOVER_TARGET_ORDER } from '../../lib/hover.js';
 import { curatedFeatureFields } from '../../lib/featureFields.js';
 import { actions } from '../../store/app-store.js';
 
@@ -19,9 +19,6 @@ import { actions } from '../../store/app-store.js';
 
 /** Half-width of the hover hit box, matching the React HOVER_TOLERANCE_PX; a flowpath is ~2px wide. */
 const HOVER_TOLERANCE_PX = 4;
-
-/** The layers a hover may read. */
-const HOVER_LAYERS = ['conus-gauges', 'flowpaths-line', 'divides'];
 
 /** The animated reading for a hovered reach at the store's current frame. */
 function readingFromStore(store, hoverId) {
@@ -97,10 +94,16 @@ export function attachHover(map, store) {
     if (store.get().feature.hovered_feature) actions.set_hovered_feature(null);
   };
 
+  /** Rebuild the popup body from the store's current frame, without moving it. */
+  const renderContent = () => {
+    if (popup && currentHover) popup.setDOMContent(buildContent(store, currentHover));
+  };
+
   const showPopup = (hovered) => {
     const at = { lng: hovered.longitude, lat: hovered.latitude };
     if (at.lng == null || at.lat == null) return;
-    if (!popup) {
+    const isNew = !popup;
+    if (isNew) {
       popup = new maplibregl.Popup({
         closeButton: false,
         closeOnClick: false,
@@ -108,13 +111,17 @@ export function attachHover(map, store) {
         className: 'nrds-hover-popup-shell',
       }).addTo(map);
     }
+    // The popup follows the cursor every move, but its body only needs rebuilding when the feature
+    // under the pointer changes; the frame-advance path rebuilds it in place when the value changes.
+    const featureChanged = isNew || currentHover?.hoverId !== hovered.hoverId;
     currentHover = hovered;
-    popup.setLngLat(at).setDOMContent(buildContent(store, hovered));
+    popup.setLngLat(at);
+    if (featureChanged) popup.setDOMContent(buildContent(store, hovered));
   };
 
   const onMove = (event) => {
     if (!store.get().layers.hovered_enabled) return;
-    const layers = HOVER_LAYERS.filter((id) => map.getLayer(id));
+    const layers = HOVER_TARGET_ORDER.filter((id) => map.getLayer(id));
     if (!layers.length) return;
 
     const { x, y } = event.point;
@@ -159,7 +166,7 @@ export function attachHover(map, store) {
     if (timeIndex !== prevTimeIndex || variable !== prevVariable) {
       prevTimeIndex = timeIndex;
       prevVariable = variable;
-      if (enabled && popup && currentHover) showPopup(currentHover);
+      if (enabled) renderContent();
     }
   });
 

@@ -98,17 +98,27 @@ body,
   font-weight: var(--weight-strong);
 }
 
-/* Anchored feature popup (U5). maplibre paints the callout; these rules dress the content it holds:
- * a curated header above a fixed-size host the chart factory fills. Tokens match the React popup. */
-.maplibregl-popup.nrds-feature-popup-shell .maplibregl-popup-content {
-  padding: 0;
+/* Anchored feature popup (U5) and the hover readout share the callout dressing; only the content
+ * padding differs (the feature popup hosts a fixed-size chart, the hover popup is text). Tokens
+ * match the React popup. */
+.maplibregl-popup.nrds-feature-popup-shell .maplibregl-popup-content,
+.maplibregl-popup.nrds-hover-popup-shell .maplibregl-popup-content {
   background-color: var(--popup-bg);
   color: var(--popup-text-color);
   border-radius: var(--radius-md);
   box-shadow: var(--elevation-map-readout);
 }
 
-.maplibregl-popup.nrds-feature-popup-shell .maplibregl-popup-tip {
+.maplibregl-popup.nrds-feature-popup-shell .maplibregl-popup-content {
+  padding: 0;
+}
+
+.maplibregl-popup.nrds-hover-popup-shell .maplibregl-popup-content {
+  padding: 8px 10px;
+}
+
+.maplibregl-popup.nrds-feature-popup-shell .maplibregl-popup-tip,
+.maplibregl-popup.nrds-hover-popup-shell .maplibregl-popup-tip {
   border-top-color: var(--popup-bg);
   border-bottom-color: var(--popup-bg);
 }
@@ -154,21 +164,8 @@ body,
   padding: 0 6px 6px;
 }
 
-/* Hover readout (Enable Hovering). A small following popup that mirrors the feature popup's dressing,
- * showing the animated value and the reach's key attributes under the pointer. */
-.maplibregl-popup.nrds-hover-popup-shell .maplibregl-popup-content {
-  padding: 8px 10px;
-  background-color: var(--popup-bg);
-  color: var(--popup-text-color);
-  border-radius: var(--radius-md);
-  box-shadow: var(--elevation-map-readout);
-}
-
-.maplibregl-popup.nrds-hover-popup-shell .maplibregl-popup-tip {
-  border-top-color: var(--popup-bg);
-  border-bottom-color: var(--popup-bg);
-}
-
+/* Hover readout (Enable Hovering). A small following popup that shares the feature popup's callout
+ * dressing (see above), showing the animated value and the reach's key attributes under the pointer. */
 .nrds-hover-popup {
   display: flex;
   flex-direction: column;

@@ -5,7 +5,7 @@
  * shown for it. Kept clear of maplibre so the pick, payload, and value logic can be unit-tested
  * without a canvas; the wiring lives in components/map/hover.js.
  */
-import { getValueAtTimeFlat } from './flowpathValues.js';
+import { getValueAtTimeFlat, mapFeatureId } from './flowpathValues.js';
 import { getVariableUnits } from './data.js';
 import { formatMeasurement, formatFrameTime, numericPartOf } from './utils.js';
 import { NO_DATA_VALUE } from './valueRamp.js';
@@ -13,9 +13,8 @@ import { NO_DATA_VALUE } from './valueRamp.js';
 /** How hard a layer is to aim at, smallest target first, so a gauge wins over the flowpath over it. */
 export const HOVER_TARGET_ORDER = ['conus-gauges', 'flowpaths-line', 'divides'];
 
-/** The id a rendered map feature is known by. */
-export const mapFeatureId = (feature) =>
-  feature?.id ?? feature?.properties?.id ?? feature?.properties?.divide_id ?? null;
+/** The id a rendered map feature is known by, re-exported so the hover pipeline shares one source. */
+export { mapFeatureId };
 
 /** The feature the reader most likely meant, out of everything under the pointer. */
 export function pickHoverFeature(features) {

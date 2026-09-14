@@ -214,8 +214,6 @@ const INITIAL_STATE = {
     last_error: null,
     currentTimeIndex: 0,
     isPlaying: false,
-    // 1x is the normal, visible default and must be one of the slider's speed options; the base
-    // frame time makes 1x a comfortable ~2.5 frames/second, with the options stepping up from there.
     playSpeed: 1,
     baseFrameMs: 400,
   },

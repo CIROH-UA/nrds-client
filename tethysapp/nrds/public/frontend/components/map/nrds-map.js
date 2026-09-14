@@ -277,28 +277,32 @@ function subscribeSelectionHighlight(map, store) {
 
 /**
  * Re-style the map when the effective theme changes: the light and dark basemaps are separate style
- * URLs, so swapping them needs `setStyle`, which wipes our sources, layers and feature-state. On the
- * new style's load the hydrofabric layers are re-added with the new theme's paint, visibility is
- * re-pushed, and flowpath colouring is re-attached (its previous instance is torn down first so the
- * idle/store listeners do not accumulate). The selection marker is a DOM overlay and survives the
- * swap; the highlight filters are restored by `addHydrofabricLayers` from the current selection.
- * Returns the store's unsubscribe closure.
+ * URLs, so swapping them needs `setStyle`, which wipes our sources, layers and feature-state. The
+ * hydrofabric layers are re-added with the new theme's paint, visibility is re-pushed, and flowpath
+ * colouring is re-attached (its previous instance is torn down first so the idle/store listeners do
+ * not accumulate). maplibre-gl 4 does not fire `style.load` after setStyle and reports
+ * isStyleLoaded() false through every `styledata` in the swap, so the first `idle` is used as the
+ * point where the new style is fully loaded and it is safe to re-add. A generation counter guards
+ * against overlapping swaps (rapid toggling): only the latest swap's idle callback re-adds, so
+ * `addHydrofabricLayers` never runs twice and no colouring instance is orphaned. The selection
+ * marker is a DOM overlay that survives the swap; the highlight filters are restored by
+ * `addHydrofabricLayers` from the current selection. Returns the store's unsubscribe closure.
  */
 function subscribeMapTheme(map, store, initialColoringTeardown) {
   let teardownColoring = initialColoringTeardown;
   let prev = store.get().theme.theme;
+  let generation = 0;
   return store.subscribe((state) => {
     const theme = state.theme.theme;
     if (theme === prev) return;
     prev = theme;
 
+    const gen = ++generation;
     teardownColoring();
+    teardownColoring = () => {};
     map.setStyle(readMapTheme().styleUrl);
-
-    // maplibre-gl 4 does not fire `style.load` after setStyle, and every `styledata` in the swap
-    // reports isStyleLoaded() false; the first `idle` is the point where the new style is fully
-    // loaded and it is safe to re-add the sources and layers.
     map.once('idle', () => {
+      if (gen !== generation) return;
       addHydrofabricLayers(map, store, readMapTheme());
       applyAllVisibility(map, store);
       teardownColoring = attachFlowpathColoring(map, store);
