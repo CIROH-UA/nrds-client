@@ -318,8 +318,11 @@ export function createSearchBox(container, appStore = store) {
 
   const unsubscribe = appStore.subscribe(() => reflectStatus());
 
+  // Load the 45 MiB search index lazily: it is only needed for id search, so defer the fetch and the
+  // duckdb table build until the reader first focuses the box rather than paying it on every startup.
+  input.addEventListener('focus', () => loadIndex(), { once: true });
+
   reflectStatus();
-  loadIndex();
 
   return () => {
     destroyed = true;

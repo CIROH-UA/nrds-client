@@ -153,7 +153,7 @@ const DATASTREAM_DEFAULTS = {
   outputFile: null,
   variables: [],
   /** Whether the id index is loading, ready, or gave up. */
-  index_status: 'loading',
+  index_status: 'idle',
 };
 
 const EMPTY_SERIES = [];
