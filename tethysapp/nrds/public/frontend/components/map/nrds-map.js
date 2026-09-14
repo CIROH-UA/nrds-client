@@ -193,6 +193,21 @@ function selectableLayersOn(map, store) {
 }
 
 /**
+ * Show a pointer cursor over the catchments, the feature a click selects, so the map reads as
+ * interactive. The divides fill follows the catchments toggle, so the cursor only appears where a
+ * click would actually select something. Registered once on load; survives the theme restyle since
+ * the listener is bound to the layer id, which is re-added with the same name.
+ */
+function attachClickableCursor(map) {
+  map.on('mouseenter', 'divides', () => {
+    map.getCanvas().style.cursor = 'pointer';
+  });
+  map.on('mouseleave', 'divides', () => {
+    map.getCanvas().style.cursor = '';
+  });
+}
+
+/**
  * Turn a map click into a selection: query the visible selectable layers within a small tolerance
  * box, pick the feature worth acting on, and hand it to selectMapFeature. Registered once on load.
  */
@@ -344,6 +359,7 @@ export function createMap(container, store) {
     applyAllVisibility(map, store);
     const teardownColoring = attachFlowpathColoring(map, store);
     attachClickToSelect(map, store);
+    attachClickableCursor(map);
     attachHover(map, store);
     subscribeSelectionHighlight(map, store);
     attachFeaturePopup(map, store);

@@ -86,7 +86,6 @@ export function attachHover(map, store) {
       popup = null;
     }
     currentHover = null;
-    map.getCanvas().style.cursor = '';
   };
 
   const clearHover = () => {
@@ -142,7 +141,6 @@ export function attachHover(map, store) {
       clearHover();
       return;
     }
-    map.getCanvas().style.cursor = 'pointer';
     actions.set_hovered_feature(hovered);
     showPopup(hovered);
   };
