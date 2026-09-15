@@ -2,39 +2,41 @@
  * The unified map control menu for the build-less NRDS client (migration unit U5b), the vanilla
  * replacement for the React `ControlMenu`. `createControlMenu(container, store)` mounts a floating
  * opener button and a framed panel over the map and returns a teardown that unsubscribes, destroys
- * the shared select, and removes its DOM.
+ * the shared select and the modals, and removes its DOM.
  *
- * The panel gathers the map chrome that was previously scattered: the model-run cascade (the
- * model/date/forecast/cycle/ensemble/output-file "Change the run" selects and Update button, built
- * in components/menus/run-cascade.js and mounted into the run slot here -- U5c), the layer toggles
- * (wired to the store's `layers` slice through
- * set_*_visibility and set_hovered_enabled -- the map already subscribes to those, so toggling
- * recolours/hides live), and the flowpath colour scale (a compact shared select over SCALE_OPTIONS
- * wired to actions.setScale, whose change the colouring driver already reacts to) with the value
- * legend below it.
+ * The panel is organised top to bottom as Legend (the value gradient), Showing (the run
+ * configuration behind a summarised button that opens a modal, the variable picker, and a Color Bar
+ * row whose gear opens a ramp + scale modal), Layers (the four layer toggles) and Map Settings (the
+ * hover toggle). The run cascade (components/menus/run-cascade.js) and the variable picker
+ * (components/map/variable-picker.js) are mounted into their slots here.
  *
- * The light/dark theme toggle used to sit here, in an Appearance section, while the shell/navbar was
- * a later migration unit; the shell (U6) has landed, so the toggle now lives in the navbar (see
- * components/shell/theme-toggle.js), matching the React client.
- *
- * This view is pure reflection of the store: a single subscription keeps the switches, the scale
- * select, the symbol swatches, and the legend in step with the store, and every control calls a
- * store action rather than holding any state of its own. The legend reads the same bounds/ramp the
- * map layer uses (boundsFor + readMapTheme) and is recomputed whenever the variable, scale, VPU
- * values, theme, flowpaths visibility, or frame count changes; a theme change also refreshes the
- * symbol swatches, since their colours track the map theme.
+ * This view is pure reflection of the store: a single subscription keeps the switches, the run
+ * summary, the colour scale, the ramp choice, the symbol swatches, and the legend in step, and every
+ * control calls a store action rather than holding state of its own. The legend and the Color Bar
+ * preview read the selected ramp (theme.rampName), falling back to the theme ramp.
  */
 import { SCALE_OPTIONS, SCALE_LABELS } from '../../lib/colorScale.js';
-import { rampGradient } from '../../lib/valueRamp.js';
+import { rampGradient, RAMPS, rampFor } from '../../lib/valueRamp.js';
+import { hexToRgb } from '../../lib/colorMath.js';
 import { boundsFor, valueAtRampPosition } from '../../lib/flowpathValues.js';
 import { getVariableUnits } from '../../lib/data.js';
 import { formatMeasurement } from '../../lib/utils.js';
 import { readMapTheme } from '../../lib/mapTheme.js';
 import { actions } from '../../store/app-store.js';
 import { createSelect } from '../select.js';
+import { createModal } from '../modal.js';
 import { createRunCascade } from './run-cascade.js';
+import { createVariablePicker } from '../map/variable-picker.js';
 
 export const LEGEND_TICKS = [0, 0.5, 1];
+
+/** Short forecast codes for the run summary, matching the datastream forecast folder names. */
+const FORECAST_ABBR = {
+  short_range: 'SR',
+  medium_range: 'MR',
+  analysis_assim_extend: 'AAE',
+  analysis_assim: 'AA',
+};
 
 /** The scale option currently selected, falling back to the first when the value is unknown. */
 export function currentScaleOption(scale) {
@@ -56,6 +58,15 @@ export function legendTitle(variable, scale) {
   return scaleName ? `${title} · ${scaleName}` : title;
 }
 
+/** A one-line summary of the selected run: model, forecast code, date and cycle. */
+export function summarizeRun({ model, date, forecast, cycle } = {}) {
+  if (!model && !date) return 'Select a run';
+  const fc = FORECAST_ABBR[forecast] ?? (forecast ? forecast.replace(/[^a-z]/gi, '').slice(0, 3).toUpperCase() : '');
+  const day = typeof date === 'string' ? date.replace(/^ngen\./, '') : '';
+  const dayCycle = day ? (cycle ? `${day}.${cycle}` : day) : '';
+  return [model, fc, dayCycle].filter(Boolean).join(' ');
+}
+
 /** Whether the legend has everything it needs to be shown (flowpaths on, data present, a ramp). */
 export function shouldShowLegend({ flowpathsVisible, timesLength, bounds, variable, ramp }) {
   return (
@@ -74,6 +85,16 @@ export function shouldStartOpen() {
   } catch {
     return true;
   }
+}
+
+/** The effective ramp for the current selection: the chosen named ramp, else the theme ramp. */
+function effectiveRamp(store) {
+  return rampFor(store.get().theme.rampName) ?? readMapTheme().ramp;
+}
+
+/** A CSS `linear-gradient` for a ramp given as hex stops (the ramp catalog form). */
+function hexRampGradient(hex) {
+  return rampGradient(hex.map(hexToRgb));
 }
 
 /** Colours for the symbol swatches, read from the same map tokens the layers use. */
@@ -166,6 +187,17 @@ function makeSection({ label, heading }) {
   return section;
 }
 
+/** A small "Configuration"/"Color Bar" field: a label above a control. */
+function makeField(labelText) {
+  const field = document.createElement('div');
+  field.className = 'nrds-control-menu__field';
+  const label = document.createElement('span');
+  label.className = 'nrds-control-menu__field-label';
+  label.textContent = labelText;
+  field.append(label);
+  return { field, label };
+}
+
 /** Mount the control menu into `container`, wired to `store`; returns a teardown. */
 export function createControlMenu(container, store) {
   const PANEL_ID = 'nrds-control-options';
@@ -205,90 +237,10 @@ export function createControlMenu(container, store) {
   header.append(title, closeBtn);
   panel.append(header);
 
-  const runSection = makeSection({ label: 'Model run' });
-  runSection.classList.add('nrds-control-menu__section--run');
-  const runSlot = document.createElement('div');
-  runSlot.className = 'nrds-control-menu__run-slot';
-  runSlot.dataset.runCascadeSlot = '';
-  runSection.append(runSlot);
-  panel.append(runSection);
-  const teardownRunCascade = createRunCascade(runSlot, store);
-
-  const layersSection = makeSection({ label: 'Layers', heading: 'Layer Options' });
-
-  const catchmentRow = makeSwitchRow({
-    id: 'nrds-catchment-switch',
-    label: 'Catchments',
-    swatchKey: 'catchment',
-    onToggle: (v) => actions.set_catchments_visibility(v),
-  });
-  const flowpathsRow = makeSwitchRow({
-    id: 'nrds-flowpaths-switch',
-    label: 'FlowPaths',
-    swatchKey: 'flowpaths',
-    onToggle: (v) => actions.set_flowpaths_visibility(v),
-  });
-  const gaugesRow = makeSwitchRow({
-    id: 'nrds-conus-gauges-switch',
-    label: 'Conus Gauges',
-    swatchKey: 'gauge',
-    onToggle: (v) => actions.set_conus_gauges_visibility(v),
-  });
-  const vpuRow = makeSwitchRow({
-    id: 'nrds-vpu-switch',
-    label: 'VPU Boundaries',
-    swatchKey: 'vpu',
-    onToggle: (v) => actions.set_vpu_visibility(v),
-  });
-
-  const interactionsHeading = document.createElement('p');
-  interactionsHeading.className = 'nrds-control-menu__subheading';
-  interactionsHeading.textContent = 'Map Interactions';
-
-  const hoverRow = makeSwitchRow({
-    id: 'nrds-enable-hovering-switch',
-    label: 'Enable Hovering',
-    swatchKey: 'cursor',
-    onToggle: (v) => actions.set_hovered_enabled(v),
-  });
-
-  layersSection.append(
-    catchmentRow.row,
-    flowpathsRow.row,
-    gaugesRow.row,
-    vpuRow.row,
-    interactionsHeading,
-    hoverRow.row
-  );
-  panel.append(layersSection);
-
-  const swatchRows = [catchmentRow, flowpathsRow, gaugesRow, vpuRow, hoverRow];
-
-  const valuesSection = makeSection({ label: 'Flowpath values', heading: 'Flowpath values' });
-
-  const scaleRow = document.createElement('div');
-  scaleRow.className = 'nrds-control-menu__row nrds-control-menu__row--scale';
-  const scaleLabel = document.createElement('span');
-  scaleLabel.className = 'nrds-control-menu__label';
-  scaleLabel.textContent = 'Color scale';
-  const scaleHost = document.createElement('div');
-  scaleHost.className = 'nrds-control-menu__scale-select';
-  scaleRow.append(scaleLabel, scaleHost);
-  valuesSection.append(scaleRow);
-
-  const scaleSelect = createSelect({
-    container: scaleHost,
-    options: SCALE_OPTIONS,
-    value: store.get().vpu.scale,
-    compact: true,
-    id: 'nrds-color-scale-select',
-    label: 'Color scale',
-    onChange: (opt) => opt && actions.setScale(opt.value),
-  });
-
+  // --- Legend section (top): the value gradient ---
+  const legendSection = makeSection({ label: 'Legend', heading: 'Legend' });
   const legend = document.createElement('div');
   legend.className = 'nrds-control-menu__legend';
-  legend.setAttribute('aria-label', 'Colour scale');
   const legendTitleEl = document.createElement('div');
   legendTitleEl.className = 'nrds-control-menu__legend-title';
   const legendBarEl = document.createElement('div');
@@ -298,12 +250,148 @@ export function createControlMenu(container, store) {
   const tickSpans = LEGEND_TICKS.map(() => document.createElement('span'));
   legendScaleEl.append(...tickSpans);
   legend.append(legendTitleEl, legendBarEl, legendScaleEl);
-  legend.hidden = true;
-  valuesSection.append(legend);
-  panel.append(valuesSection);
+  const legendEmpty = document.createElement('p');
+  legendEmpty.className = 'nrds-control-menu__legend-empty';
+  legendEmpty.textContent = 'Load a run to see the value scale.';
+  legendSection.append(legend, legendEmpty);
+  panel.append(legendSection);
+
+  // --- Showing section: configuration, variable, color bar ---
+  const showingSection = makeSection({ label: 'Showing', heading: 'Showing' });
+
+  const configField = makeField('Configuration');
+  const configButton = document.createElement('button');
+  configButton.type = 'button';
+  configButton.className = 'nrds-control-menu__config-button';
+  const configSummary = document.createElement('span');
+  configSummary.className = 'nrds-control-menu__config-summary';
+  configButton.append(configSummary);
+  const configChevron = document.createElement('span');
+  configChevron.className = 'nrds-control-menu__config-chevron';
+  configChevron.innerHTML =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+  configButton.append(configChevron);
+  configField.field.append(configButton);
+  showingSection.append(configField.field);
+
+  const variableHost = document.createElement('div');
+  variableHost.className = 'nrds-control-menu__variable-host';
+  showingSection.append(variableHost);
+  const teardownVariablePicker = createVariablePicker(variableHost, store);
+
+  const colorBarRow = document.createElement('div');
+  colorBarRow.className = 'nrds-control-menu__row nrds-control-menu__row--colorbar';
+  const colorBarLabel = document.createElement('span');
+  colorBarLabel.className = 'nrds-control-menu__label';
+  colorBarLabel.textContent = 'Color Bar';
+  const colorBarPreview = document.createElement('span');
+  colorBarPreview.className = 'nrds-control-menu__colorbar-preview';
+  const colorBarBtn = document.createElement('button');
+  colorBarBtn.type = 'button';
+  colorBarBtn.className = 'nrds-control-menu__icon-button';
+  colorBarBtn.setAttribute('aria-label', 'Color bar settings');
+  colorBarBtn.title = 'Color bar settings';
+  colorBarBtn.innerHTML =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<circle cx="12" cy="12" r="3"/>' +
+    '<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
+  colorBarRow.append(colorBarLabel, colorBarPreview, colorBarBtn);
+  showingSection.append(colorBarRow);
+  panel.append(showingSection);
+
+  // --- Layers section ---
+  const layersSection = makeSection({ label: 'Layers', heading: 'Layers' });
+  const catchmentRow = makeSwitchRow({
+    id: 'nrds-catchment-switch',
+    label: 'Catchments',
+    swatchKey: 'catchment',
+    onToggle: (v) => actions.set_catchments_visibility(v),
+  });
+  const flowpathsRow = makeSwitchRow({
+    id: 'nrds-flowpaths-switch',
+    label: 'Flowpaths',
+    swatchKey: 'flowpaths',
+    onToggle: (v) => actions.set_flowpaths_visibility(v),
+  });
+  const gaugesRow = makeSwitchRow({
+    id: 'nrds-conus-gauges-switch',
+    label: 'Gauges',
+    swatchKey: 'gauge',
+    onToggle: (v) => actions.set_conus_gauges_visibility(v),
+  });
+  const vpuRow = makeSwitchRow({
+    id: 'nrds-vpu-switch',
+    label: 'VPU Boundaries',
+    swatchKey: 'vpu',
+    onToggle: (v) => actions.set_vpu_visibility(v),
+  });
+  layersSection.append(catchmentRow.row, flowpathsRow.row, gaugesRow.row, vpuRow.row);
+  panel.append(layersSection);
+
+  // --- Map Settings section ---
+  const settingsSection = makeSection({ label: 'Map Settings', heading: 'Map Settings' });
+  const hoverRow = makeSwitchRow({
+    id: 'nrds-enable-hovering-switch',
+    label: 'Enable Hovering',
+    swatchKey: 'cursor',
+    onToggle: (v) => actions.set_hovered_enabled(v),
+  });
+  settingsSection.append(hoverRow.row);
+  panel.append(settingsSection);
+
+  const swatchRows = [catchmentRow, flowpathsRow, gaugesRow, vpuRow, hoverRow];
 
   container.append(opener, panel);
 
+  // --- Configuration modal: the run cascade ---
+  const configModal = createModal({ title: 'Configuration', className: 'nrds-modal--config' });
+  const teardownRunCascade = createRunCascade(configModal.content, store);
+  configButton.addEventListener('click', () => configModal.open());
+
+  // --- Color Bar modal: ramp choices + colour scale ---
+  const colorModal = createModal({ title: 'Color Bar', className: 'nrds-modal--colorbar' });
+  const rampField = makeField('Color ramp');
+  const rampList = document.createElement('div');
+  rampList.className = 'nrds-ramp-list';
+  rampList.setAttribute('role', 'radiogroup');
+  rampList.setAttribute('aria-label', 'Color ramp');
+  const rampButtons = Object.entries(RAMPS).map(([name, { label, hex }]) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'nrds-ramp-option';
+    btn.dataset.ramp = name;
+    btn.setAttribute('role', 'radio');
+    const bar = document.createElement('span');
+    bar.className = 'nrds-ramp-option__bar';
+    bar.style.background = hexRampGradient(hex);
+    const text = document.createElement('span');
+    text.className = 'nrds-ramp-option__label';
+    text.textContent = label;
+    btn.append(bar, text);
+    btn.addEventListener('click', () => actions.setRamp(name));
+    rampList.append(btn);
+    return { name, btn };
+  });
+  rampField.field.append(rampList);
+
+  const scaleField = makeField('Color scale');
+  const scaleHost = document.createElement('div');
+  scaleHost.className = 'nrds-control-menu__scale-select';
+  scaleField.field.append(scaleHost);
+  const scaleSelect = createSelect({
+    container: scaleHost,
+    options: SCALE_OPTIONS,
+    value: store.get().vpu.scale,
+    id: 'nrds-color-scale-select',
+    label: 'Color scale',
+    onChange: (opt) => opt && actions.setScale(opt.value),
+  });
+  colorModal.content.append(rampField.field, scaleField.field);
+  colorBarBtn.addEventListener('click', () => colorModal.open());
+
+  // --- open/close the panel ---
   let open = shouldStartOpen();
   const applyOpen = (moveFocus) => {
     opener.hidden = open;
@@ -332,7 +420,7 @@ export function createControlMenu(container, store) {
   };
 
   const renderLegend = ({ variable, scale, flowVisible, timesLen, valuesRef }) => {
-    const ramp = readMapTheme().ramp;
+    const ramp = effectiveRamp(store);
     const bounds = boundsFor(valuesRef);
     const show = shouldShowLegend({
       flowpathsVisible: flowVisible,
@@ -342,6 +430,7 @@ export function createControlMenu(container, store) {
       ramp,
     });
     legend.hidden = !show;
+    legendEmpty.hidden = show;
     if (!show) return;
     legendTitleEl.textContent = legendTitle(variable, scale);
     legendBarEl.style.background = rampGradient(ramp);
@@ -363,6 +452,19 @@ export function createControlMenu(container, store) {
 
     scaleSelect.setValue(s.vpu.scale);
 
+    const rampName = s.theme.rampName;
+    configSummary.textContent = summarizeRun(s.datastream);
+
+    if (rampName !== prev.rampName) {
+      const stops = RAMPS[rampName]?.hex;
+      colorBarPreview.style.background = stops ? hexRampGradient(stops) : rampGradient(effectiveRamp(store));
+      for (const { name, btn } of rampButtons) {
+        const on = name === rampName;
+        btn.classList.toggle('is-selected', on);
+        btn.setAttribute('aria-checked', on ? 'true' : 'false');
+      }
+    }
+
     const variable = s.timeseries.variable;
     const scale = s.vpu.scale;
     const flowVisible = s.layers.flowpaths.visible;
@@ -380,6 +482,7 @@ export function createControlMenu(container, store) {
       flowVisible !== prev.flowVisible ||
       timesLen !== prev.timesLen ||
       theme !== prev.theme ||
+      rampName !== prev.rampName ||
       valuesRef !== prev.valuesRef
     ) {
       renderLegend({ variable, scale, flowVisible, timesLen, valuesRef });
@@ -390,6 +493,7 @@ export function createControlMenu(container, store) {
     prev.flowVisible = flowVisible;
     prev.timesLen = timesLen;
     prev.theme = theme;
+    prev.rampName = rampName;
     prev.valuesRef = valuesRef;
   };
 
@@ -399,7 +503,10 @@ export function createControlMenu(container, store) {
   return () => {
     unsubscribe();
     teardownRunCascade();
+    teardownVariablePicker();
     scaleSelect.destroy();
+    configModal.destroy();
+    colorModal.destroy();
     opener.remove();
     panel.remove();
   };

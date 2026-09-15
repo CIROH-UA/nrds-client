@@ -1,16 +1,14 @@
 /**
- * The variable picker for the anchored feature popup (migration unit U5a), the vanilla replacement
- * for the React VariablesMenu. `createVariablePicker(container, store)` mounts a compact shared
- * select above the popup's chart listing the run's variables (datastream.variables), and returns a
- * teardown that unsubscribes, destroys the select, and removes its DOM.
+ * The variable picker for the control menu's Showing section, the vanilla replacement for the React
+ * VariablesMenu. `createVariablePicker(container, store)` mounts a compact shared select listing the
+ * run's variables (datastream.variables), and returns a teardown that unsubscribes, destroys the
+ * select, and removes its DOM.
  *
- * Changing the variable loads two things at once, the way VariablesMenu did: the variable's flat
- * map values for the flowpath colouring (getVpuVariableFlat -> setVarData, reusing a cached array
- * when the VPU already holds it) and the feature's chart series (loadTimeseries). The colouring
- * driver recolours whenever the variable or its values change, and the chart redraws on the new
- * series, so one change recolours the map and reloads the chart. A local sequence discards a change
- * that a newer one has overtaken, and a change whose cache key has moved on is dropped, so stale
- * values never land.
+ * Changing the variable loads the variable's flat map values for the flowpath colouring
+ * (getVpuVariableFlat -> setVarData, reusing a cached array when the VPU already holds it) so the map
+ * recolours with no feature required; when a feature is selected it also reloads that feature's chart
+ * series (loadTimeseries). A local sequence discards a change that a newer one has overtaken, and a
+ * change whose cache key has moved on is dropped, so stale values never land.
  */
 import { getVpuVariableFlat } from '../../lib/queryData.js';
 import { createSequence } from '../../lib/sequence.js';
@@ -40,20 +38,23 @@ export function createVariablePicker(container, store) {
   row.append(label, selectHost);
   container.append(row);
 
-  /** Load a variable's map values and chart series together (latest change wins). */
+  /** Load a variable's map values, plus the feature's chart series when one is selected (latest wins). */
   const handleChange = async (opt) => {
+    if (!opt) return;
+    const requestCacheKey = store.get().datastream.cache_key;
+    if (!requestCacheKey) {
+      actions.set_variable(opt.value);
+      return;
+    }
     const feature_id = store.get().timeseries.feature_id;
-    if (!opt || !feature_id) return;
 
     const ticket = changes.next();
-    const requestCacheKey = store.get().datastream.cache_key;
 
     try {
       const cached = actions.getVarData(opt.value);
-      const [flatResult] = await Promise.allSettled([
-        cached ?? getVpuVariableFlat(requestCacheKey, opt.value),
-        loadTimeseries({ variable: opt.value }),
-      ]);
+      const jobs = [cached ?? getVpuVariableFlat(requestCacheKey, opt.value)];
+      if (feature_id) jobs.push(loadTimeseries({ variable: opt.value }));
+      const [flatResult] = await Promise.allSettled(jobs);
       if (!changes.isCurrent(ticket)) return;
       if (store.get().datastream.cache_key !== requestCacheKey) return;
 

@@ -874,6 +874,228 @@ body,
   color: var(--panel-text-muted);
 }
 
+.nrds-control-menu__legend-empty {
+  margin: var(--space-xs) 0 0;
+  font-size: var(--text-xs);
+  color: var(--panel-text-muted);
+}
+
+/* Showing section: a stacked field (label above its control) for Configuration, and the compact
+ * Color Bar row with its settings gear. */
+.nrds-control-menu__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: var(--space-sm);
+}
+
+.nrds-control-menu__field-label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--accent-text);
+}
+
+.nrds-control-menu__config-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-sm);
+  background: var(--select-control-bg);
+  color: var(--map-panel-text);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.nrds-control-menu__config-button:hover,
+.nrds-control-menu__config-button:focus-visible {
+  border-color: var(--map-divides-highlight-outline);
+  outline: none;
+}
+
+.nrds-control-menu__config-summary {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-sm);
+}
+
+.nrds-control-menu__config-chevron {
+  display: inline-flex;
+  flex: 0 0 auto;
+  line-height: 0;
+  color: var(--panel-text-muted);
+}
+
+.nrds-control-menu__config-chevron svg {
+  width: 16px;
+  height: 16px;
+}
+
+.nrds-control-menu__row--colorbar {
+  min-height: 40px;
+}
+
+.nrds-control-menu__colorbar-preview {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 10px;
+  margin: 0 var(--space-sm);
+  border-radius: var(--radius-sm);
+}
+
+.nrds-control-menu__icon-button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--map-panel-text);
+  cursor: pointer;
+}
+
+.nrds-control-menu__icon-button:hover,
+.nrds-control-menu__icon-button:focus-visible {
+  border-color: var(--map-divides-highlight-outline);
+  outline: none;
+}
+
+.nrds-control-menu__icon-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Modal dialog (Configuration, Color Bar): a centred card over a dimmed backdrop. */
+.nrds-modal__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.nrds-modal {
+  width: min(360px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  background: var(--map-panel-bg);
+  color: var(--map-panel-text);
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elevation-map-control);
+  overflow: hidden;
+}
+
+.nrds-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--panel-border-color);
+}
+
+.nrds-modal__title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-strong);
+}
+
+.nrds-modal__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--panel-text-muted);
+  cursor: pointer;
+}
+
+.nrds-modal__close:hover,
+.nrds-modal__close:focus-visible {
+  color: var(--map-panel-text);
+  outline: none;
+}
+
+.nrds-modal__close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.nrds-modal__content {
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.nrds-modal .nrds-control-menu__scale-select {
+  max-width: none;
+}
+
+/* Colour ramp picker (Color Bar modal): a list of gradient swatches, one per named ramp. */
+.nrds-ramp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nrds-ramp-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--map-panel-text);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.nrds-ramp-option:hover,
+.nrds-ramp-option:focus-visible {
+  border-color: var(--map-divides-highlight-outline);
+  outline: none;
+}
+
+.nrds-ramp-option.is-selected {
+  border-color: var(--map-divides-highlight-outline);
+  box-shadow: 0 0 0 1px var(--map-divides-highlight-outline);
+}
+
+.nrds-ramp-option__bar {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 14px;
+  border-radius: var(--radius-sm);
+}
+
+.nrds-ramp-option__label {
+  flex: 0 0 auto;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
 /* The Appearance/theme-toggle styles that lived here moved to the navbar theme toggle (U6); see
  * the .nrds-theme-toggle rules in the shell section below. */
 

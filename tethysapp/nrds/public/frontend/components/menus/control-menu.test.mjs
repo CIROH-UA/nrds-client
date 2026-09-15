@@ -6,9 +6,26 @@ import {
   legendTicks,
   legendTitle,
   shouldShowLegend,
+  summarizeRun,
   LEGEND_TICKS,
 } from './control-menu.js';
 import { SCALE_OPTIONS } from '../../lib/colorScale.js';
+
+test('summarizeRun renders model, forecast code, and date.cycle', () => {
+  assert.equal(
+    summarizeRun({ model: 'cfe_nom', date: 'ngen.20260915', forecast: 'short_range', cycle: '00' }),
+    'cfe_nom SR 20260915.00'
+  );
+  assert.equal(
+    summarizeRun({ model: 'lstm_0', date: 'ngen.20260101', forecast: 'medium_range', cycle: '06' }),
+    'lstm_0 MR 20260101.06'
+  );
+});
+
+test('summarizeRun prompts when nothing is selected', () => {
+  assert.equal(summarizeRun({}), 'Select a run');
+  assert.equal(summarizeRun(), 'Select a run');
+});
 
 test('currentScaleOption returns the option matching the scale value', () => {
   assert.deepEqual(currentScaleOption('log'), SCALE_OPTIONS.find((o) => o.value === 'log'));

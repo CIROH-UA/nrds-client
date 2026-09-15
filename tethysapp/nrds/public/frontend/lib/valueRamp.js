@@ -12,6 +12,30 @@ export const DARK_RAMP = Object.freeze(
   ['#2991e5', '#31a9ea', '#38c1f0', '#40daf2', '#fbd189', '#fde7d5'].map(hexToRgb).map(Object.freeze)
 );
 
+/** The user-selectable colour ramps, each a name plus its six hex stops (low value -> high). */
+export const RAMPS = Object.freeze({
+  datastream: { label: 'Datastream', hex: ['#0077b6', '#00b4d8', '#90e0ef', '#ffba08', '#ff6b35', '#d00000'] },
+  viridis: { label: 'Viridis', hex: ['#440154', '#3b528b', '#21918c', '#5ec962', '#addc30', '#fde725'] },
+  turbo: { label: 'Turbo', hex: ['#30123b', '#4669db', '#26d07c', '#d2e935', '#fb8022', '#7a0403'] },
+  blues: { label: 'Blues', hex: ['#eff3ff', '#bdd7e7', '#6baed6', '#3182bd', '#08519c', '#08306b'] },
+  reds: { label: 'Reds', hex: ['#fff5f0', '#fcbba1', '#fb6a4a', '#de2d26', '#a50f15', '#67000d'] },
+});
+
+/** The default ramp a fresh view colours with. */
+export const DEFAULT_RAMP_NAME = 'datastream';
+
+const RAMP_RGB = Object.freeze(
+  Object.fromEntries(
+    Object.entries(RAMPS).map(([name, { hex }]) => [
+      name,
+      Object.freeze(hex.map(hexToRgb).map(Object.freeze)),
+    ])
+  )
+);
+
+/** The rgb ramp for a name, or null when the name is unknown (callers fall back to the theme ramp). */
+export const rampFor = (name) => RAMP_RGB[name] ?? null;
+
 const MISSING_COLOR = [100, 100, 100, 150];
 
 /** Writes the color for one value into ``target`` and returns it. */

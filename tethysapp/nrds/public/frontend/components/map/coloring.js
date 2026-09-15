@@ -31,6 +31,7 @@
  * reach's value up by that index and writes the state under the numeric `divide_id`.
  */
 import { readMapTheme } from '../../lib/mapTheme.js';
+import { rampFor } from '../../lib/valueRamp.js';
 import {
   boundsFor,
   getValueAtTimeFlat,
@@ -257,7 +258,9 @@ export function attachFlowpathColoring(map, store) {
       clearFeatureState();
       prevStates = new Map();
     }
-    const theme = readMapTheme();
+    const base = readMapTheme();
+    const selectedRamp = rampFor(store.get().theme.rampName);
+    const theme = selectedRamp ? { ...base, ramp: selectedRamp } : base;
     ensureExpressions(theme);
 
     if (!map.isSourceLoaded?.(SOURCE_ID)) {
@@ -299,6 +302,7 @@ export function attachFlowpathColoring(map, store) {
   let prevFeatureIds = s0.vpu.featureIds;
   let prevTimeIndex = s0.timeseries.currentTimeIndex;
   let prevTheme = s0.theme.theme;
+  let prevRampName = s0.theme.rampName;
 
   const unsubscribe = store.subscribe((s) => {
     const variable = s.timeseries.variable;
@@ -307,6 +311,7 @@ export function attachFlowpathColoring(map, store) {
     const featureIds = s.vpu.featureIds;
     const timeIndex = s.timeseries.currentTimeIndex;
     const theme = s.theme.theme;
+    const rampName = s.theme.rampName;
 
     const reachesChanged = featureIds !== prevFeatureIds;
     const dataChanged =
@@ -314,7 +319,7 @@ export function attachFlowpathColoring(map, store) {
       scale !== prevScale ||
       values !== prevValues ||
       reachesChanged;
-    const themeChanged = theme !== prevTheme;
+    const themeChanged = theme !== prevTheme || rampName !== prevRampName;
     const frameChanged = timeIndex !== prevTimeIndex;
     if (!dataChanged && !themeChanged && !frameChanged) return;
 
@@ -324,6 +329,7 @@ export function attachFlowpathColoring(map, store) {
     prevFeatureIds = featureIds;
     prevTimeIndex = timeIndex;
     prevTheme = theme;
+    prevRampName = rampName;
 
     if (themeChanged) {
       expressionsApplied = false;

@@ -2,7 +2,6 @@ import { selectionLngLat } from '../../lib/flowpathValues.js';
 import { curatedFeatureFields } from '../../lib/featureFields.js';
 import { makeFeatureTitle } from '../../lib/utils.js';
 import { createChart } from '../chart/nrds-chart.js';
-import { createVariablePicker } from './variable-picker.js';
 import { actions } from '../../store/app-store.js';
 import { peekFor, sheetDataState, watchSheet } from '../../lib/breakpoints.js';
 
@@ -43,13 +42,10 @@ function buildContent(feature) {
     fields.append(row);
   }
 
-  const pickerHost = document.createElement('div');
-  pickerHost.className = 'nrds-feature-sheet__picker';
-
   const chartHost = document.createElement('div');
   chartHost.className = 'nrds-feature-sheet__chart';
 
-  return { fields, pickerHost, chartHost };
+  return { fields, chartHost };
 }
 
 const CLOSE_ICON =
@@ -145,7 +141,6 @@ export function attachFeatureSheet(store) {
   };
 
   const teardownContent = () => {
-    if (current?.teardownPicker) current.teardownPicker();
     if (current?.teardownChart) current.teardownChart();
     body.replaceChildren();
     current = null;
@@ -153,12 +148,11 @@ export function attachFeatureSheet(store) {
 
   const openContent = (feature) => {
     teardownContent();
-    const { fields, pickerHost, chartHost } = buildContent(feature);
-    body.append(fields, pickerHost, chartHost);
-    const teardownPicker = createVariablePicker(pickerHost, store);
+    const { fields, chartHost } = buildContent(feature);
+    body.append(fields, chartHost);
     const teardownChart = createChart(chartHost, store);
     title.textContent = makeFeatureTitle(feature._id ?? feature.id ?? '');
-    current = { teardownPicker, teardownChart, featureKey: featureKeyOf(feature) };
+    current = { teardownChart, featureKey: featureKeyOf(feature) };
   };
 
   const close = () => {

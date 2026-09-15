@@ -198,6 +198,8 @@ const INITIAL_STATE = {
     preference: initialThemePreference,
     /** 'light' | 'dark' -- the effective-theme signal the map and legend read. */
     theme: effectiveFor(initialThemePreference),
+    /** The selected colour ramp for the flowpath values. Inlined from valueRamp's DEFAULT_RAMP_NAME. */
+    rampName: 'datastream',
   },
   timeseries: {
     series: EMPTY_SERIES,
@@ -525,7 +527,12 @@ export const actions = {
   setPreference: (next) => {
     persistPreference(next);
     applyDocumentTheme(next);
-    store.set({ theme: { preference: next, theme: effectiveFor(next) } });
+    store.set({ theme: { ...store.get().theme, preference: next, theme: effectiveFor(next) } });
+  },
+  /** Choose the colour ramp the flowpath values are drawn with. */
+  setRamp: (rampName) => {
+    const s = store.get().theme;
+    patchSlice('theme', s.rampName === rampName ? s : { ...s, rampName });
   },
   /** Flip between light and dark; either flip is a manual choice that beats the system. */
   toggle: () => {
