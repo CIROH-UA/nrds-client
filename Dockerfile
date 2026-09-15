@@ -45,6 +45,13 @@ RUN mkdir -p /home/tethys/nrds/static \
     && grep -q '^[[:space:]]*MULTIPLE_APP_MODE:' "${TETHYS_HOME}/portal_config.yml" \
     && "${VIRTUAL_ENV}/bin/tethys" site -f \
     && "${VIRTUAL_ENV}/bin/tethys" manage collectstatic --noinput \
+    # collectstatic reads the app's public dir from the installed package, but the slim index was
+    # generated into the build-tree copy (WORKDIR /build shadows the installed package on import),
+    # so collect never picks it up. Copy it into STATIC_ROOT explicitly, resolving the source the
+    # same way the generate step did.
+    && SLIM_SRC="$("${VIRTUAL_ENV}/bin/python" -c 'import pathlib, tethysapp.nrds as a; print(pathlib.Path(a.__file__).parent)')/public/data/hydrofabric_index_slim.parquet" \
+    && mkdir -p /home/tethys/nrds/static/nrds/data \
+    && cp "${SLIM_SRC}" /home/tethys/nrds/static/nrds/data/hydrofabric_index_slim.parquet \
     # Assert the 45 MiB slim index reached STATIC_ROOT, the copy static_urls actually serves, rather
     # than only the source tree collectstatic read it from; a missing artifact here is a dead search
     # box, so fail the build loudly instead of shipping green.
