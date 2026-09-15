@@ -1,4 +1,4 @@
-ARG TETHYS_UVX_TAG=a3148d5
+ARG TETHYS_UVX_TAG=1505870
 
 # ---------------------------------------------------------------------------
 # Build: install the app, generate the search index, migrate the DB, collect static
