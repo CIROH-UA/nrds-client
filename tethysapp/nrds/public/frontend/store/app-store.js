@@ -584,6 +584,11 @@ export const actions = {
     const s = store.get().timeseries;
     patchSlice('timeseries', { ...s, isPlaying: !s.isPlaying });
   },
+  /** Set playback on or off explicitly (used to pause across a theme restyle and resume after). */
+  set_is_playing: (playing) => {
+    const s = store.get().timeseries;
+    patchSlice('timeseries', s.isPlaying === playing ? s : { ...s, isPlaying: playing });
+  },
   stepForward: () => {
     const s = store.get().timeseries;
     const maxIdx = stepCount(s.series) - 1;

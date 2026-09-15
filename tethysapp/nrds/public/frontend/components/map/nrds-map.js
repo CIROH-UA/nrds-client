@@ -32,6 +32,7 @@ import {
   pickClickedFeature,
 } from '../../lib/selection.js';
 import { selectMapFeature } from '../../actions/selectFeature.js';
+import { actions } from '../../store/app-store.js';
 import { attachFlowpathColoring } from './coloring.js';
 import { attachHover } from './hover.js';
 import { attachFeaturePopup } from './feature-popup.js';
@@ -299,12 +300,43 @@ function subscribeSelectionHighlight(map, store) {
  * colouring is re-attached (its previous instance is torn down first so the idle/store listeners do
  * not accumulate). maplibre-gl 4 does not fire `style.load` after setStyle and reports
  * isStyleLoaded() false through every `styledata` in the swap, so the first `idle` is used as the
- * point where the new style is fully loaded and it is safe to re-add. A generation counter guards
- * against overlapping swaps (rapid toggling): only the latest swap's idle callback re-adds, so
- * `addHydrofabricLayers` never runs twice and no colouring instance is orphaned. The selection
+ * point where the new style is fully loaded and it is safe to re-add, with a timeout fallback so a
+ * slow or dropped idle (a busy map, a failed basemap load) can never strand the layers. Playback is
+ * paused across the swap and resumed after the re-add, both to avoid keeping the map busy and so the
+ * animation does not run over the torn-down layer. A generation counter guards against overlapping
+ * swaps (rapid toggling): only the latest swap re-adds, so `addHydrofabricLayers` never runs twice
+ * and no colouring instance is orphaned, and a `readded` guard keeps the idle and the fallback from
+ * both firing. The selection
  * marker is a DOM overlay that survives the swap; the highlight filters are restored by
  * `addHydrofabricLayers` from the current selection. Returns the store's unsubscribe closure.
  */
+/**
+ * Best-effort "you are here": when the browser grants geolocation, fly to the reader's location and
+ * select the catchment there, which loads that vpu's run so their local flowpaths are coloured. It
+ * no-ops silently when geolocation is unavailable, denied, or lands outside the hydrofabric, so the
+ * default vpu stays loaded and a failure never breaks the map.
+ */
+function locateUser(map) {
+  try {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const center = [coords.longitude, coords.latitude];
+        map.flyTo({ center, zoom: 8 });
+        map.once('idle', () => {
+          if (!map.getLayer('divides')) return;
+          const [feature] = map.queryRenderedFeatures(map.project(center), { layers: ['divides'] });
+          if (feature) selectMapFeature(feature, 'divides');
+        });
+      },
+      () => {},
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 }
+    );
+  } catch {
+    /* geolocation unavailable: keep the default vpu */
+  }
+}
+
 function subscribeMapTheme(map, store, initialColoringTeardown) {
   let teardownColoring = initialColoringTeardown;
   let prev = store.get().theme.theme;
@@ -315,15 +347,27 @@ function subscribeMapTheme(map, store, initialColoringTeardown) {
     prev = theme;
 
     const ticket = swaps.next();
+    // Pause playback across the swap: setStyle wipes the layers, and an animation that keeps the map
+    // busy can delay or drop the idle the re-add waits on, stranding the hydrofabric layers.
+    const wasPlaying = store.get().timeseries.isPlaying;
+    if (wasPlaying) actions.set_is_playing(false);
     teardownColoring();
     teardownColoring = () => {};
     map.setStyle(readMapTheme().styleUrl);
-    map.once('idle', () => {
-      if (!swaps.isCurrent(ticket)) return;
+
+    let readded = false;
+    const reAdd = () => {
+      if (readded || !swaps.isCurrent(ticket)) return;
+      readded = true;
       addHydrofabricLayers(map, store, readMapTheme());
       applyAllVisibility(map, store);
       teardownColoring = attachFlowpathColoring(map, store);
-    });
+      if (wasPlaying) actions.set_is_playing(true);
+    };
+    map.once('idle', reAdd);
+    // Fallback: if the new basemap style is slow to load or its idle never arrives, re-add anyway so
+    // the layers and selection are never left stranded until the reader toggles the theme again.
+    setTimeout(reAdd, 4000);
   });
 }
 
@@ -366,6 +410,7 @@ export function createMap(container, store) {
     attachFeaturePopup(map, store);
     attachFeatureSheet(store);
     subscribeMapTheme(map, store, teardownColoring);
+    locateUser(map);
   });
 
   subscribeVisibility(map, store);

@@ -226,16 +226,15 @@ export function createRunCascade(container, store) {
     outputFile: onChangeOutputFile,
   };
 
-  /** Load the chosen run: match the React handleVisulization guards, then call loadVpu. */
+  /** Load the chosen run. The run needs a vpu (from the location or a selection), not a feature. */
   const onUpdate = async () => {
     const ds = store.get().datastream;
-    const selectedFeatureId = store.get().feature.selected_feature?._id ?? null;
 
     actions.set_loading_text('');
-    if (!selectedFeatureId || !ds.vpu) {
+    if (!ds.vpu) {
       patchTimeseries({
-        loadingText: 'Select a feature on the map first',
-        last_error: { kind: 'no-selection' },
+        loadingText: 'No area is loaded yet',
+        last_error: { kind: 'no-vpu' },
       });
       return;
     }
