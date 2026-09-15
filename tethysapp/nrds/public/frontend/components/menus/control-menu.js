@@ -4,20 +4,20 @@
  * opener button and a framed panel over the map and returns a teardown that unsubscribes, destroys
  * the shared select and the modals, and removes its DOM.
  *
- * The panel is organised top to bottom as Legend (the value gradient), Showing (the run
- * configuration behind a summarised button that opens a modal, the variable picker, and a Color Bar
- * row whose gear opens a ramp + scale modal), Layers (the four layer toggles) and Map Settings (the
- * hover toggle). The run cascade (components/menus/run-cascade.js) and the variable picker
- * (components/map/variable-picker.js) are mounted into their slots here.
+ * The panel is organised top to bottom as Showing (the run configuration behind a summarised button
+ * that opens a modal, the variable picker, and the value legend, whose header carries a reverse
+ * toggle and the settings gear that opens the ramp + scale modal), Layers (the four layer toggles)
+ * and Map Settings (the hover toggle). The run cascade (components/menus/run-cascade.js) and the
+ * variable picker (components/map/variable-picker.js) are mounted into their slots here.
  *
  * This view is pure reflection of the store: a single subscription keeps the switches, the run
- * summary, the colour scale, the ramp choice, the symbol swatches, and the legend in step, and every
- * control calls a store action rather than holding state of its own. The legend and the Color Bar
- * preview read the selected ramp (theme.rampName), falling back to the theme ramp.
+ * summary, the colour scale, the ramp choice, the reverse state, the symbol swatches, and the legend
+ * in step, and every control calls a store action rather than holding state of its own. The legend
+ * reads the effective ramp (theme.rampName, reversed when theme.rampReversed), falling back to the
+ * theme ramp.
  */
 import { SCALE_OPTIONS, SCALE_LABELS } from '../../lib/colorScale.js';
-import { rampGradient, RAMPS, rampFor } from '../../lib/valueRamp.js';
-import { hexToRgb } from '../../lib/colorMath.js';
+import { rampGradient, RAMPS, rampFor, resolveRamp, orientRamp } from '../../lib/valueRamp.js';
 import { boundsFor, valueAtRampPosition } from '../../lib/flowpathValues.js';
 import { getVariableUnits } from '../../lib/data.js';
 import { formatMeasurement } from '../../lib/utils.js';
@@ -87,14 +87,10 @@ export function shouldStartOpen() {
   }
 }
 
-/** The effective ramp for the current selection: the chosen named ramp, else the theme ramp. */
+/** The effective ramp as drawn: the chosen named ramp (else the theme ramp), reversed when set. */
 function effectiveRamp(store) {
-  return rampFor(store.get().theme.rampName) ?? readMapTheme().ramp;
-}
-
-/** A CSS `linear-gradient` for a ramp given as hex stops (the ramp catalog form). */
-function hexRampGradient(hex) {
-  return rampGradient(hex.map(hexToRgb));
+  const t = store.get().theme;
+  return orientRamp(resolveRamp(t.rampName, readMapTheme().ramp), t.rampReversed);
 }
 
 /** Colours for the symbol swatches, read from the same map tokens the layers use. */
@@ -187,7 +183,7 @@ function makeSection({ label, heading }) {
   return section;
 }
 
-/** A small "Configuration"/"Color Bar" field: a label above a control. */
+/** A small stacked field: a label above its control. */
 function makeField(labelText) {
   const field = document.createElement('div');
   field.className = 'nrds-control-menu__field';
@@ -237,26 +233,7 @@ export function createControlMenu(container, store) {
   header.append(title, closeBtn);
   panel.append(header);
 
-  // --- Legend section (top): the value gradient ---
-  const legendSection = makeSection({ label: 'Legend', heading: 'Legend' });
-  const legend = document.createElement('div');
-  legend.className = 'nrds-control-menu__legend';
-  const legendTitleEl = document.createElement('div');
-  legendTitleEl.className = 'nrds-control-menu__legend-title';
-  const legendBarEl = document.createElement('div');
-  legendBarEl.className = 'nrds-control-menu__legend-bar';
-  const legendScaleEl = document.createElement('div');
-  legendScaleEl.className = 'nrds-control-menu__legend-scale';
-  const tickSpans = LEGEND_TICKS.map(() => document.createElement('span'));
-  legendScaleEl.append(...tickSpans);
-  legend.append(legendTitleEl, legendBarEl, legendScaleEl);
-  const legendEmpty = document.createElement('p');
-  legendEmpty.className = 'nrds-control-menu__legend-empty';
-  legendEmpty.textContent = 'Load a run to see the value scale.';
-  legendSection.append(legend, legendEmpty);
-  panel.append(legendSection);
-
-  // --- Showing section: configuration, variable, color bar ---
+  // --- Showing section: configuration, variable, and the value legend ---
   const showingSection = makeSection({ label: 'Showing', heading: 'Showing' });
 
   const configField = makeField('Configuration');
@@ -280,25 +257,62 @@ export function createControlMenu(container, store) {
   showingSection.append(variableHost);
   const teardownVariablePicker = createVariablePicker(variableHost, store);
 
-  const colorBarRow = document.createElement('div');
-  colorBarRow.className = 'nrds-control-menu__row nrds-control-menu__row--colorbar';
-  const colorBarLabel = document.createElement('span');
-  colorBarLabel.className = 'nrds-control-menu__label';
-  colorBarLabel.textContent = 'Color Bar';
-  const colorBarPreview = document.createElement('span');
-  colorBarPreview.className = 'nrds-control-menu__colorbar-preview';
+  // The legend sits under the variable: its gradient is the ramp preview, and its header carries a
+  // reverse toggle and the settings gear that opens the ramp + scale modal.
+  const legendField = document.createElement('div');
+  legendField.className = 'nrds-control-menu__field';
+
+  const legendHeader = document.createElement('div');
+  legendHeader.className = 'nrds-control-menu__legend-header';
+  const legendLabel = document.createElement('span');
+  legendLabel.className = 'nrds-control-menu__field-label';
+  legendLabel.textContent = 'Legend';
+  const legendTools = document.createElement('div');
+  legendTools.className = 'nrds-control-menu__legend-tools';
+
+  const reverseBtn = document.createElement('button');
+  reverseBtn.type = 'button';
+  reverseBtn.className = 'nrds-control-menu__icon-button';
+  reverseBtn.setAttribute('aria-label', 'Reverse color ramp');
+  reverseBtn.setAttribute('aria-pressed', 'false');
+  reverseBtn.title = 'Reverse colors';
+  reverseBtn.innerHTML =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M17 4l3 3-3 3"/><path d="M20 7H9"/><path d="M7 20l-3-3 3-3"/><path d="M4 17h11"/></svg>';
+  reverseBtn.addEventListener('click', () => actions.toggleRampReversed());
+
   const colorBarBtn = document.createElement('button');
   colorBarBtn.type = 'button';
   colorBarBtn.className = 'nrds-control-menu__icon-button';
-  colorBarBtn.setAttribute('aria-label', 'Color bar settings');
-  colorBarBtn.title = 'Color bar settings';
+  colorBarBtn.setAttribute('aria-label', 'Color ramp settings');
+  colorBarBtn.title = 'Color ramp settings';
   colorBarBtn.innerHTML =
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
     'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
     '<circle cx="12" cy="12" r="3"/>' +
     '<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
-  colorBarRow.append(colorBarLabel, colorBarPreview, colorBarBtn);
-  showingSection.append(colorBarRow);
+
+  legendTools.append(reverseBtn, colorBarBtn);
+  legendHeader.append(legendLabel, legendTools);
+
+  const legend = document.createElement('div');
+  legend.className = 'nrds-control-menu__legend';
+  const legendTitleEl = document.createElement('div');
+  legendTitleEl.className = 'nrds-control-menu__legend-title';
+  const legendBarEl = document.createElement('div');
+  legendBarEl.className = 'nrds-control-menu__legend-bar';
+  legendBarEl.setAttribute('aria-hidden', 'true');
+  const legendScaleEl = document.createElement('div');
+  legendScaleEl.className = 'nrds-control-menu__legend-scale';
+  const tickSpans = LEGEND_TICKS.map(() => document.createElement('span'));
+  legendScaleEl.append(...tickSpans);
+  legend.append(legendTitleEl, legendBarEl, legendScaleEl);
+  const legendEmpty = document.createElement('p');
+  legendEmpty.className = 'nrds-control-menu__legend-empty';
+  legendEmpty.textContent = 'Load a run to see the value scale.';
+  legendField.append(legendHeader, legend, legendEmpty);
+  showingSection.append(legendField);
   panel.append(showingSection);
 
   // --- Layers section ---
@@ -346,18 +360,18 @@ export function createControlMenu(container, store) {
   container.append(opener, panel);
 
   // --- Configuration modal: the run cascade ---
-  const configModal = createModal({ title: 'Configuration', className: 'nrds-modal--config' });
+  const configModal = createModal({ title: 'Configuration', className: 'nrds-dialog--config' });
   const teardownRunCascade = createRunCascade(configModal.content, store);
   configButton.addEventListener('click', () => configModal.open());
 
   // --- Color Bar modal: ramp choices + colour scale ---
-  const colorModal = createModal({ title: 'Color Bar', className: 'nrds-modal--colorbar' });
+  const colorModal = createModal({ title: 'Color Bar', className: 'nrds-dialog--colorbar' });
   const rampField = makeField('Color ramp');
   const rampList = document.createElement('div');
   rampList.className = 'nrds-ramp-list';
   rampList.setAttribute('role', 'radiogroup');
   rampList.setAttribute('aria-label', 'Color ramp');
-  const rampButtons = Object.entries(RAMPS).map(([name, { label, hex }]) => {
+  const rampButtons = Object.entries(RAMPS).map(([name, { label }]) => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'nrds-ramp-option';
@@ -365,7 +379,8 @@ export function createControlMenu(container, store) {
     btn.setAttribute('role', 'radio');
     const bar = document.createElement('span');
     bar.className = 'nrds-ramp-option__bar';
-    bar.style.background = hexRampGradient(hex);
+    bar.setAttribute('aria-hidden', 'true');
+    bar.style.background = rampGradient(rampFor(name));
     const text = document.createElement('span');
     text.className = 'nrds-ramp-option__label';
     text.textContent = label;
@@ -453,16 +468,20 @@ export function createControlMenu(container, store) {
     scaleSelect.setValue(s.vpu.scale);
 
     const rampName = s.theme.rampName;
+    const reversed = s.theme.rampReversed;
     configSummary.textContent = summarizeRun(s.datastream);
 
     if (rampName !== prev.rampName) {
-      const stops = RAMPS[rampName]?.hex;
-      colorBarPreview.style.background = stops ? hexRampGradient(stops) : rampGradient(effectiveRamp(store));
       for (const { name, btn } of rampButtons) {
         const on = name === rampName;
         btn.classList.toggle('is-selected', on);
         btn.setAttribute('aria-checked', on ? 'true' : 'false');
       }
+    }
+
+    if (reversed !== prev.reversed) {
+      reverseBtn.setAttribute('aria-pressed', String(reversed));
+      reverseBtn.classList.toggle('is-active', reversed);
     }
 
     const variable = s.timeseries.variable;
@@ -483,6 +502,7 @@ export function createControlMenu(container, store) {
       timesLen !== prev.timesLen ||
       theme !== prev.theme ||
       rampName !== prev.rampName ||
+      reversed !== prev.reversed ||
       valuesRef !== prev.valuesRef
     ) {
       renderLegend({ variable, scale, flowVisible, timesLen, valuesRef });
@@ -494,6 +514,7 @@ export function createControlMenu(container, store) {
     prev.timesLen = timesLen;
     prev.theme = theme;
     prev.rampName = rampName;
+    prev.reversed = reversed;
     prev.valuesRef = valuesRef;
   };
 

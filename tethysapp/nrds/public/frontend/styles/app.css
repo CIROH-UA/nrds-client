@@ -880,8 +880,8 @@ body,
   color: var(--panel-text-muted);
 }
 
-/* Showing section: a stacked field (label above its control) for Configuration, and the compact
- * Color Bar row with its settings gear. */
+/* Showing section: a stacked field (label above its control) for Configuration, the variable, and
+ * the value legend (whose header carries the reverse toggle and the ramp settings gear). */
 .nrds-control-menu__field {
   display: flex;
   flex-direction: column;
@@ -901,6 +901,7 @@ body,
   justify-content: space-between;
   gap: var(--space-sm);
   width: 100%;
+  min-height: var(--tap-min);
   padding: 8px 10px;
   border: 1px solid var(--panel-border-color);
   border-radius: var(--radius-sm);
@@ -915,6 +916,12 @@ body,
 .nrds-control-menu__config-button:focus-visible {
   border-color: var(--map-divides-highlight-outline);
   outline: none;
+}
+
+.nrds-control-menu__config-button:focus-visible,
+.nrds-control-menu__icon-button:focus-visible,
+.nrds-ramp-option:focus-visible {
+  box-shadow: 0 0 0 2px var(--nav-pill-active-bg);
 }
 
 .nrds-control-menu__config-summary {
@@ -938,16 +945,17 @@ body,
   height: 16px;
 }
 
-.nrds-control-menu__row--colorbar {
-  min-height: 40px;
+.nrds-control-menu__legend-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
 }
 
-.nrds-control-menu__colorbar-preview {
-  flex: 1 1 auto;
-  min-width: 0;
-  height: 10px;
-  margin: 0 var(--space-sm);
-  border-radius: var(--radius-sm);
+.nrds-control-menu__legend-tools {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 4px;
 }
 
 .nrds-control-menu__icon-button {
@@ -955,8 +963,8 @@ body,
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: var(--tap-min);
+  height: var(--tap-min);
   padding: 0;
   border: 1px solid var(--panel-border-color);
   border-radius: var(--radius-sm);
@@ -971,13 +979,19 @@ body,
   outline: none;
 }
 
+.nrds-control-menu__icon-button.is-active {
+  border-color: var(--nav-pill-active-bg);
+  color: var(--nav-pill-active-bg);
+}
+
 .nrds-control-menu__icon-button svg {
   width: 16px;
   height: 16px;
 }
 
-/* Modal dialog (Configuration, Color Bar): a centred card over a dimmed backdrop. */
-.nrds-modal__backdrop {
+/* Dialog (Configuration, Color Bar): a centred card over a dimmed backdrop. Namespaced `nrds-dialog`
+   so its rules never collide with the shell `nrds-modal` used by the first-run notice and info panels. */
+.nrds-dialog__backdrop {
   position: fixed;
   inset: 0;
   z-index: 2000;
@@ -985,12 +999,12 @@ body,
   align-items: center;
   justify-content: center;
   padding: var(--space-md);
-  background: rgba(0, 0, 0, 0.4);
+  background-color: color-mix(in oklab, var(--modal-scrim) 45%, transparent);
 }
 
-.nrds-modal {
+.nrds-dialog {
   width: min(360px, calc(100vw - 32px));
-  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
   display: flex;
   flex-direction: column;
   background: var(--map-panel-bg);
@@ -1001,7 +1015,7 @@ body,
   overflow: hidden;
 }
 
-.nrds-modal__header {
+.nrds-dialog__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1010,18 +1024,19 @@ body,
   border-bottom: 1px solid var(--panel-border-color);
 }
 
-.nrds-modal__title {
+.nrds-dialog__title {
   margin: 0;
   font-size: var(--text-md);
   font-weight: var(--weight-strong);
 }
 
-.nrds-modal__close {
+.nrds-dialog__close {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: var(--tap-min);
+  height: var(--tap-min);
   padding: 0;
   border: none;
   border-radius: var(--radius-sm);
@@ -1030,23 +1045,27 @@ body,
   cursor: pointer;
 }
 
-.nrds-modal__close:hover,
-.nrds-modal__close:focus-visible {
+.nrds-dialog__close:hover {
   color: var(--map-panel-text);
-  outline: none;
 }
 
-.nrds-modal__close svg {
+.nrds-dialog__close:focus-visible {
+  color: var(--map-panel-text);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--nav-pill-active-bg);
+}
+
+.nrds-dialog__close svg {
   width: 18px;
   height: 18px;
 }
 
-.nrds-modal__content {
+.nrds-dialog__content {
   padding: 16px;
   overflow-y: auto;
 }
 
-.nrds-modal .nrds-control-menu__scale-select {
+.nrds-dialog .nrds-control-menu__scale-select {
   max-width: none;
 }
 
@@ -1062,6 +1081,7 @@ body,
   align-items: center;
   gap: var(--space-sm);
   width: 100%;
+  min-height: var(--tap-min);
   padding: 6px 8px;
   border: 1px solid var(--panel-border-color);
   border-radius: var(--radius-sm);
@@ -1081,6 +1101,14 @@ body,
 .nrds-ramp-option.is-selected {
   border-color: var(--map-divides-highlight-outline);
   box-shadow: 0 0 0 1px var(--map-divides-highlight-outline);
+}
+
+/* Touch input: the compact selects keep their design-sanctioned dense height for the mouse, but rise
+   to the 44px tap minimum on coarse pointers where a fingertip needs the room. */
+@media (pointer: coarse) {
+  .nrds-select[data-compact] .nrds-select__control {
+    min-height: var(--tap-min);
+  }
 }
 
 .nrds-ramp-option__bar {
@@ -1400,9 +1428,18 @@ body,
   }
 }
 
+@keyframes nrds-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Reduced motion: drop the spin (a vestibular trigger) for a full ring that pulses opacity instead,
+   which still reads as "working" without spatial motion. */
 @media (prefers-reduced-motion: reduce) {
   .nrds-spinner {
-    animation-duration: 2s;
+    border-top-color: currentColor;
+    animation: nrds-pulse 1.4s ease-in-out infinite;
   }
 }
 

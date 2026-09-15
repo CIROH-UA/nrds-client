@@ -1,4 +1,5 @@
 import { createStore } from './store.js';
+import { DEFAULT_RAMP_NAME } from '../lib/valueRamp.js';
 
 /**
  * The app's single observable store (migration unit U2), the vanilla replacement for the six
@@ -198,8 +199,10 @@ const INITIAL_STATE = {
     preference: initialThemePreference,
     /** 'light' | 'dark' -- the effective-theme signal the map and legend read. */
     theme: effectiveFor(initialThemePreference),
-    /** The selected colour ramp for the flowpath values. Inlined from valueRamp's DEFAULT_RAMP_NAME. */
-    rampName: 'datastream',
+    /** The selected colour ramp for the flowpath values. */
+    rampName: DEFAULT_RAMP_NAME,
+    /** Whether the ramp is drawn low-to-high reversed, so high values take the low-end colour. */
+    rampReversed: false,
   },
   timeseries: {
     series: EMPTY_SERIES,
@@ -533,6 +536,11 @@ export const actions = {
   setRamp: (rampName) => {
     const s = store.get().theme;
     patchSlice('theme', s.rampName === rampName ? s : { ...s, rampName });
+  },
+  /** Flip the ramp direction, so high values take the low-end colour and back. */
+  toggleRampReversed: () => {
+    const s = store.get().theme;
+    patchSlice('theme', { ...s, rampReversed: !s.rampReversed });
   },
   /** Flip between light and dark; either flip is a manual choice that beats the system. */
   toggle: () => {

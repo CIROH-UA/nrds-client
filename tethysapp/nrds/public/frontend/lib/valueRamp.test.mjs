@@ -4,9 +4,14 @@ import assert from 'node:assert/strict';
 import { lightness } from './colorMath.js';
 import {
   DARK_RAMP,
+  DEFAULT_RAMP_NAME,
   LIGHT_RAMP,
   NO_DATA_VALUE,
+  orientRamp,
+  RAMPS,
+  rampFor,
   rampGradient,
+  resolveRamp,
   writeColorInto,
 } from './valueRamp.js';
 import { computeBounds, normalizeValue } from './flowpathValues.js';
@@ -126,6 +131,55 @@ test('the two ramps run in opposite directions, each away from its own basemap',
   const darkDir = Math.sign(lightness(DARK_RAMP[5]) - lightness(DARK_RAMP[0]));
   assert.equal(lightDir, -1);
   assert.equal(darkDir, 1);
+});
+
+test('DEFAULT_RAMP_NAME names a real entry in the catalog', () => {
+  assert.ok(Object.prototype.hasOwnProperty.call(RAMPS, DEFAULT_RAMP_NAME));
+});
+
+test('every catalog ramp has six hex stops, matching the theme ramps the legend draws', () => {
+  for (const [name, { hex }] of Object.entries(RAMPS)) {
+    assert.equal(hex.length, 6, `${name} should have six stops`);
+  }
+});
+
+test('rampFor returns a frozen six-stop rgb ramp for each catalog name', () => {
+  for (const name of Object.keys(RAMPS)) {
+    const ramp = rampFor(name);
+    assert.equal(ramp.length, 6, `${name} rgb ramp length`);
+    assert.equal(Object.isFrozen(ramp), true);
+    for (const stop of ramp) {
+      assert.equal(stop.length, 3);
+      assert.ok(stop.every((c) => Number.isInteger(c) && c >= 0 && c <= 255));
+    }
+  }
+});
+
+test('rampFor returns null for an unknown or missing name', () => {
+  assert.equal(rampFor('nope'), null);
+  assert.equal(rampFor(undefined), null);
+  assert.equal(rampFor(''), null);
+});
+
+test('resolveRamp picks the named ramp and falls back to the theme ramp when unknown', () => {
+  assert.equal(resolveRamp(DEFAULT_RAMP_NAME, LIGHT_RAMP), rampFor(DEFAULT_RAMP_NAME));
+  assert.equal(resolveRamp('nope', LIGHT_RAMP), LIGHT_RAMP);
+  assert.equal(resolveRamp(undefined, DARK_RAMP), DARK_RAMP);
+});
+
+test('orientRamp reverses a copy when reversed and returns the ramp untouched otherwise', () => {
+  const ramp = rampFor(DEFAULT_RAMP_NAME);
+  assert.equal(orientRamp(ramp, false), ramp);
+  const flipped = orientRamp(ramp, true);
+  assert.notEqual(flipped, ramp);
+  assert.deepEqual(flipped, [...ramp].reverse());
+  assert.deepEqual(ramp, rampFor(DEFAULT_RAMP_NAME));
+});
+
+test('orientRamp tolerates an empty or missing ramp', () => {
+  assert.deepEqual(orientRamp([], true), []);
+  assert.equal(orientRamp(null, true), null);
+  assert.equal(orientRamp(undefined, false), undefined);
 });
 
 test('normalizeValue spreads a skewed distribution across the ramp', () => {

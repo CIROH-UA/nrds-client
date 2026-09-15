@@ -306,7 +306,10 @@ function subscribeSelectionHighlight(map, store) {
  * animation does not run over the torn-down layer. A generation counter guards against overlapping
  * swaps (rapid toggling): only the latest swap re-adds, so `addHydrofabricLayers` never runs twice
  * and no colouring instance is orphaned, and a `readded` guard keeps the idle and the fallback from
- * both firing. The selection
+ * both firing. Playback is paused across the swap and resumed after the re-add; the resume intent is
+ * captured once at the start of a burst of swaps so rapid toggling cannot leave a reader who was
+ * playing stranded paused, and the fallback timer is cleared when a swap completes or is superseded.
+ * The selection
  * marker is a DOM overlay that survives the swap; the highlight filters are restored by
  * `addHydrofabricLayers` from the current selection. Returns the store's unsubscribe closure.
  */
@@ -314,22 +317,36 @@ function subscribeSelectionHighlight(map, store) {
  * Best-effort "you are here": when the browser grants geolocation, fly to the reader's location and
  * select the catchment there, which loads that vpu's run so their local flowpaths are coloured. It
  * no-ops silently when geolocation is unavailable, denied, or lands outside the hydrofabric, so the
- * default vpu stays loaded and a failure never breaks the map.
+ * default vpu stays loaded and a failure never breaks the map. The permission prompt can sit open for
+ * a while, so the callback abandons the fly-and-select if the reader has already dragged the map or
+ * picked a feature in the meantime rather than hijacking their view.
  */
-function locateUser(map) {
+function locateUser(map, store) {
   try {
     if (typeof navigator === 'undefined' || !navigator.geolocation) return;
+    let userMoved = false;
+    const onUserMove = (e) => {
+      if (e.originalEvent) userMoved = true;
+    };
+    map.on('movestart', onUserMove);
+    const preempted = () => userMoved || Boolean(store.get().feature.selected_feature);
+    const done = () => map.off('movestart', onUserMove);
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
+        if (preempted()) {
+          done();
+          return;
+        }
         const center = [coords.longitude, coords.latitude];
         map.flyTo({ center, zoom: 8 });
         map.once('idle', () => {
-          if (!map.getLayer('divides')) return;
+          done();
+          if (preempted() || !map.getLayer('divides')) return;
           const [feature] = map.queryRenderedFeatures(map.project(center), { layers: ['divides'] });
           if (feature) selectMapFeature(feature, 'divides');
         });
       },
-      () => {},
+      done,
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 }
     );
   } catch {
@@ -341,16 +358,24 @@ function subscribeMapTheme(map, store, initialColoringTeardown) {
   let teardownColoring = initialColoringTeardown;
   let prev = store.get().theme.theme;
   const swaps = createSequence();
+  let swapActive = false;
+  let resumeIntent = false;
+  let fallbackTimer = null;
   return store.subscribe((state) => {
     const theme = state.theme.theme;
     if (theme === prev) return;
     prev = theme;
 
     const ticket = swaps.next();
+    // Capture the resume intent at the start of a burst of swaps, before the first pause sets
+    // isPlaying false; a later swap in the same burst must not overwrite it with the paused value.
+    if (!swapActive) {
+      swapActive = true;
+      resumeIntent = store.get().timeseries.isPlaying;
+    }
     // Pause playback across the swap: setStyle wipes the layers, and an animation that keeps the map
     // busy can delay or drop the idle the re-add waits on, stranding the hydrofabric layers.
-    const wasPlaying = store.get().timeseries.isPlaying;
-    if (wasPlaying) actions.set_is_playing(false);
+    if (store.get().timeseries.isPlaying) actions.set_is_playing(false);
     teardownColoring();
     teardownColoring = () => {};
     map.setStyle(readMapTheme().styleUrl);
@@ -359,15 +384,19 @@ function subscribeMapTheme(map, store, initialColoringTeardown) {
     const reAdd = () => {
       if (readded || !swaps.isCurrent(ticket)) return;
       readded = true;
+      if (fallbackTimer) clearTimeout(fallbackTimer);
+      fallbackTimer = null;
       addHydrofabricLayers(map, store, readMapTheme());
       applyAllVisibility(map, store);
       teardownColoring = attachFlowpathColoring(map, store);
-      if (wasPlaying) actions.set_is_playing(true);
+      swapActive = false;
+      if (resumeIntent) actions.set_is_playing(true);
     };
     map.once('idle', reAdd);
     // Fallback: if the new basemap style is slow to load or its idle never arrives, re-add anyway so
     // the layers and selection are never left stranded until the reader toggles the theme again.
-    setTimeout(reAdd, 4000);
+    if (fallbackTimer) clearTimeout(fallbackTimer);
+    fallbackTimer = setTimeout(reAdd, 4000);
   });
 }
 
@@ -410,7 +439,7 @@ export function createMap(container, store) {
     attachFeaturePopup(map, store);
     attachFeatureSheet(store);
     subscribeMapTheme(map, store, teardownColoring);
-    locateUser(map);
+    locateUser(map, store);
   });
 
   subscribeVisibility(map, store);

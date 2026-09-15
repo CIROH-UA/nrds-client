@@ -186,6 +186,41 @@ test('set_vpu teardown stops playback, drops VPU arrays, and runs registered can
   unregister();
 });
 
+test('setRamp updates the ramp name and is a no-op that keeps the slice ref when unchanged', () => {
+  actions.setRamp('viridis');
+  assert.equal(store.get().theme.rampName, 'viridis');
+
+  const before = store.get().theme;
+  actions.setRamp('viridis');
+  assert.equal(store.get().theme, before);
+
+  actions.setRamp('turbo');
+  assert.notEqual(store.get().theme, before);
+  assert.equal(store.get().theme.rampName, 'turbo');
+});
+
+test('toggleRampReversed defaults to false and flips the reverse flag each call', () => {
+  assert.equal(store.get().theme.rampReversed, false);
+  actions.toggleRampReversed();
+  assert.equal(store.get().theme.rampReversed, true);
+  actions.toggleRampReversed();
+  assert.equal(store.get().theme.rampReversed, false);
+});
+
+test('set_is_playing sets the flag and is a no-op that keeps the slice ref when already at the value', () => {
+  actions.reset_timeseries();
+  actions.set_is_playing(false);
+  const paused = store.get().timeseries;
+  assert.equal(paused.isPlaying, false);
+  actions.set_is_playing(false);
+  assert.equal(store.get().timeseries, paused);
+
+  actions.set_is_playing(true);
+  assert.equal(store.get().timeseries.isPlaying, true);
+  actions.set_is_playing(false);
+  assert.equal(store.get().timeseries.isPlaying, false);
+});
+
 test('selection identity guard drops an unchanged feature but keeps a null-keyed one', () => {
   actions.set_selected_feature(null);
 

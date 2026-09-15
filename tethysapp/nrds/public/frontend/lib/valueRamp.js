@@ -36,6 +36,12 @@ const RAMP_RGB = Object.freeze(
 /** The rgb ramp for a name, or null when the name is unknown (callers fall back to the theme ramp). */
 export const rampFor = (name) => RAMP_RGB[name] ?? null;
 
+/** The rgb ramp a name selects, falling back to the given theme ramp when the name is unknown. */
+export const resolveRamp = (name, themeRamp) => rampFor(name) ?? themeRamp;
+
+/** The ramp as drawn, reversed low-to-high when ``reversed`` so high values take the low-end colour. */
+export const orientRamp = (ramp, reversed) => (reversed && ramp?.length ? [...ramp].reverse() : ramp);
+
 const MISSING_COLOR = [100, 100, 100, 150];
 
 /** Writes the color for one value into ``target`` and returns it. */

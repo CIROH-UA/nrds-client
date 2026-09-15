@@ -27,6 +27,25 @@ test('summarizeRun prompts when nothing is selected', () => {
   assert.equal(summarizeRun(), 'Select a run');
 });
 
+test('summarizeRun abbreviates a forecast that is not in the known-code table', () => {
+  assert.equal(
+    summarizeRun({ model: 'cfe', date: 'ngen.20260101', forecast: 'long_range', cycle: '00' }),
+    'cfe LON 20260101.00'
+  );
+});
+
+test('summarizeRun omits the cycle when none is selected', () => {
+  assert.equal(
+    summarizeRun({ model: 'cfe', date: 'ngen.20260101', forecast: 'short_range' }),
+    'cfe SR 20260101'
+  );
+});
+
+test('summarizeRun joins only the parts that are present for a partial selection', () => {
+  assert.equal(summarizeRun({ model: 'cfe' }), 'cfe');
+  assert.equal(summarizeRun({ date: 'ngen.20260101' }), '20260101');
+});
+
 test('currentScaleOption returns the option matching the scale value', () => {
   assert.deepEqual(currentScaleOption('log'), SCALE_OPTIONS.find((o) => o.value === 'log'));
   assert.deepEqual(currentScaleOption('jenks'), SCALE_OPTIONS.find((o) => o.value === 'jenks'));

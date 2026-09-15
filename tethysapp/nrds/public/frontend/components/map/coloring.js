@@ -31,7 +31,7 @@
  * reach's value up by that index and writes the state under the numeric `divide_id`.
  */
 import { readMapTheme } from '../../lib/mapTheme.js';
-import { rampFor } from '../../lib/valueRamp.js';
+import { resolveRamp, orientRamp } from '../../lib/valueRamp.js';
 import {
   boundsFor,
   getValueAtTimeFlat,
@@ -210,8 +210,8 @@ export function attachFlowpathColoring(map, store) {
     };
   };
 
-  const stateSig = (data, theme) =>
-    `${data.variable}|${data.scale}|${data.timeIndex}|${theme}`;
+  const stateSig = (data, t) =>
+    `${data.variable}|${data.scale}|${data.timeIndex}|${t.theme}|${t.rampName}|${t.rampReversed}`;
 
   /** Clear every reach's feature-state on the source, so no stale bins survive a data change. */
   const clearFeatureState = () => {
@@ -259,8 +259,8 @@ export function attachFlowpathColoring(map, store) {
       prevStates = new Map();
     }
     const base = readMapTheme();
-    const selectedRamp = rampFor(store.get().theme.rampName);
-    const theme = selectedRamp ? { ...base, ramp: selectedRamp } : base;
+    const t = store.get().theme;
+    const theme = { ...base, ramp: orientRamp(resolveRamp(t.rampName, base.ramp), t.rampReversed) };
     ensureExpressions(theme);
 
     if (!map.isSourceLoaded?.(SOURCE_ID)) {
@@ -292,7 +292,7 @@ export function attachFlowpathColoring(map, store) {
     }
     prevStates = next;
     pendingPaint = false;
-    lastIdleSig = stateSig(data, store.get().theme.theme);
+    lastIdleSig = stateSig(data, store.get().theme);
   };
 
   const s0 = store.get();
@@ -303,6 +303,7 @@ export function attachFlowpathColoring(map, store) {
   let prevTimeIndex = s0.timeseries.currentTimeIndex;
   let prevTheme = s0.theme.theme;
   let prevRampName = s0.theme.rampName;
+  let prevReversed = s0.theme.rampReversed;
 
   const unsubscribe = store.subscribe((s) => {
     const variable = s.timeseries.variable;
@@ -312,6 +313,7 @@ export function attachFlowpathColoring(map, store) {
     const timeIndex = s.timeseries.currentTimeIndex;
     const theme = s.theme.theme;
     const rampName = s.theme.rampName;
+    const reversed = s.theme.rampReversed;
 
     const reachesChanged = featureIds !== prevFeatureIds;
     const dataChanged =
@@ -319,7 +321,8 @@ export function attachFlowpathColoring(map, store) {
       scale !== prevScale ||
       values !== prevValues ||
       reachesChanged;
-    const themeChanged = theme !== prevTheme || rampName !== prevRampName;
+    const themeChanged =
+      theme !== prevTheme || rampName !== prevRampName || reversed !== prevReversed;
     const frameChanged = timeIndex !== prevTimeIndex;
     if (!dataChanged && !themeChanged && !frameChanged) return;
 
@@ -330,6 +333,7 @@ export function attachFlowpathColoring(map, store) {
     prevTimeIndex = timeIndex;
     prevTheme = theme;
     prevRampName = rampName;
+    prevReversed = reversed;
 
     if (themeChanged) {
       expressionsApplied = false;
@@ -342,7 +346,7 @@ export function attachFlowpathColoring(map, store) {
     if (!layerReady()) return;
     const data = activeData();
     if (!data) return;
-    const sig = stateSig(data, store.get().theme.theme);
+    const sig = stateSig(data, store.get().theme);
     if (!pendingPaint && sig === lastIdleSig) return;
     paint(true);
     lastIdleSig = sig;
