@@ -9,7 +9,10 @@ WORKDIR /build
 COPY . /build
 
 RUN git config --global --add safe.directory '*' \
-    && uv pip install --python "${VIRTUAL_ENV}" /build
+    && uv pip install --python "${VIRTUAL_ENV}" /build \
+    # Patch the base image's conda-env packages that the scan gate flags with a fix available.
+    && uv pip install --python "${VIRTUAL_ENV}" --upgrade \
+        "urllib3>=2.7.0" "cryptography>=50.0.0" "sqlparse>=0.6.0" "tornado>=6.5.8"
 
 # The build-less vanilla client reads the 45 MiB search index straight from /static; the browser
 # never downloads the 103 MB source. Generated into the installed package after the app is on the
@@ -72,13 +75,10 @@ RUN mkdir -p /home/tethys/nrds/static \
 FROM ghcr.io/aquaveo/tethys-uvx:runtime-base-${TETHYS_UVX_TAG}
 
 USER root
+# Apply the base image's outstanding Debian security updates. The base tag lags the security
+# repo, so upgrade all installed packages rather than an ever-growing hand-kept list.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends --only-upgrade \
-        libexpat1 \
-        libpq5 \
-        openssl \
-        libssl3t64 \
-        openssl-provider-legacy \
+    && apt-get -y upgrade \
     && rm -rf /var/lib/apt/lists/*
 USER 1000
 
