@@ -97,7 +97,7 @@ test('chartState charts when there is data and is empty otherwise', () => {
 
 test('axisLabel appends units when the variable has them', () => {
   assert.equal(axisLabel('streamflow'), 'streamflow (m³/s)');
-  assert.equal(axisLabel('q_out'), 'q_out');
+  assert.equal(axisLabel('type'), 'type');
   assert.equal(axisLabel(''), '');
   assert.equal(axisLabel(undefined), '');
 });

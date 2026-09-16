@@ -82,9 +82,8 @@ test('legendTitle appends units and a non-linear scale name', () => {
 });
 
 test('legendTitle omits empty units and the linear scale name', () => {
-  // q_out has no units in the units table, and linear has no scale-name suffix.
-  assert.equal(legendTitle('q_out', 'linear'), 'q_out');
-  assert.equal(legendTitle('q_out', 'log'), 'q_out · log');
+  assert.equal(legendTitle('type', 'linear'), 'type');
+  assert.equal(legendTitle('type', 'log'), 'type · log');
 });
 
 test('legendTitle is empty without a variable', () => {

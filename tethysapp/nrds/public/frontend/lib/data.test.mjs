@@ -21,8 +21,29 @@ test('getVariableUnits is case-insensitive', () => {
   assert.equal(getVariableUnits('Streamflow'), 'm³/s');
 });
 
-test('getVariableUnits returns empty string for a known unitless variable', () => {
-  assert.equal(getVariableUnits('q_out'), '');
+const CFE_OUTPUTS_IN_METRES = [
+  'infiltration_excess',
+  'direct_runoff',
+  'nash_lateral_runoff',
+  'deep_gw_to_channel_flux',
+  'soil_to_gw_flux',
+  'q_out',
+  'potential_et',
+  'actual_et',
+  'soil_storage_change',
+  'nwm_ponded_depth',
+];
+
+test("getVariableUnits reports every CFE output in metres, as CFE's BMI declares", () => {
+  for (const name of CFE_OUTPUTS_IN_METRES) {
+    assert.equal(getVariableUnits(name), 'm', `${name} should be m`);
+    assert.equal(getVariableUnits(name.toUpperCase()), 'm', `${name} should be case-insensitive`);
+  }
+});
+
+test('getVariableUnits leaves surf_runoff_scheme (CFE none) and the categorical type unitless', () => {
+  assert.equal(getVariableUnits('surf_runoff_scheme'), '');
+  assert.equal(getVariableUnits('type'), '');
 });
 
 test('getVariableUnits returns empty string for an unknown variable', () => {
