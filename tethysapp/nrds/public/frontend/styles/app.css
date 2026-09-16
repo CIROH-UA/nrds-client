@@ -853,8 +853,19 @@ body,
   margin-top: var(--space-sm);
 }
 
-.nrds-control-menu__legend-title {
+.nrds-control-menu__legend-titlerow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
   margin-bottom: 6px;
+}
+
+.nrds-control-menu__legend-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: var(--text-xs);
   font-weight: var(--weight-medium);
   color: var(--panel-text-muted);
@@ -945,17 +956,22 @@ body,
   height: 16px;
 }
 
-.nrds-control-menu__legend-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-sm);
-}
-
 .nrds-control-menu__legend-tools {
   display: flex;
   flex: 0 0 auto;
-  gap: 4px;
+  gap: 2px;
+}
+
+/* Compact icon buttons that sit inline with the legend title, smaller than the panel's other icon
+   buttons because they ride alongside a single line of text. */
+.nrds-control-menu__legend-tools .nrds-control-menu__icon-button {
+  width: 26px;
+  height: 26px;
+}
+
+.nrds-control-menu__legend-tools .nrds-control-menu__icon-button svg {
+  width: 14px;
+  height: 14px;
 }
 
 .nrds-control-menu__icon-button {

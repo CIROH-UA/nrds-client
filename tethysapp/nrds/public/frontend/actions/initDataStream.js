@@ -3,7 +3,7 @@ import { getCacheKey } from '../lib/utils.js';
 import { store as appStore, actions } from '../store/app-store.js';
 import { loadVpu } from './loadVpu.js';
 import { cancelVpuLoads } from './loadState.js';
-import { cancelSelections } from './selectionGeneration.js';
+import { beginSelection, isCurrentSelection, cancelSelections } from './selectionGeneration.js';
 
 /**
  * The data layer's composition root (migration unit U3b), the vanilla replacement for the React
@@ -120,6 +120,11 @@ export async function loadVpuSelection(vpu, { signal, shouldContinue = () => tru
  * Resolve the initial selection and load the default vpu once. Runs at most once per page. The store
  * argument defaults to the app singleton the actions are bound to; it is accepted so the entry can
  * pass the same store it hands the map, matching the app's other components.
+ *
+ * The default load claims a selection generation so a selection that races it (a geolocation
+ * "you are here" that resolves on an already-granted permission, or a click during boot) supersedes
+ * it: beginSelection bumps the chain, and this load abandons its write instead of clobbering the
+ * reader's vpu back to the default.
  */
 export async function initDataStream(store = appStore, { vpu = DEFAULT_VPU, signal } = {}) {
   if (started) return;
@@ -127,8 +132,12 @@ export async function initDataStream(store = appStore, { vpu = DEFAULT_VPU, sign
   wireCancellers();
   if (!vpu) return;
 
+  const generation = beginSelection();
   try {
-    await loadVpuSelection(vpu, { signal });
+    await loadVpuSelection(vpu, {
+      signal,
+      shouldContinue: () => isCurrentSelection(generation),
+    });
   } catch (error) {
     if (error?.name === 'AbortError') return;
     console.error('Error fetching initial S3 data:', error);

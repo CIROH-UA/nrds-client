@@ -5,10 +5,10 @@
  * the shared select and the modals, and removes its DOM.
  *
  * The panel is organised top to bottom as Showing (the run configuration behind a summarised button
- * that opens a modal, the variable picker, and the value legend, whose header carries a reverse
- * toggle and the settings gear that opens the ramp + scale modal), Layers (the four layer toggles)
- * and Map Settings (the hover toggle). The run cascade (components/menus/run-cascade.js) and the
- * variable picker (components/map/variable-picker.js) are mounted into their slots here.
+ * that opens a modal, the variable picker, and the value legend, whose title row carries a compact
+ * reverse toggle and the settings gear that opens the ramp + scale modal), Layers (the four layer
+ * toggles) and Map Settings (the hover toggle). The run cascade (components/menus/run-cascade.js) and
+ * the variable picker (components/map/variable-picker.js) are mounted into their slots here.
  *
  * This view is pure reflection of the store: a single subscription keeps the switches, the run
  * summary, the colour scale, the ramp choice, the reverse state, the symbol swatches, and the legend
@@ -257,16 +257,9 @@ export function createControlMenu(container, store) {
   showingSection.append(variableHost);
   const teardownVariablePicker = createVariablePicker(variableHost, store);
 
-  // The legend sits under the variable: its gradient is the ramp preview, and its header carries a
-  // reverse toggle and the settings gear that opens the ramp + scale modal.
   const legendField = document.createElement('div');
   legendField.className = 'nrds-control-menu__field';
 
-  const legendHeader = document.createElement('div');
-  legendHeader.className = 'nrds-control-menu__legend-header';
-  const legendLabel = document.createElement('span');
-  legendLabel.className = 'nrds-control-menu__field-label';
-  legendLabel.textContent = 'Legend';
   const legendTools = document.createElement('div');
   legendTools.className = 'nrds-control-menu__legend-tools';
 
@@ -294,12 +287,14 @@ export function createControlMenu(container, store) {
     '<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
 
   legendTools.append(reverseBtn, colorBarBtn);
-  legendHeader.append(legendLabel, legendTools);
 
   const legend = document.createElement('div');
   legend.className = 'nrds-control-menu__legend';
+  const legendTitleRow = document.createElement('div');
+  legendTitleRow.className = 'nrds-control-menu__legend-titlerow';
   const legendTitleEl = document.createElement('div');
   legendTitleEl.className = 'nrds-control-menu__legend-title';
+  legendTitleRow.append(legendTitleEl, legendTools);
   const legendBarEl = document.createElement('div');
   legendBarEl.className = 'nrds-control-menu__legend-bar';
   legendBarEl.setAttribute('aria-hidden', 'true');
@@ -307,11 +302,11 @@ export function createControlMenu(container, store) {
   legendScaleEl.className = 'nrds-control-menu__legend-scale';
   const tickSpans = LEGEND_TICKS.map(() => document.createElement('span'));
   legendScaleEl.append(...tickSpans);
-  legend.append(legendTitleEl, legendBarEl, legendScaleEl);
+  legend.append(legendTitleRow, legendBarEl, legendScaleEl);
   const legendEmpty = document.createElement('p');
   legendEmpty.className = 'nrds-control-menu__legend-empty';
   legendEmpty.textContent = 'Load a run to see the value scale.';
-  legendField.append(legendHeader, legend, legendEmpty);
+  legendField.append(legend, legendEmpty);
   showingSection.append(legendField);
   panel.append(showingSection);
 

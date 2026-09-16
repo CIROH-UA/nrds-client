@@ -316,10 +316,12 @@ function subscribeSelectionHighlight(map, store) {
 /**
  * Best-effort "you are here": when the browser grants geolocation, fly to the reader's location and
  * select the catchment there, which loads that vpu's run so their local flowpaths are coloured. It
- * no-ops silently when geolocation is unavailable, denied, or lands outside the hydrofabric, so the
- * default vpu stays loaded and a failure never breaks the map. The permission prompt can sit open for
- * a while, so the callback abandons the fly-and-select if the reader has already dragged the map or
- * picked a feature in the meantime rather than hijacking their view.
+ * flies straight to SELECTION_ZOOM, the same zoom the selection then settles at and where the divides
+ * fill is fully drawn, so the query is reliable and the reader is not flown twice. It no-ops silently
+ * when geolocation is unavailable, denied, or lands outside the hydrofabric, so the default vpu stays
+ * loaded and a failure never breaks the map. The permission prompt can sit open for a while, so the
+ * callback abandons the fly-and-select if the reader has already dragged the map or picked a feature
+ * in the meantime rather than hijacking their view.
  */
 function locateUser(map, store) {
   try {
@@ -338,7 +340,7 @@ function locateUser(map, store) {
           return;
         }
         const center = [coords.longitude, coords.latitude];
-        map.flyTo({ center, zoom: 8 });
+        map.flyTo({ center, zoom: SELECTION_ZOOM });
         map.once('idle', () => {
           done();
           if (preempted() || !map.getLayer('divides')) return;
