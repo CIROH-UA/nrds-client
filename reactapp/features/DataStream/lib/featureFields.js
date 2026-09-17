@@ -34,3 +34,32 @@ export const featureFields = (feature) => {
 
   return fields;
 };
+
+const HEADER_KEYS = [
+  'area_km2',
+  'areasqkm',
+  'tot_drainage_areasqkm',
+  'tot_drainage_area',
+  'drainage_area',
+  'drainage_areasqkm',
+  'stream_order',
+  'streamorder',
+  'order',
+];
+const HEADER_LABELS = new Set(HEADER_KEYS.map(formatLabel));
+
+/** The compact header that sits above the chart: the feature's id and a few key attributes. */
+export const curatedFeatureFields = (feature, { max = 4 } = {}) => {
+  if (!feature) return [];
+
+  const rows = [];
+  const id = feature._id ?? feature.id;
+  if (id != null && id !== '') rows.push({ label: 'ID', value: String(id) });
+
+  for (const field of featureFields(feature)) {
+    if (rows.length >= max) break;
+    if (HEADER_LABELS.has(field.label)) rows.push(field);
+  }
+
+  return rows;
+};

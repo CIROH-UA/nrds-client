@@ -44,6 +44,7 @@ export async function loadTimeseries({ featureId, variable, vpuGeneration } = {}
       store.setState({
         loadingText: `Failed to load timeseries for id: ${targetId}`,
         last_error: { kind: 'timeseries', featureId: targetId, variable: requestedVariable },
+        last_answered_key: requestKey,
         pending: false,
       });
       return;
@@ -84,6 +85,8 @@ export async function loadTimeseries({ featureId, variable, vpuGeneration } = {}
     store.setState({
       loadingText: `Failed to load timeseries for id: ${targetId}`,
       last_error: { kind: 'timeseries', featureId: targetId, variable: requestedVariable },
+      last_answered_key: requestKey,
+      pending: false,
     });
     console.error('Failed to load timeseries for', targetId, err);
   } finally {

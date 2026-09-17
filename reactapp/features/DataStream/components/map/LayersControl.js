@@ -4,10 +4,9 @@ import { Switch } from  '../styles/Styles';
 import { IoLayers } from "react-icons/io5";
 import { IconLabel, Row, Title, InfoPanel } from '../styles/Styles';
 import { CatchmentSymbol, FlowPathSymbol, GaugeSymbol, VpuSymbol, symbologyColors, CursorSymbol } from '../../lib/layers';
-import { usePrefersDark } from '../../lib/mapTheme';
+import { useEffectiveTheme } from '../../store/theme';
 import { InfoToggle } from '../InfoDisclosure';
 import { LayerInfoContent } from '../InfoContent';
-import { ValueLegendPanel } from './ValueLegend';
 
 /** The legend reads the same signal the map layers do, so the two cannot describe different themes. It was branching on styled-components' useTheme, and nothing installs a ThemeProvider, so that value was always undefined and the legend was always the light branch. */
 export const LayerControl = () => {
@@ -35,9 +34,9 @@ export const LayerControl = () => {
   const vpuLayer = useLayersStore((state) => state.vpu);
   const set_vpu_visibility = useLayersStore((state) => state.set_vpu_visibility);
 
-  const prefersDark = usePrefersDark();
+  const theme = useEffectiveTheme();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const colors = useMemo(() => symbologyColors(), [prefersDark]);
+  const colors = useMemo(() => symbologyColors(), [theme]);
 
   const handleToggleCatchmentLayer = () => {
     set_catchments_visibility(!catchmentLayer.visible);
@@ -131,8 +130,6 @@ export const LayerControl = () => {
           title="Toggle VPU boundaries"
         />
       </Row>
-
-      <ValueLegendPanel />
 
       <IconLabel $fontSize={14}>
         <span style={{ fontWeight: 600 }}>Map Interactions</span>

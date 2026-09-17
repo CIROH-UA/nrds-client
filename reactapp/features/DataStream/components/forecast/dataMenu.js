@@ -1,4 +1,3 @@
-// DataMenu.js
 import React, { Fragment, useMemo, useRef, useState } from 'react';
 import { abandonSelectionWithNoOutput } from 'features/DataStream/actions/noOutputFile';
 import { XButton, Row, IconLabel, Notice, PanelSectionHeading } from '../styles/Styles';
@@ -16,7 +15,6 @@ import {
   FileIcon
 } from 'features/DataStream/lib/layers';
 
-// -------------------- helpers --------------------
 const firstOpt = (v) => (Array.isArray(v) ? v[0] : v);
 
 function useEvent(fn) {
@@ -531,11 +529,12 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
             value={r.value}
             onChangeHandler={r.onChange}
             isLoading={selecting}
+            isDisabled={selecting && r.key !== 'model'}
           />
         </Row>
       ))}
 
-      {availableOutputFiles?.length > 0 ? null : (
+      {vpu && !selecting && !(availableOutputFiles?.length > 0) && (
         <Notice role="alert">
           <FileIcon aria-hidden="true" />
           <span>No output file for this selection</span>
@@ -554,9 +553,3 @@ export const DataMenuControls = React.memo(function DataMenuControls() {
     </Fragment>
   );
 });
-
-function DataMenu() {
-  return <DataMenuControls />;
-}
-
-export default React.memo(DataMenu);

@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { boundsFor, valueAtRampPosition } from 'features/DataStream/lib/layers';
 import { rampGradient } from 'features/DataStream/lib/valueRamp';
+import { SCALE_LABELS } from 'features/DataStream/lib/colorScale';
 import { getVariableUnits } from 'features/DataStream/lib/data';
 import { formatMeasurement } from 'features/DataStream/lib/utils';
 import { useMapTheme } from 'features/DataStream/lib/mapTheme';
@@ -16,7 +17,7 @@ import { LegendBar, LegendScale, LegendTitle } from '../styles/Styles';
 const TICKS = [0, 0.5, 1];
 
 /** What the colours on the animated flowpaths mean. */
-export const ValueLegend = ({ bounds, ramp, variable }) => {
+export const ValueLegend = ({ bounds, ramp, variable, scale }) => {
   const gradient = useMemo(() => rampGradient(ramp), [ramp]);
   const ticks = useMemo(
     () => (bounds ? TICKS.map((t) => formatMeasurement(valueAtRampPosition(t, bounds))) : []),
@@ -26,10 +27,12 @@ export const ValueLegend = ({ bounds, ramp, variable }) => {
   if (!bounds || !variable || !ramp?.length) return null;
 
   const units = getVariableUnits(variable);
+  const scaleName = SCALE_LABELS[scale] ?? '';
+  const title = units ? `${variable} (${units})` : variable;
 
   return (
     <div aria-label={`Colour scale for ${variable}`}>
-      <LegendTitle>{units ? `${variable} (${units})` : variable}</LegendTitle>
+      <LegendTitle>{scaleName ? `${title} · ${scaleName}` : title}</LegendTitle>
       <LegendBar style={{ background: gradient }} />
       <LegendScale>
         {ticks.map((label, i) => (
@@ -44,14 +47,15 @@ ValueLegend.propTypes = {
   bounds: PropTypes.shape({ min: PropTypes.number, max: PropTypes.number, curve: PropTypes.number }),
   ramp: PropTypes.arrayOf(PropTypes.array),
   variable: PropTypes.string,
+  scale: PropTypes.string,
 };
 
 /** The legend where the layer controls are. */
 /** The colour key, reading the same bounds object the map layer uses rather than a second computation of the same numbers. */
 export const ValueLegendPanel = () => {
   const variable = useTimeSeriesStore((s) => s.variable);
-  const { times, values } = useVPUStore(
-    useShallow((s) => ({ times: s.times, values: s.valuesByVar?.[variable] }))
+  const { times, values, scale } = useVPUStore(
+    useShallow((s) => ({ times: s.times, values: s.valuesByVar?.[variable], scale: s.scale }))
   );
   const flowpathsVisible = useLayersStore((s) => s.flowpaths.visible);
   const { ramp } = useMapTheme();
@@ -60,7 +64,7 @@ export const ValueLegendPanel = () => {
 
   if (!flowpathsVisible || !times.length) return null;
 
-  return <ValueLegend bounds={bounds} ramp={ramp} variable={variable} />;
+  return <ValueLegend bounds={bounds} ramp={ramp} variable={variable} scale={scale} />;
 };
 
 export default ValueLegend;

@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import { NO_DATA_VALUE } from 'features/DataStream/lib/valueRamp';
+import { scaleTransform } from 'features/DataStream/lib/colorScale';
 import { readMapTheme } from './mapTheme';
 import { quantiseZoom } from 'features/DataStream/lib/flowpaths';
 /** The lowest zoom at which flowpath geometry exists. */
@@ -284,9 +285,13 @@ export const boundsFor = (values) => {
   return lastBounds;
 };
 
-/** Where a value sits on the ramp, 0 to 1. */
+/** Where a value sits on the ramp, 0 to 1, reshaped by the bounds' scale when it has one. */
 export function normalizeValue(value, bounds) {
   if (!Number.isFinite(value) || !bounds) return 0;
+  if (bounds.scale && bounds.scale !== 'linear') {
+    const reshaped = scaleTransform(value, bounds);
+    if (reshaped !== null) return reshaped;
+  }
   const span = bounds.max - bounds.min;
   if (!(span > 0)) return 0;
   const offset = Math.min(Math.max(value - bounds.min, 0), span);

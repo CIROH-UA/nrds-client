@@ -5,14 +5,15 @@
 | --- | --- |
 | ![CIROH Logo](static/imgs/CIROHLogo.png) | Funding for this project was provided by the National Oceanic & Atmospheric Administration (NOAA), awarded to the Cooperative Institute for Research to Operations in Hydrology (CIROH) through the NOAA Cooperative Agreement with The University of Alabama (NA22NWS4320003). |
 
-This app was created using an experimental Tethys + React app scaffold. It uses React for the frontend of the app and Tethys as the backend.
+This app was created using an experimental Tethys + React app scaffold. It uses React for the frontend and Tethys as the backend.
 
-![GeoSpatial Visualization](static/imgs/nrds-fig-1.png)
+![NRDS Visualizer in light theme](static/imgs/nrds-map-light.png)
 
-- **Geospatial visualization** of catchments, flowpaths, and conus gauges
-- **Time series analysis** of catchments
+The visualizer shows NextGen hydrofabric catchments, flowpaths, and CONUS gauges on an interactive map. Click any catchment to open its time series chart right on the feature. One control menu lets you pick a model run, toggle map layers, and switch between light and dark themes. Your theme choice is remembered across visits.
 
-Built on the Tethys Platform [(Swain et al., 2015)](https://doi.org/10.1016/j.envsoft.2015.01.014), it enables web-based exploration of model outputs [(CIROH, 2025)](https://github.com/CIROH-UA/ngiab-client).
+![NRDS Visualizer in dark theme](static/imgs/nrds-map-dark.png)
+
+Built on the Tethys Platform [(Swain et al., 2015)](https://doi.org/10.1016/j.envsoft.2015.01.014), it enables web based exploration of model outputs [(CIROH, 2025)](https://github.com/CIROH-UA/ngiab-client).
 
 ## Usage Guide
 
@@ -60,18 +61,17 @@ docker ps
 Access at: http://localhost:80
 
 
-###  Visualization Features 
+### Visualization Features
 
-**Catchments** time series can be retrieved by clicking on any of the **Catchments** polygons, or by changing the select dropdown assigned to the Catchments. Clicking a catchment also highlights the reach that runs through it.
+Click any catchment polygon to open its time series chart in a popup anchored on the feature, with a short header of the catchment attributes. Clicking a catchment also highlights the reach that runs through it. On a phone the chart opens in the bottom sheet instead.
 
-![Figure 2: NRDS Visualizer time series visualization](static/imgs/nrds-fig-2.png)
+![Time series plot on a selected catchment](static/imgs/nrds-feature-popup.png)
 
-![Figure 3: NRDS Visualizer time series visualization from Catchments ](static/imgs/nrds-fig-3.png)
+One control menu holds what you need to drive the map. Choose the model run, cycle, and output file through the run selector, toggle the map layers, and switch the light or dark theme, all from the same place.
 
-Data from CFE_NOM and LSTM can be retrieved for the available forecasts for the **Catchments**
+![Unified control menu for run, layers, and theme](static/imgs/nrds-control-menu.png)
 
-
-This functionality allows the user to be able to quicklu search the data they want from the [S3 bucket](https://datastream.ciroh.org/index.html) containing the output of the [NextGen DataStream](https://github.com/CIROH-UA/ngen-datastream). They can explore and download as needed.
+Data from CFE_NOM and LSTM can be retrieved for the available forecasts. This lets you quickly search the data you want from the [S3 bucket](https://datastream.ciroh.org/index.html) containing the output of the [NextGen DataStream](https://github.com/CIROH-UA/ngen-datastream), and explore or download as needed.
 
 
 ## Development Installation

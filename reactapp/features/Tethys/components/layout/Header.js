@@ -7,10 +7,10 @@ import { BsInfoCircle } from 'react-icons/bs';
 import { LinkContainer } from 'react-router-bootstrap';
 import SearchBar from 'features/DataStream/components/map/SearchBar';
 import LoadStatus from 'features/DataStream/components/status/LoadStatus';
-import { LayersMenu } from 'features/DataStream/components/menus/LayersMenu';
 import { AppContext } from 'features/Tethys/context/context';
 import { CustomNavBar, CustomDiv, StyledButton } from 'features/Tethys/components/Styles';
 import { GeneralInfoModal } from 'features/DataStream/components/Modals';
+import { ThemeToggle } from 'features/DataStream/components/menus/ThemeToggle';
 import { ExperimentalBadge, BadgeFull, BadgeShort, BadgeAssistive } from 'features/DataStream/components/styles/Styles';
 
 const Header = ({onNavChange}) => {
@@ -45,6 +45,7 @@ const Header = ({onNavChange}) => {
               <LoadStatus/>
             </CustomDiv>
             <CustomDiv $fixed>
+              <ThemeToggle />
               <StyledButton
                 type="button"
                 onClick={() => setModalGeneralInfoShow(true)}
@@ -53,7 +54,6 @@ const Header = ({onNavChange}) => {
               >
                 <BsInfoCircle size="1.5rem" aria-hidden="true" />
               </StyledButton>
-              <LayersMenu inline />
             </CustomDiv>
             <GeneralInfoModal
               show={modalGeneralInfoShow}

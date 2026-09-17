@@ -96,14 +96,15 @@ describe('on a phone', () => {
 });
 
 describe('on a wide screen', () => {
-  it('offers no minimise control, since the panel does not cover the map', () => {
+  it('renders no panel at all, since the desktop chart lives in the popup', () => {
     matches = false;
     selected();
 
-    render(<ForecastMenu />);
+    const { container } = render(<ForecastMenu />);
 
     expect(screen.queryByRole('button', { name: /the forecast panel/i })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /clear selection/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /clear selection/i })).not.toBeInTheDocument();
+    expect(container).toBeEmptyDOMElement();
   });
 });
 
@@ -209,13 +210,13 @@ describe('the collapsed body', () => {
       .toHaveAttribute('aria-controls', 'sheet-body');
   });
 
-  it('stays reachable on a desktop layout, which never collapses', () => {
+  it('does not render on a desktop layout, where the popup hosts the chart', () => {
     matches = false;
     selected();
 
     render(<ForecastMenu />);
 
-    expect(body()).toBeInTheDocument();
+    expect(body()).not.toBeInTheDocument();
   });
 });
 

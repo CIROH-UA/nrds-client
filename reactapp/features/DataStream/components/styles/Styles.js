@@ -19,9 +19,53 @@ export const TimeSeriesContainer = styled.div`
   order: 1;
   flex: 1 1 80%;
   background-color: var(--panel-background);
+
+  ${({ $fixed }) =>
+    $fixed &&
+    css`
+      width: auto;
+      height: auto;
+      flex: none;
+      background-color: transparent;
+    `}
+
+  .chart-state {
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 12px;
+    text-align: center;
+    font-size: var(--text-sm);
+    color: var(--chart-empty-text-color, #6b7280);
+  }
+
+  .chart-state--error p {
+    margin: 0;
+    color: var(--status-failed-text);
+  }
+
+  .chart-state--error button {
+    min-height: 32px;
+    padding: 4px 12px;
+    border: 1px solid currentColor;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: inherit;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    cursor: pointer;
+  }
+
+  .chart-state--error button:hover {
+    background-color: var(--nav-button-hover-bg);
+  }
 `;
 
-// Themed Modal wrapper - now fully CSS-variable based
 /** How explanatory prose reads, wherever it appears. */
 const infoProse = css`
   p,
@@ -202,6 +246,26 @@ export const PopupContent = styled.div`
     font-family: var(--font-mono);
     word-break: break-all;
   }
+
+  ${({ $chart }) =>
+    $chart &&
+    css`
+      padding: 0;
+      box-shadow: none;
+      max-width: 340px;
+      max-height: min(60vh, 360px);
+      overflow-y: auto;
+      gap: 6px;
+
+      .popup-header {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 8px 30px 8px 10px;
+        margin-bottom: 2px;
+        border-bottom: 1px solid var(--panel-border-color);
+      }
+    `}
 `;
 
 export const Container = styled.div`
@@ -266,7 +330,7 @@ export const LayersContainer = styled.div`
 
 export const LayerButton = styled(Button)`
   top: 60px;
-  right: 1%;
+  left: 10px;
   position: absolute;
   margin-top: 10px;
   min-width: 44px;
@@ -410,8 +474,6 @@ export const MapHint = styled(MapSurface).attrs({ as: 'button' })`
   }
 `;
 
-/* A label, not a heading. Uppercase with tracking at weight 650 is the house style of every
-   generated dashboard, and it made a passive caption shout louder than the controls beside it. */
 export const LegendTitle = styled.div`
   margin-bottom: 6px;
   font-size: var(--text-xs);
@@ -493,8 +555,8 @@ export const Row = styled.div`
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  min-height: 44px;
-  padding: 6px 0;
+  min-height: ${({ $compact }) => ($compact ? 'auto' : '44px')};
+  padding: ${({ $compact }) => ($compact ? '2px 10px' : '6px 0')};
   margin-bottom: 2px;
   font-size: 13px;
 `;
@@ -744,7 +806,6 @@ export const SearchInput = styled.input`
   }
 `;
 
-// The search wrapper is a flex row, so this sits at its end without disturbing the input.
 export const SearchButton = styled.button`
   flex-shrink: 0;
   margin-left: 8px;

@@ -1,5 +1,4 @@
 import { Fragment, useMemo, useCallback, useEffect, useState, useRef } from 'react';
-import DataMenu from '../forecast/dataMenu';
 import VariablesMenu from '../forecast/variablesMenu';
 import { Content, Container, CollapsibleRegion } from '../styles/Styles';
 import TimeSeriesCard from '../forecast/TimeseriesCard';
@@ -28,8 +27,8 @@ const ForecastMenu = () => {
   const rowRef = useRef(null);
 
   useEffect(() => {
-    if (!isopen || !isSheet) {
-      document.body.dataset.sheet = isopen ? 'expanded' : 'closed';
+    if (!isSheet || !isopen) {
+      document.body.dataset.sheet = 'closed';
       setCollapsed(false);
       return;
     }
@@ -55,7 +54,9 @@ const ForecastMenu = () => {
     reset();
     useFeatureStore.getState().set_selected_feature(null);
   }, [reset]);
-  
+
+  if (!isSheet) return null;
+
   return (
     <Fragment>          
           <Container
@@ -89,12 +90,8 @@ const ForecastMenu = () => {
               aria-hidden={isCollapsed || undefined}
             >
               <Content>
-                <TimeSeriesCard />
+                {isSheet && <TimeSeriesCard />}
                 <VariablesMenu />
-              </Content>
-
-              <Content>
-                <DataMenu />
               </Content>
             </CollapsibleRegion>
           </Container>

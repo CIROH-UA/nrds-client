@@ -44,7 +44,8 @@ const MenuList = React.memo(function MenuList(props) {
   );
 });
 
-const customStyles = (width = 150) => {
+const customStyles = (width = 150, compact = false) => {
+  const controlHeight = compact ? 30 : 44;
   return {
     container: (base) => ({
       ...base,
@@ -53,8 +54,8 @@ const customStyles = (width = 150) => {
     }),
     control: (base, state) => ({
       ...base,
-      minHeight: 44,
-      height: 44,
+      minHeight: controlHeight,
+      height: controlHeight,
       fontSize: 'var(--text-sm)',
       borderRadius: 4,
       paddingTop: 0,
@@ -74,16 +75,17 @@ const customStyles = (width = 150) => {
     }),
     indicatorsContainer: (base) => ({
       ...base,
-      height: 44,
+      height: controlHeight,
     }),
     dropdownIndicator: (base) => ({
       ...base,
-      padding: '0 4px',
+      padding: compact ? '0 2px' : '0 4px',
     }),
     clearIndicator: (base) => ({
       ...base,
       padding: '0 4px',
     }),
+    indicatorSeparator: (base) => (compact ? { display: 'none' } : base),
     singleValue: (base) => ({
       ...base,
       color: 'var(--select-text-color)',
@@ -139,11 +141,13 @@ const SelectComponent = ({
   width = 150,
   inputId,
   isLoading = false,
+  isDisabled = false,
+  compact = false,
 }) => {
 
   const components = useMemo(() => ({ MenuList }), []);
 
-  const styles = useMemo(() => customStyles(width), [width]);
+  const styles = useMemo(() => customStyles(width, compact), [width, compact]);
   const filterOption = useMemo(
     () => createFilter({ ignoreAccents: false }),
     []
@@ -162,6 +166,7 @@ const SelectComponent = ({
       value={value}
       onChange={onChange}
       isLoading={isLoading}
+      isDisabled={isDisabled}
       menuPortalTarget={document.body}
       menuShouldScrollIntoView={false}
       menuPosition="fixed"
@@ -175,6 +180,8 @@ SelectComponent.propTypes = {
   value: PropTypes.any,
   width: PropTypes.number,
   isLoading: PropTypes.bool,
+  isDisabled: PropTypes.bool,
+  compact: PropTypes.bool,
   inputId: PropTypes.string,
 };
 

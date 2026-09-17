@@ -28,6 +28,15 @@ jest.mock('features/DataStream/components/forecast/variablesMenu', () => functio
   return <div data-testid="variables-menu" />;
 });
 
+beforeAll(() => {
+  window.matchMedia = (query) => ({
+    matches: true,
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  });
+});
+
 const ForecastMenu = require('features/DataStream/components/menus/ForecastMenu').default;
 
 const initial = {

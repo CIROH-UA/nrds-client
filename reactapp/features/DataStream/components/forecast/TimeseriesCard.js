@@ -1,11 +1,18 @@
 import { Fragment, useMemo, useCallback } from 'react';
+import PropTypes from 'prop-types';
+import { Spinner } from 'react-bootstrap';
 import { TimeSeriesContainer } from '../styles/Styles';
 import useTimeSeriesStore from 'features/DataStream/store/Timeseries';
 import ParentSize from '@visx/responsive/lib/components/ParentSize';
 import LineChart from 'features/DataStream/components/forecast/Plot';
 import { useShallow } from 'zustand/react/shallow';
 
-const TimeSeriesCard = () => {
+/**
+ * The charted series, with its own loading, empty and error states so it can stand alone inside
+ * the anchored popup as well as the sheet. Pass width/height to render at a fixed size (the popup,
+ * where @visx ParentSize cannot measure a self-sizing surface); omit them to fill the parent.
+ */
+const TimeSeriesCard = ({ width, height } = {}) => {
   const { series, variable, layout, featureId, loading, answered, failed } = useTimeSeriesStore(
     useShallow((state) => ({
       series: state.series,
@@ -18,8 +25,15 @@ const TimeSeriesCard = () => {
     }))
   );
 
+  const clearError = useCallback(() => {
+    useTimeSeriesStore.setState({ last_error: null, loadingText: '' });
+  }, []);
+
+  const hasData = series.length > 0;
+  const waiting = Boolean(featureId) && (loading || (!hasData && !answered && !failed));
+  const errored = Boolean(failed) && !hasData;
+
   /** What an empty chart says. */
-  const waiting = featureId && (loading || (!series.length && !answered && !failed));
   const emptyMessage = waiting
     ? 'Loading the timeseries'
     : featureId
@@ -36,10 +50,10 @@ const TimeSeriesCard = () => {
   }, [series, variable]);
 
   const renderChart = useCallback(
-    ({ width, height }) => (
+    ({ width: w, height: h }) => (
       <LineChart
-        width={width}
-        height={height}
+        width={w}
+        height={h}
         data={chartData}
         layout={layout}
         emptyMessage={emptyMessage}
@@ -48,16 +62,48 @@ const TimeSeriesCard = () => {
     [chartData, layout, emptyMessage]
   );
 
+  const fixed = Number.isFinite(width) && Number.isFinite(height);
+
+  const errorMessage =
+    failed?.kind === 'no-output-file'
+      ? 'No output file for this selection.'
+      : `Could not load the timeseries for ${featureId}.`;
+
+  let body;
+  if (errored) {
+    body = (
+      <div className="chart-state chart-state--error" role="alert">
+        <p>{errorMessage}</p>
+        <button type="button" onClick={clearError}>
+          Dismiss
+        </button>
+      </div>
+    );
+  } else if (waiting) {
+    body = (
+      <div className="chart-state chart-state--loading" role="status">
+        <Spinner animation="border" size="sm" aria-hidden="true" />
+        <span>{emptyMessage}</span>
+      </div>
+    );
+  } else if (fixed) {
+    body = renderChart({ width, height });
+  } else {
+    body = <ParentSize>{renderChart}</ParentSize>;
+  }
+
   return (
     <Fragment>
-          <TimeSeriesContainer>
-            <ParentSize>
-              {renderChart}
-            </ParentSize>
-          </TimeSeriesContainer>
-
+      <TimeSeriesContainer $fixed={fixed} style={fixed ? { width, height } : undefined}>
+        {body}
+      </TimeSeriesContainer>
     </Fragment>
   );
+};
+
+TimeSeriesCard.propTypes = {
+  width: PropTypes.number,
+  height: PropTypes.number,
 };
 
 export default TimeSeriesCard;
