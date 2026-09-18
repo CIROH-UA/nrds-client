@@ -14,9 +14,7 @@ settings:
       ENGINE: django.db.backends.sqlite3
       NAME: /home/tethys/nrds/tethys_platform.sqlite
 
-  ALLOWED_HOSTS:
-    - localhost
-    - 127.0.0.1
+  ALLOWED_HOSTS: ${{ vars.ALLOWED_HOSTS }}
 
   SESSION_EXPIRE_AT_BROWSER_CLOSE: false
 
