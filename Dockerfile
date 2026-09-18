@@ -1,114 +1,103 @@
+ARG TETHYS_UVX_TAG=1505870
 
-FROM tethysplatform/tethys-core:dev-py3.12-dj5.2 
+# ---------------------------------------------------------------------------
+# Build: install the app, generate the search index, migrate the DB, collect static
+# ---------------------------------------------------------------------------
+FROM ghcr.io/aquaveo/tethys-uvx:builder-${TETHYS_UVX_TAG} AS builder
 
-RUN apt-get update \
- && apt-get install -y --no-install-recommends --only-upgrade \
-      openssl libssl3t64 openssl-provider-legacy \
- && rm -rf /var/lib/apt/lists/*
+WORKDIR /build
+COPY . /build
 
+RUN git config --global --add safe.directory '*' \
+    && uv pip install --python "${VIRTUAL_ENV}" /build \
+    # Patch the base image's conda-env packages that the scan gate flags with a fix available.
+    && uv pip install --python "${VIRTUAL_ENV}" --upgrade \
+        "urllib3>=2.7.0" "cryptography>=50.0.0" "sqlparse>=0.6.0" "tornado>=6.5.8"
 
-###################
-# BUILD ARGUMENTS #
-###################
+# The build-less vanilla client reads the 45 MiB search index straight from /static; the browser
+# never downloads the 103 MB source. Generated into the installed package after the app is on the
+# path so collectstatic picks it up, and asserted so a truncated write cannot ship a dead search
+# box. pyarrow and the numpy<2 pin come in with the app; no server-side duckdb is needed because
+# the client runs duckdb-wasm in the browser.
+RUN PKG="$("${VIRTUAL_ENV}/bin/python" -c 'import pathlib, tethysapp.nrds as a; print(pathlib.Path(a.__file__).parent)')" \
+    && "${VIRTUAL_ENV}/bin/python" /build/scripts/build_slim_index.py \
+        --out "${PKG}/public/data/hydrofabric_index_slim.parquet" \
+    && "${VIRTUAL_ENV}/bin/python" -c "import pathlib, sys; p = pathlib.Path('${PKG}/public/data/hydrofabric_index_slim.parquet'); sys.exit(0) if p.is_file() and p.stat().st_size > 30_000_000 else sys.exit(f'slim index missing or too small: {p}')"
 
-ARG MICRO_TETHYS=true \
-    MAMBA_DOCKERFILE_ACTIVATE=1
-
-
-#########################
-# ADD APPLICATION FILES #
-#########################
-COPY . ${TETHYS_HOME}/apps/nrds
-COPY run.sh ${TETHYS_HOME}/run.sh
-
-# Turn the compressor on. The base image enables gzip but leaves gzip_types at its default of
-# text/html, so the bundle shipped uncompressed. See the file for why it goes in conf.d.
-COPY deploy/nginx-gzip.conf /etc/nginx/conf.d/gzip.conf
-
-###############
-# ENVIRONMENT #
-###############
 ENV TETHYS_DB_ENGINE=django.db.backends.sqlite3
-ENV SKIP_DB_SETUP=True
-ENV TETHYS_DB_NAME=
-ENV TETHYS_DB_USERNAME=
-ENV TETHYS_DB_PASSWORD=
-ENV TETHYS_DB_HOST=
-ENV TETHYS_DB_PORT=
-ENV ENABLE_OPEN_PORTAL=True
-ENV MULTIPLE_APP_MODE=False
-ENV STANDALONE_APP=nrds
+ENV TETHYS_DB_NAME=/home/tethys/nrds/tethys_platform.sqlite
+ENV STATIC_ROOT=/home/tethys/nrds/static
 ENV PORTAL_SUPERUSER_NAME=admin
 ENV PORTAL_SUPERUSER_PASSWORD=pass
-ENV PROJ_LIB=/opt/conda/envs/tethys/share/proj
 
-ENV NVM_DIR=/usr/local/nvm
-ENV NODE_VERSION=24.18.0
-ENV NODE_VERSION_DIR=${NVM_DIR}/versions/node/v${NODE_VERSION}
-ENV NODE_PATH=${NODE_VERSION_DIR}/lib/node_modules
-ENV PATH=${NODE_VERSION_DIR}/bin:$PATH
-ENV NPM=${NODE_VERSION_DIR}/bin/npm
-ENV PDM="/root/.local/bin/pdm"
-ENV APP_SRC_ROOT=${TETHYS_HOME}/apps/nrds
+COPY conf/portal_config.yml ${TETHYS_HOME}/portal_config.yml
 
-ENV DEV_REACT_CONFIG="${APP_SRC_ROOT}/reactapp/config/development.env"
-ENV PROD_REACT_CONFIG="${APP_SRC_ROOT}/reactapp/config/production.env"
-ENV TETHYS_DEBUG_MODE="false"
-ENV TETHYS_APP_PACKAGE=nrds
-ENV TETHYS_APP_ROOT_URL="/"
-ENV TETHYS_LOADER_DELAY=500
-ENV TETHYS_PORTAL_HOST=""
+# Standalone routing has to be off while the management commands run, then back on for the baked
+# image; db migrate and createsuperuser misbehave under STANDALONE_APP. collectstatic bakes the
+# app's public/ (frontend and the slim index) into STATIC_ROOT, which static_urls serves.
+RUN mkdir -p /home/tethys/nrds/static \
+    && sed -i -E 's/^([[:space:]]*)(MULTIPLE_APP_MODE|STANDALONE_APP):/\1# BUILD-DISABLED \2:/' \
+        "${TETHYS_HOME}/portal_config.yml" \
+    && "${VIRTUAL_ENV}/bin/tethys" db migrate \
+    && "${VIRTUAL_ENV}/bin/tethys" db createsuperuser \
+        --pn "${PORTAL_SUPERUSER_NAME}" \
+        --pp "${PORTAL_SUPERUSER_PASSWORD}" \
+        --pe "" \
+    && sed -i -E 's/^([[:space:]]*)# BUILD-DISABLED (MULTIPLE_APP_MODE|STANDALONE_APP):/\1\2:/' \
+        "${TETHYS_HOME}/portal_config.yml" \
+    && grep -q '^[[:space:]]*MULTIPLE_APP_MODE:' "${TETHYS_HOME}/portal_config.yml" \
+    && "${VIRTUAL_ENV}/bin/tethys" site -f \
+    && "${VIRTUAL_ENV}/bin/tethys" manage collectstatic --noinput \
+    # collectstatic reads the app's public dir from the installed package, but the slim index was
+    # generated into the build-tree copy (WORKDIR /build shadows the installed package on import),
+    # so collect never picks it up. Copy it into STATIC_ROOT explicitly, resolving the source the
+    # same way the generate step did.
+    && SLIM_SRC="$("${VIRTUAL_ENV}/bin/python" -c 'import pathlib, tethysapp.nrds as a; print(pathlib.Path(a.__file__).parent)')/public/data/hydrofabric_index_slim.parquet" \
+    && mkdir -p /home/tethys/nrds/static/nrds/data \
+    && cp "${SLIM_SRC}" /home/tethys/nrds/static/nrds/data/hydrofabric_index_slim.parquet \
+    # Assert the 45 MiB slim index reached STATIC_ROOT, the copy static_urls actually serves, rather
+    # than only the source tree collectstatic read it from; a missing artifact here is a dead search
+    # box, so fail the build loudly instead of shipping green.
+    && test -s /home/tethys/nrds/static/nrds/data/hydrofabric_index_slim.parquet \
+    && [ "$(stat -c%s /home/tethys/nrds/static/nrds/data/hydrofabric_index_slim.parquet)" -gt 30000000 ] \
+    # The index now lives in STATIC_ROOT; the installed-package copy is read only at collect time, so
+    # drop it rather than ship it twice in the runtime image. Resolve the path from / so the WORKDIR
+    # /build source tree does not shadow the installed location on sys.path.
+    && rm -rf "$(cd / && "${VIRTUAL_ENV}/bin/python" -c 'import pathlib, tethysapp.nrds as a; print(pathlib.Path(a.__file__).parent)')/public/data" \
+    && chown -R 1000:1000 /home/tethys/nrds \
+    && test -s /home/tethys/nrds/tethys_platform.sqlite \
+    && echo "baked db: $(stat -c%s /home/tethys/nrds/tethys_platform.sqlite) bytes" \
+    && echo "baked static: $(find /home/tethys/nrds/static -type f | wc -l) files"
 
-# SETUP
-RUN mkdir -p ${NVM_DIR} \
-    && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | /bin/bash \
-    && . ${NVM_DIR}/nvm.sh \
-    && nvm install ${NODE_VERSION} \
-    && nvm alias default ${NODE_VERSION} \
-    && nvm use default \
-    && npm install -g npm@latest \
-    && ls -la ${NODE_VERSION_DIR} \
-    && ls -la ${NODE_VERSION_DIR}/lib \
-    && pip install --user pdm \
-    && ${PDM} self update \
-    && cd ${APP_SRC_ROOT} \ 
-    && git config --global --add safe.directory '*' \
-    && git update-index --assume-unchanged
+# ---------------------------------------------------------------------------
+# Runtime
+# ---------------------------------------------------------------------------
+FROM ghcr.io/aquaveo/tethys-uvx:runtime-base-${TETHYS_UVX_TAG}
 
+USER root
+# Apply the base image's outstanding Debian security updates. The base tag lags the security
+# repo, so upgrade all installed packages rather than an ever-growing hand-kept list.
+RUN apt-get update \
+    && apt-get -y upgrade \
+    && rm -rf /var/lib/apt/lists/*
+USER 1000
 
-RUN mv ${DEV_REACT_CONFIG} ${PROD_REACT_CONFIG} \
-  && sed -i "s#TETHYS_DEBUG_MODE.*#TETHYS_DEBUG_MODE = ${TETHYS_DEBUG_MODE}#g" ${PROD_REACT_CONFIG} \
-  && sed -i "s#TETHYS_LOADER_DELAY.*#TETHYS_LOADER_DELAY = ${TETHYS_LOADER_DELAY}#g" ${PROD_REACT_CONFIG} \
-  && sed -i "s#TETHYS_PORTAL_HOST.*#TETHYS_PORTAL_HOST = ${TETHYS_PORTAL_HOST}#g" ${PROD_REACT_CONFIG} \
-  && sed -i "s#TETHYS_APP_ROOT_URL.*#TETHYS_APP_ROOT_URL = ${TETHYS_APP_ROOT_URL}#g" ${PROD_REACT_CONFIG}
+COPY --from=builder /opt/python /opt/python
+COPY --from=builder /opt/conda /opt/conda
+COPY --from=builder --chown=1000:1000 /home/tethys/nrds /home/tethys/nrds
 
-RUN cd ${APP_SRC_ROOT} \
-    && ${NPM} install \
-    && ${NPM} run build \
-    && rm -rf node_modules \
-    # Dependencies first, so the generator has pyarrow. Resolving through pdm rather than a bare
-    # pip install keeps the numpy<2 pin intact: this build runs inside the tethys conda env, where
-    # geopandas and xarray are already built against numpy 1.x.
-    && ${PDM} install --production \
-    # Before the wheel is built, not after: pdm install --no-editable packages the app, and Tethys
-    # serves public/ from the installed package rather than the source tree. This is the same
-    # reason npm run build has to precede it.
-    && ${PDM} run python scripts/build_slim_index.py \
-    && ${PDM} install --no-editable --production \
-    # A missing artifact is a permanently dead search box, and the build would otherwise stay
-    # green, so fail here instead of in production.
-    && ${PDM} run python -c "import pathlib, sys, tethysapp.nrds as a; p = pathlib.Path(a.__file__).parent / 'public/data/hydrofabric_index_slim.parquet'; sys.exit(0) if p.is_file() and p.stat().st_size > 30_000_000 else sys.exit(f'slim index missing or too small in the installed package: {p}')" \
-    # The wheel is built and asserted, so the source-tree copy and setuptools' build dir are two
-    # more 45 MiB copies of a file only site-packages is read from. Measured: 142 MiB across the
-    # three before this, 47 MiB after.
-    && rm -rf build tethysapp/nrds/public/data \
-    # node is only needed to build the frontend; remove it so node CVEs
-    # don't flag the runtime image in security scans
-    && rm -rf ${NVM_DIR}
+COPY --chown=1000:1000 conf/portal_config.yml /config/portal_config.yml
 
-ADD salt/ /srv/salt/
+ENV TETHYS_DB_ENGINE=django.db.backends.sqlite3
+ENV TETHYS_PERSIST=/home/tethys/persist
+ENV TETHYS_DB_NAME=/home/tethys/nrds/tethys_platform.sqlite
+ENV STATIC_ROOT=/home/tethys/nrds/static
 
-CMD bash run.sh
+ENV PORT=8080
+ENV TETHYS_PORT=8080
 
-HEALTHCHECK --start-period=30s --retries=12 \
-    CMD ./liveness-probe.sh
+ENV TETHYS_SECRET_KEY=nrds-local-default-override-in-any-shared-deployment
+ENV GUNICORN_TIMEOUT=600
+ENV GUNICORN_GRACEFUL_TIMEOUT=60
+
+CMD ["/usr/local/bin/serve.sh"]

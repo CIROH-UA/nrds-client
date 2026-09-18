@@ -5,7 +5,7 @@
 | --- | --- |
 | ![CIROH Logo](static/imgs/CIROHLogo.png) | Funding for this project was provided by the National Oceanic & Atmospheric Administration (NOAA), awarded to the Cooperative Institute for Research to Operations in Hydrology (CIROH) through the NOAA Cooperative Agreement with The University of Alabama (NA22NWS4320003). |
 
-This app was created using an experimental Tethys + React app scaffold. It uses React for the frontend and Tethys as the backend.
+This app uses a build-less vanilla JavaScript frontend (native ES modules, no bundler) with Tethys as the backend.
 
 ![NRDS Visualizer in light theme](static/imgs/nrds-map-light.png)
 
@@ -43,10 +43,9 @@ export TETHYS_CONTAINER_NAME="tethys-nrds"               \
 
 ```bash
 docker run --rm -d \
-  -p "$NGINX_PORT:$NGINX_PORT" \
+  -p "$NGINX_PORT:8080" \
   --name "$TETHYS_CONTAINER_NAME" \
   -e SKIP_DB_SETUP="$SKIP_DB_SETUP" \
-  -e NGINX_PORT="$NGINX_PORT" \
   -e CSRF_TRUSTED_ORIGINS="$CSRF_TRUSTED_ORIGINS" \
   "${TETHYS_REPO}:${TETHYS_TAG}"
 ```
@@ -76,9 +75,7 @@ Data from CFE_NOM and LSTM can be retrieved for the available forecasts. This le
 
 ## Development Installation
 
-You need to install both the Tethys dependencies and the node dependencies.
-
-The webpack dev server is configured to proxy the Tethys development server (see `webpack.config.js`). The app endpoint will be handled by the webpack development server and all other endpoints will be handled by the Tethys (Django) development server. As such, you will need to start both in separate terminals.
+Install the Tethys dependencies and run the Tethys development server. The frontend is served as static ES modules, so there is no separate node build or dev server to run.
 
 ### The search index
 
@@ -300,28 +297,21 @@ This package is configured to use pytest for testing
     > **_NOTE:_** The configuration for pytest and coverage is in the `pyproject.toml`.
 
 
-## Build Node Modules
+## Frontend
 
-Webpack is configured to bundle and build the React app into the `tethysapp/<app_package>/public/frontend` directory. Before building a Python distribution for release, you should build using this command:
+The frontend is build-less. The source under `tethysapp/nrds/public/frontend` is shipped as written and loaded as native ES modules, with dependencies resolved from a CDN import map. There is no bundler and no build step.
 
-```
-npm run build
-```
+## Test the Frontend
 
-## Test Node Modules
-
-Use the following commands to lint and test the React portion of the app.
+Run the frontend unit tests with the built-in Node test runner:
 
 ```
-npm run lint
-npm run test
+npm run test:vanilla
 ```
-
-The linting capability is powered by [eslint](https://eslint.org/) and a number of plugins for React. The testing capabilities include [jest](https://jestjs.io/), [jsdom](https://github.com/jsdom/jsdom#readme), [testing-framework](https://testing-library.com/), [user-event](https://testing-library.com/docs/user-event/intro/), and a few other JavaScript testing utilties to make it easy to test the frontend of the React-Tethys app.
 
 ## Acknowledgements
 
-The React + Django implementation is based on the excellent work done by @Jitensid that can be found on GitHub here: [Jitensid/django-webpack-dev-server](https://github.com/Jitensid/django-webpack-dev-server).
+The original Tethys app scaffold this project grew from is based on the excellent work done by @Jitensid that can be found on GitHub here: [Jitensid/django-webpack-dev-server](https://github.com/Jitensid/django-webpack-dev-server).
 
 ## Contribute
 Please feel free to contribute!

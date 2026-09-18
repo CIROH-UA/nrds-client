@@ -1,0 +1,2130 @@
+/*
+ * Base layout and component styles for the vanilla NRDS client. tokens.css owns the design tokens;
+ * this file owns element and component rules. Fonts fall back to the system stack in --font-ui.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* The hidden attribute must win over component display rules (the chart toggles its state
+ * containers with el.hidden); a bare display: flex/block would otherwise override it. */
+[hidden] {
+  display: none !important;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  font-family: var(--font-ui);
+}
+
+/* The shell lays the page out as a column: the navbar on top at --ts-header-height and the map area
+ * filling the rest below it (U6). Everything that floats over the map is a child of the map area. */
+#root {
+  display: flex;
+  flex-direction: column;
+}
+
+.nrds-map-area {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+}
+
+.nrds-map-area:focus {
+  outline: none;
+}
+
+/* Timeseries chart (U4). The factory fills whatever host U5 gives it, so the chart stretches to
+ * its container; the message and tooltip carry only what uPlot's own stylesheet does not. */
+.nrds-chart {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.nrds-chart__canvas {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.nrds-chart__message {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md);
+  text-align: center;
+  color: var(--chart-empty-text-color);
+  font-size: var(--text-sm);
+}
+
+.nrds-chart__message--error {
+  color: var(--status-failed-text);
+}
+
+.nrds-chart__tooltip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 2;
+  min-width: 60px;
+  padding: var(--space-sm);
+  border-radius: var(--radius-md);
+  background: var(--chart-tooltip-bg);
+  color: var(--chart-tooltip-text);
+  border: 1px solid var(--chart-tooltip-border-color);
+  font-size: var(--text-sm);
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.nrds-chart__tooltip-value {
+  font-weight: var(--weight-strong);
+}
+
+/* Anchored feature popup (U5) and the hover readout share the callout dressing; only the content
+ * padding differs (the feature popup hosts a fixed-size chart, the hover popup is text). Tokens
+ * match the React popup. */
+.maplibregl-popup.nrds-feature-popup-shell .maplibregl-popup-content,
+.maplibregl-popup.nrds-hover-popup-shell .maplibregl-popup-content {
+  background-color: var(--popup-bg);
+  color: var(--popup-text-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elevation-map-readout);
+}
+
+.maplibregl-popup.nrds-feature-popup-shell .maplibregl-popup-content {
+  padding: 0;
+}
+
+.maplibregl-popup.nrds-hover-popup-shell .maplibregl-popup-content {
+  padding: 8px 10px;
+}
+
+.maplibregl-popup.nrds-feature-popup-shell .maplibregl-popup-tip,
+.maplibregl-popup.nrds-hover-popup-shell .maplibregl-popup-tip {
+  border-top-color: var(--popup-bg);
+  border-bottom-color: var(--popup-bg);
+}
+
+/* maplibre's default close button renders as a near-invisible glyph on the popup surface; give it a
+ * visible, themed target that matches the other panel close controls. */
+.maplibregl-popup.nrds-feature-popup-shell .maplibregl-popup-close-button {
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--panel-text-muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.maplibregl-popup.nrds-feature-popup-shell .maplibregl-popup-close-button:hover {
+  background: var(--select-option-hover-bg);
+  color: var(--popup-text-color);
+}
+
+.maplibregl-popup.nrds-feature-popup-shell .maplibregl-popup-close-button:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.nrds-feature-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 340px;
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+
+.nrds-feature-popup .popup-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 30px 8px 10px;
+  border-bottom: 1px solid var(--panel-border-color);
+}
+
+.nrds-feature-popup .popup-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.nrds-feature-popup .popup-label {
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.nrds-feature-popup .popup-value {
+  font-family: var(--font-mono);
+  word-break: break-all;
+}
+
+.nrds-feature-popup__chart {
+  position: relative;
+  width: 340px;
+  max-width: 100%;
+  height: 220px;
+  padding: 0 6px 6px;
+}
+
+/* Hover readout (Enable Hovering). A small following popup that shares the feature popup's callout
+ * dressing (see above), showing the animated value and the reach's key attributes under the pointer. */
+.nrds-hover-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 260px;
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+.nrds-hover-popup .popup-title {
+  font-weight: 600;
+  opacity: 0.7;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.nrds-hover-popup .popup-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.nrds-hover-popup .popup-label {
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.nrds-hover-popup .popup-value {
+  font-family: var(--font-mono);
+}
+
+.nrds-hover-popup .popup-measure .popup-value {
+  font-weight: 600;
+}
+
+/* Selection locator. The highlight layers fade out below zoom 7, so this marker keeps the selected
+ * feature findable at every zoom, including CONUS scale. */
+.nrds-selection-marker {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: var(--map-divides-highlight-outline);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px var(--map-divides-highlight-outline), 0 1px 4px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+/* Shared select (KTD6), the vanilla replacement for react-select. A select-only combobox: a control
+ * that opens a listbox, themed from the --select-* tokens and sized 44px normal / 30px compact to
+ * match the React control heights. */
+.nrds-select {
+  position: relative;
+  width: 100%;
+  font-size: var(--text-sm);
+}
+
+.nrds-select__control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  min-height: 44px;
+  height: 44px;
+  padding: 0 var(--space-sm);
+  border: 1px solid var(--select-control-border);
+  border-radius: var(--radius-sm);
+  background: var(--select-control-bg);
+  color: var(--select-text-color);
+  cursor: pointer;
+  user-select: none;
+}
+
+.nrds-select[data-compact] .nrds-select__control {
+  min-height: 30px;
+  height: 30px;
+}
+
+.nrds-select__control:hover {
+  border-color: var(--nav-pill-active-bg);
+}
+
+.nrds-select__control:focus-visible {
+  outline: none;
+  border-color: var(--nav-pill-active-bg);
+  box-shadow: 0 0 0 2px var(--nav-pill-active-bg);
+}
+
+.nrds-select__value {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.nrds-select__arrow {
+  display: flex;
+  flex: 0 0 auto;
+  color: var(--select-placeholder-color);
+  transition: transform 0.12s ease;
+}
+
+.nrds-select__arrow svg {
+  width: 16px;
+  height: 16px;
+}
+
+.nrds-select__control[aria-expanded='true'] .nrds-select__arrow {
+  transform: rotate(180deg);
+}
+
+.nrds-select__listbox {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  margin: 0;
+  padding: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  list-style: none;
+  background: var(--select-menu-bg);
+  border: 1px solid var(--select-control-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--elevation-map-control);
+}
+
+/* Open the menu above the control when there is not enough room below, so a select near the bottom
+ * of the screen (the time dock's speed control) never drops its options off-screen. */
+.nrds-select--up .nrds-select__listbox {
+  top: auto;
+  bottom: calc(100% + 2px);
+}
+
+.nrds-select__option {
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--text-xs);
+  color: var(--select-text-color);
+  white-space: normal;
+  overflow-wrap: break-word;
+  cursor: pointer;
+}
+
+.nrds-select__option.is-active {
+  background: var(--select-option-hover-bg);
+}
+
+/* Selected wins over active, so the chosen row keeps its fill while the pointer moves over it. */
+.nrds-select__option[aria-selected='true'] {
+  background: var(--select-option-selected-bg);
+  color: var(--nav-pill-active-text-color);
+}
+
+/* Variable picker (U5a): a compact select above the popup chart. */
+.nrds-variable-picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-xs) 10px 2px;
+}
+
+.nrds-variable-picker__label {
+  flex: 0 0 auto;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--popup-text-color);
+}
+
+.nrds-variable-picker__select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Time slider dock (U5a): the animation transport, docked bottom-centre over the map. Ported from
+ * the React TimeSlider.css intent -- one row of a play button, a range input, a readout, and a
+ * speed select -- now on a floating panel rather than in the sidebar. */
+.nrds-time-dock {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(560px, calc(100% - 32px));
+  z-index: 5;
+}
+
+.nrds-time-dock .time-dock {
+  padding: var(--space-sm) var(--space-md);
+  background: var(--map-panel-bg);
+  color: var(--map-panel-text);
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elevation-map-control);
+  container-type: inline-size;
+}
+
+.nrds-time-dock .dock-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.nrds-time-dock .time-value {
+  flex: 0 0 auto;
+  min-width: 60px;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-sm);
+  color: var(--map-panel-text);
+}
+
+.nrds-time-dock .speed-select-host {
+  flex: 0 0 auto;
+  width: 72px;
+}
+
+/* The play/pause button is the row's height and a 44px touch target, as the React audit set it. */
+.nrds-time-dock .play-btn {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: var(--space-sm);
+  background: var(--button-primary-bg);
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-sm);
+  color: var(--button-primary-text);
+  cursor: pointer;
+}
+
+.nrds-time-dock .play-btn:hover:not(:disabled) {
+  background-color: var(--button-primary-hover-bg);
+  color: var(--button-primary-text-hover);
+}
+
+.nrds-time-dock .play-btn:focus-visible {
+  outline: 2px solid var(--nav-pill-active-bg);
+  outline-offset: 2px;
+}
+
+.nrds-time-dock .play-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.nrds-time-dock .play-btn.active {
+  background: var(--nav-pill-active-bg);
+  border-color: transparent;
+  color: var(--nav-pill-active-text-color);
+}
+
+.nrds-time-dock .play-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Scoped to this dock so it does not reach every range input in the app. The input is a tall,
+ * transparent hit area; the visible bar is the track pseudo-element. */
+.nrds-time-dock .time-slider {
+  flex: 1 1 auto;
+  min-width: 60px;
+  height: 44px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  outline: none;
+}
+
+.nrds-time-dock .time-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  background: var(--panel-border-color);
+  border-radius: var(--radius-sm);
+}
+
+.nrds-time-dock .time-slider::-moz-range-track {
+  height: 6px;
+  background: var(--panel-border-color);
+  border-radius: var(--radius-sm);
+}
+
+.nrds-time-dock .time-slider:focus-visible {
+  outline: 2px solid var(--nav-pill-active-bg);
+  outline-offset: 2px;
+}
+
+.nrds-time-dock .time-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: var(--space-md);
+  height: var(--space-md);
+  margin-top: -5px;
+  background: var(--nav-pill-active-bg);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.nrds-time-dock .time-slider::-moz-range-thumb {
+  width: var(--space-md);
+  height: var(--space-md);
+  background: var(--nav-pill-active-bg);
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.nrds-time-dock .time-slider:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Map control menu (U5b): the unified panel of layer toggles, colour scale, value legend and the
+ * theme toggle, plus its floating opener. Ported from the React ControlMenu/Styles intent -- a
+ * framed surface over the map with 44px touch targets and token-driven colours. */
+.nrds-control-menu__opener {
+  position: absolute;
+  top: 16px;
+  left: 10px;
+  z-index: 1001;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px;
+  border: 1px solid var(--panel-border-color);
+  border-radius: 20px;
+  background-color: var(--button-primary-bg);
+  color: var(--accent-text);
+  box-shadow: var(--elevation-map-control);
+  cursor: pointer;
+}
+
+.nrds-control-menu__opener:hover,
+.nrds-control-menu__opener:focus {
+  color: var(--hover-text);
+  background-color: var(--button-primary-hover-bg);
+}
+
+.nrds-control-menu__opener:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.nrds-control-menu__opener svg {
+  width: 20px;
+  height: 20px;
+}
+
+.nrds-control-menu__panel {
+  position: absolute;
+  top: 16px;
+  left: 10px;
+  z-index: 1000;
+  width: min(300px, calc(100vw - 32px));
+  max-height: calc(100% - 32px);
+  padding: 14px 16px;
+  background-color: var(--map-panel-bg);
+  color: var(--map-panel-text);
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elevation-map-control);
+  overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+  .nrds-control-menu__panel {
+    left: 8px;
+    right: 8px;
+    width: auto;
+    /* Cap the height so the panel does not swallow the whole screen: the map stays visible behind
+     * it and the feature sheet keeps room at the bottom instead of colliding with it. */
+    max-height: min(68vh, calc(100% - 16px));
+  }
+}
+
+/* When a feature's bottom sheet is open on a phone it owns the lower half, so tighten the control
+ * panel's height cap to the space above the sheet, keeping both usable instead of overlapping. */
+@media (max-width: 768px) {
+  body[data-sheet='expanded'] .nrds-control-menu__panel {
+    max-height: min(40vh, calc(100% - var(--sheet-offset, 0px) - 24px));
+  }
+
+  body[data-sheet='collapsed'] .nrds-control-menu__panel {
+    max-height: min(56vh, calc(100% - var(--sheet-offset, 0px) - 24px));
+  }
+}
+
+.nrds-control-menu__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.nrds-control-menu__title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-strong);
+  color: var(--map-panel-text);
+}
+
+.nrds-control-menu__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  margin: -8px -8px -8px 0;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--map-panel-text);
+  cursor: pointer;
+}
+
+.nrds-control-menu__close:hover {
+  background: var(--select-option-hover-bg);
+}
+
+.nrds-control-menu__close:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.nrds-control-menu__close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.nrds-control-menu__section {
+  padding-block: 10px;
+  border-block-end: 1px solid var(--panel-border-color);
+}
+
+.nrds-control-menu__section:first-of-type {
+  padding-top: 0;
+}
+
+.nrds-control-menu__section:last-of-type {
+  padding-bottom: 0;
+  border-block-end: none;
+}
+
+.nrds-control-menu__heading {
+  margin: 0 0 var(--space-xs);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-strong);
+  color: var(--panel-text-muted);
+  text-transform: none;
+}
+
+.nrds-control-menu__subheading {
+  margin: var(--space-sm) 0 var(--space-xs);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-strong);
+  color: var(--accent-text);
+}
+
+.nrds-control-menu__row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  min-height: 44px;
+}
+
+.nrds-control-menu__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow-wrap: break-word;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--accent-text);
+  cursor: pointer;
+}
+
+.nrds-control-menu__swatch {
+  display: inline-flex;
+  flex: 0 0 auto;
+  line-height: 0;
+}
+
+.nrds-control-menu__swatch svg {
+  display: block;
+}
+
+/* The colour-scale row: label on the left, the compact shared select taking the rest. */
+.nrds-control-menu__row--scale {
+  gap: var(--space-md);
+}
+
+.nrds-control-menu__scale-select {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 62%;
+}
+
+/* Run cascade (U5c): the model -> date -> forecast -> cycle -> ensemble -> output-file dependent
+ * selects, the no-output notice, and the Update button that live in the "Model run" slot. The label
+ * sits above its select so each value has the panel's full width to spell out. */
+.nrds-run-cascade__row {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 4px;
+  min-height: 0;
+  margin-bottom: var(--space-xs);
+}
+
+.nrds-run-cascade__label {
+  cursor: default;
+}
+
+.nrds-run-cascade__select {
+  width: 100%;
+  min-width: 0;
+}
+
+/* A disabled level: dimmed, and out of the pointer's reach while a cascade is still resolving. */
+.nrds-select.is-disabled {
+  opacity: 0.55;
+}
+
+.nrds-select.is-disabled .nrds-select__control {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.nrds-run-cascade__notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin: var(--space-sm) 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--panel-border-color);
+  border-radius: 6px;
+  background-color: var(--status-failed-bg);
+  color: var(--status-failed-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  line-height: 1.35;
+}
+
+.nrds-run-cascade__notice-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  line-height: 0;
+}
+
+.nrds-run-cascade__notice-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.nrds-run-cascade__actions {
+  margin-top: 10px;
+}
+
+.nrds-run-cascade__update {
+  width: 100%;
+  min-height: 44px;
+  padding: 7px 8px;
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-sm);
+  background: var(--button-primary-bg);
+  color: var(--accent-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.nrds-run-cascade__update:not(:disabled):hover,
+.nrds-run-cascade__update:not(:disabled):focus-visible {
+  background-color: var(--button-primary-hover-bg);
+  color: var(--button-primary-text-hover);
+}
+
+.nrds-run-cascade__update:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.nrds-run-cascade__update:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Toggle switch: a visually-hidden real checkbox (still focusable and keyboard-toggleable) drives a
+ * styled track and thumb. Pseudo-elements do not render on the replaced <input>, so the knob is a
+ * real span. */
+.nrds-switch {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.nrds-switch input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+}
+
+.nrds-switch__track {
+  position: relative;
+  width: 34px;
+  height: 18px;
+  border-radius: var(--radius-pill);
+  background: var(--switch-inactive);
+  border: 1px solid var(--select-control-border);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.nrds-switch__thumb {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid var(--select-control-border);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease;
+}
+
+.nrds-switch input:checked ~ .nrds-switch__track {
+  background: var(--switch-active);
+  border-color: var(--switch-active);
+}
+
+.nrds-switch input:checked ~ .nrds-switch__track .nrds-switch__thumb {
+  transform: translateX(16px);
+}
+
+.nrds-switch input:focus-visible ~ .nrds-switch__track {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Value legend: a gradient bar with three tick labels and a title (variable, units, scale name). */
+.nrds-control-menu__legend {
+  margin-top: var(--space-sm);
+}
+
+.nrds-control-menu__legend-titlerow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: 6px;
+}
+
+.nrds-control-menu__legend-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--panel-text-muted);
+}
+
+.nrds-control-menu__legend-bar {
+  height: 8px;
+  border-radius: var(--radius-sm);
+}
+
+.nrds-control-menu__legend-scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-xs);
+  color: var(--panel-text-muted);
+}
+
+.nrds-control-menu__legend-empty {
+  margin: var(--space-xs) 0 0;
+  font-size: var(--text-xs);
+  color: var(--panel-text-muted);
+}
+
+/* Showing section: a stacked field (label above its control) for Configuration, the variable, and
+ * the value legend (whose header carries the reverse toggle and the ramp settings gear). */
+.nrds-control-menu__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: var(--space-sm);
+}
+
+.nrds-control-menu__field-label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--accent-text);
+}
+
+.nrds-control-menu__config-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  width: 100%;
+  min-height: var(--tap-min);
+  padding: 8px 10px;
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-sm);
+  background: var(--select-control-bg);
+  color: var(--map-panel-text);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.nrds-control-menu__config-button:hover,
+.nrds-control-menu__config-button:focus-visible {
+  border-color: var(--map-divides-highlight-outline);
+  outline: none;
+}
+
+.nrds-control-menu__config-button:focus-visible,
+.nrds-control-menu__icon-button:focus-visible,
+.nrds-ramp-option:focus-visible {
+  box-shadow: 0 0 0 2px var(--nav-pill-active-bg);
+}
+
+.nrds-control-menu__config-summary {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-sm);
+}
+
+.nrds-control-menu__config-chevron {
+  display: inline-flex;
+  flex: 0 0 auto;
+  line-height: 0;
+  color: var(--panel-text-muted);
+}
+
+.nrds-control-menu__config-chevron svg {
+  width: 16px;
+  height: 16px;
+}
+
+.nrds-control-menu__legend-tools {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 2px;
+}
+
+/* Compact icon buttons that sit inline with the legend title, smaller than the panel's other icon
+   buttons because they ride alongside a single line of text. */
+.nrds-control-menu__legend-tools .nrds-control-menu__icon-button {
+  width: 26px;
+  height: 26px;
+}
+
+.nrds-control-menu__legend-tools .nrds-control-menu__icon-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.nrds-control-menu__icon-button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  padding: 0;
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--map-panel-text);
+  cursor: pointer;
+}
+
+.nrds-control-menu__icon-button:hover,
+.nrds-control-menu__icon-button:focus-visible {
+  border-color: var(--map-divides-highlight-outline);
+  outline: none;
+}
+
+.nrds-control-menu__icon-button.is-active {
+  border-color: var(--nav-pill-active-bg);
+  color: var(--nav-pill-active-bg);
+}
+
+.nrds-control-menu__icon-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Dialog (Configuration, Color Bar): a centred card over a dimmed backdrop. Namespaced `nrds-dialog`
+   so its rules never collide with the shell `nrds-modal` used by the first-run notice and info panels. */
+.nrds-dialog__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md);
+  background-color: color-mix(in oklab, var(--modal-scrim) 45%, transparent);
+}
+
+.nrds-dialog {
+  width: min(360px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  display: flex;
+  flex-direction: column;
+  background: var(--map-panel-bg);
+  color: var(--map-panel-text);
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elevation-map-control);
+  overflow: hidden;
+}
+
+.nrds-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--panel-border-color);
+}
+
+.nrds-dialog__title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-strong);
+}
+
+.nrds-dialog__close {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--panel-text-muted);
+  cursor: pointer;
+}
+
+.nrds-dialog__close:hover {
+  color: var(--map-panel-text);
+}
+
+.nrds-dialog__close:focus-visible {
+  color: var(--map-panel-text);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--nav-pill-active-bg);
+}
+
+.nrds-dialog__close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.nrds-dialog__content {
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.nrds-dialog .nrds-control-menu__scale-select {
+  max-width: none;
+}
+
+/* Colour ramp picker (Color Bar modal): a list of gradient swatches, one per named ramp. */
+.nrds-ramp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nrds-ramp-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  min-height: var(--tap-min);
+  padding: 6px 8px;
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--map-panel-text);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.nrds-ramp-option:hover,
+.nrds-ramp-option:focus-visible {
+  border-color: var(--map-divides-highlight-outline);
+  outline: none;
+}
+
+.nrds-ramp-option.is-selected {
+  border-color: var(--map-divides-highlight-outline);
+  box-shadow: 0 0 0 1px var(--map-divides-highlight-outline);
+}
+
+/* Touch input: the compact selects keep their design-sanctioned dense height for the mouse, but rise
+   to the 44px tap minimum on coarse pointers where a fingertip needs the room. */
+@media (pointer: coarse) {
+  .nrds-select[data-compact] .nrds-select__control {
+    min-height: var(--tap-min);
+  }
+}
+
+.nrds-ramp-option__bar {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 14px;
+  border-radius: var(--radius-sm);
+}
+
+.nrds-ramp-option__label {
+  flex: 0 0 auto;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+/* The Appearance/theme-toggle styles that lived here moved to the navbar theme toggle (U6); see
+ * the .nrds-theme-toggle rules in the shell section below. */
+
+/* ================================================================================================
+ * App shell (U6): the navbar, its brand/badge/search-slot/load-status/theme-toggle/info controls,
+ * the skip link, the boot loader and spinner, the modal dialogs, the toasts, and the error view.
+ * Ported from the React Tethys/DataStream styled-components; token-driven and theme-aware.
+ * ============================================================================================== */
+
+/* The first thing a keyboard reaches, and only then. */
+.nrds-skip-link {
+  position: absolute;
+  left: var(--space-sm);
+  top: -100%;
+  z-index: 3000;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  background: var(--nav-pill-active-bg);
+  color: var(--nav-pill-active-text-color);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+}
+
+.nrds-skip-link:focus {
+  top: var(--space-sm);
+}
+
+/* --- Navbar ------------------------------------------------------------------------------------- */
+.nrds-navbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  min-height: var(--ts-header-height);
+  height: var(--ts-header-height);
+  padding: 0 var(--space-md);
+  background-color: var(--background-color);
+  color: var(--title-text-color);
+  border-bottom: 1px solid var(--panel-border-color);
+  box-shadow: var(--elevation-map-readout);
+  z-index: 1100;
+}
+
+.nrds-navbar__group {
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 3vw, 32px);
+  min-width: 0;
+}
+
+.nrds-navbar__group--start {
+  flex: 1 1 auto;
+}
+
+.nrds-navbar__group--end {
+  flex: 0 0 auto;
+  gap: var(--space-xs);
+}
+
+.nrds-navbar__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex: 0 1 auto;
+  min-width: 0;
+  color: var(--title-text-color);
+  text-decoration: none;
+}
+
+.nrds-navbar__brand:hover,
+.nrds-navbar__brand:focus {
+  color: var(--title-text-color);
+  text-decoration: none;
+}
+
+.nrds-navbar__brand:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.nrds-navbar__brand-icon {
+  display: block;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+}
+
+.nrds-navbar__brand-name {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 575px) {
+  .nrds-navbar__brand-name {
+    display: none;
+  }
+}
+
+/* Experimental badge: a standing property worn beside the name; the full word gives way to "Exp"
+ * where the row cannot spare the width. */
+.nrds-navbar__badge {
+  flex: 0 0 auto;
+  padding: 1px var(--space-sm);
+  border: 1px solid var(--notice-border);
+  border-radius: var(--radius-pill);
+  background-color: var(--notice-bg);
+  color: var(--notice-text);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.nrds-navbar__badge-short {
+  display: none;
+}
+
+.nrds-navbar__badge-assistive {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .nrds-navbar__badge {
+    padding: 2px 8px;
+    font-size: 0.65rem;
+  }
+
+  .nrds-navbar__badge-full {
+    display: none;
+  }
+
+  .nrds-navbar__badge-short {
+    display: inline;
+  }
+}
+
+/* The feature-id search box slot: an empty, marked placeholder built in a later unit. It gives up
+ * its space until then, and never grows the navbar. */
+.nrds-navbar__search-slot {
+  display: flex;
+  align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.nrds-navbar__search-slot:empty {
+  display: none;
+}
+
+/* Load-status readout: a small pill, spinner plus message, that hides when nothing is loading. */
+.nrds-load-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  line-height: 1.2;
+  color: var(--status-text);
+  background-color: var(--status-bg);
+}
+
+.nrds-load-status--failed {
+  color: var(--status-failed-text);
+  background-color: var(--status-failed-bg);
+}
+
+.nrds-load-status__text {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 768px) {
+  .nrds-load-status {
+    max-width: 45vw;
+    font-size: 0.85rem;
+    padding: 4px 10px;
+  }
+}
+
+@media (max-width: 640px) {
+  .nrds-load-status {
+    padding: 4px;
+  }
+
+  .nrds-load-status__text:not(:only-child) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* Navbar theme toggle: the light/dark control, moved here from the map control menu (U6). */
+.nrds-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  padding: 5px;
+  border: none;
+  border-radius: 20px;
+  background-color: transparent;
+  color: var(--text-color);
+  font-size: 1.5rem;
+  line-height: 0;
+  cursor: pointer;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+.nrds-theme-toggle:hover {
+  background-color: var(--button-primary-hover-bg);
+  color: var(--text-color);
+}
+
+.nrds-theme-toggle:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.nrds-theme-toggle svg {
+  display: block;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+/* Navbar info button. */
+.nrds-navbar__info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  padding: 5px;
+  border: none;
+  border-radius: 20px;
+  background-color: transparent;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+.nrds-navbar__info:hover,
+.nrds-navbar__info:focus {
+  background-color: var(--button-primary-hover-bg);
+  color: var(--text-color);
+}
+
+.nrds-navbar__info:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.nrds-navbar__info svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+/* --- Spinner (boot loader and load status) ----------------------------------------------------- */
+.nrds-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: nrds-spin 0.8s linear infinite;
+}
+
+.nrds-spinner--lg {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+}
+
+.nrds-load-status__spinner {
+  display: inline-flex;
+  line-height: 0;
+}
+
+@keyframes nrds-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes nrds-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Reduced motion: drop the spin (a vestibular trigger) for a full ring that pulses opacity instead,
+   which still reads as "working" without spatial motion. */
+@media (prefers-reduced-motion: reduce) {
+  .nrds-spinner {
+    border-top-color: currentColor;
+    animation: nrds-pulse 1.4s ease-in-out infinite;
+  }
+}
+
+/* --- Boot loading state ------------------------------------------------------------------------- */
+.nrds-boot {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  color: var(--panel-text-muted);
+}
+
+.nrds-boot__text {
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+}
+
+/* --- Modal dialog ------------------------------------------------------------------------------- */
+.nrds-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md);
+  background-color: color-mix(in oklab, var(--modal-scrim) 55%, transparent);
+}
+
+.nrds-modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: min(680px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  background-color: var(--modal-bg);
+  color: var(--modal-text-color);
+  border: 1px solid var(--modal-border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elevation-map-control);
+  overflow: hidden;
+}
+
+.nrds-modal--md {
+  max-width: min(480px, calc(100vw - 32px));
+}
+
+.nrds-modal__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--modal-border-color);
+}
+
+.nrds-modal__title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-strong);
+  line-height: 1.3;
+}
+
+.nrds-modal__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  margin-left: auto;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  color: var(--modal-text-color);
+  cursor: pointer;
+}
+
+.nrds-modal__close:hover {
+  background-color: var(--nav-button-hover-bg);
+}
+
+.nrds-modal__close:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.nrds-modal__close svg {
+  width: 20px;
+  height: 20px;
+}
+
+.nrds-modal__body {
+  padding: 18px;
+  overflow-y: auto;
+  font-size: var(--text-md);
+  line-height: 1.6;
+}
+
+.nrds-modal__body p,
+.nrds-modal__body li {
+  max-width: 68ch;
+}
+
+.nrds-modal__body p {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.nrds-modal__body p:last-child,
+.nrds-modal__body ul:last-child {
+  margin-bottom: 0;
+}
+
+.nrds-modal__body ul {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nrds-modal__body a {
+  color: var(--link-color);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  overflow-wrap: break-word;
+}
+
+.nrds-modal__body a:hover {
+  text-decoration-thickness: 2px;
+}
+
+.nrds-modal__body a:focus-visible {
+  outline: 2px solid var(--nav-pill-active-bg);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.nrds-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  padding: 12px 18px;
+  border-top: 1px solid var(--modal-border-color);
+}
+
+.nrds-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  width: 100%;
+}
+
+.nrds-modal__action {
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-sm);
+  background-color: var(--nav-pill-active-bg);
+  color: var(--nav-pill-active-text-color);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.nrds-modal__action:hover,
+.nrds-modal__action:focus {
+  filter: brightness(1.08);
+}
+
+.nrds-modal__action:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* --- Toasts ------------------------------------------------------------------------------------- */
+.nrds-toast-host {
+  position: fixed;
+  top: calc(var(--ts-header-height) + 12px);
+  right: 12px;
+  z-index: 2800;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  max-width: min(360px, calc(100vw - 24px));
+  pointer-events: none;
+}
+
+.nrds-toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 10px 12px;
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-md);
+  background-color: var(--map-panel-bg);
+  color: var(--map-panel-text);
+  box-shadow: var(--elevation-map-control);
+  font-size: var(--text-sm);
+  line-height: 1.35;
+  pointer-events: auto;
+}
+
+.nrds-toast--success {
+  border-color: var(--switch-active);
+}
+
+.nrds-toast--error {
+  border-color: var(--status-failed-text);
+  color: var(--status-failed-text);
+  background-color: var(--status-failed-bg);
+}
+
+.nrds-toast__message {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.nrds-toast__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.nrds-toast__close:hover {
+  background-color: var(--nav-button-hover-bg);
+}
+
+.nrds-toast__close:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.nrds-toast__close svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* --- Error view -------------------------------------------------------------------------------- */
+.nrds-error {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+  background-color: var(--error-overlay-bg);
+}
+
+.nrds-error__box {
+  max-width: 520px;
+  padding: 28px 32px;
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-md);
+  background-color: var(--error-box-bg);
+  color: var(--error-box-text-color);
+  box-shadow: var(--elevation-map-control);
+  text-align: center;
+}
+
+.nrds-error__title {
+  margin: 0 0 12px;
+  font-size: 1.75rem;
+  font-weight: var(--weight-strong);
+}
+
+.nrds-error__message {
+  margin: 0 0 12px;
+  font-size: var(--text-md);
+  line-height: 1.5;
+}
+
+.nrds-error__detail {
+  margin: 0 0 20px;
+  font-size: var(--text-sm);
+  color: var(--panel-text-muted);
+  word-break: break-word;
+}
+
+.nrds-error__action {
+  min-height: 44px;
+  padding: 8px 20px;
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-sm);
+  background-color: var(--nav-pill-active-bg);
+  color: var(--nav-pill-active-text-color);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.nrds-error__action:hover,
+.nrds-error__action:focus {
+  filter: brightness(1.08);
+}
+
+.nrds-error__action:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* --- Feature-id search box (U5d) ---------------------------------------------------------------- */
+/* An accessible combobox in the navbar's search slot: a framed input with a typeahead listbox. */
+.nrds-search {
+  position: relative;
+  display: flex;
+  flex: 1 1 220px;
+  min-width: 0;
+  max-width: 32rem;
+}
+
+.nrds-search__box {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 36px;
+  padding: 4px 6px 4px 10px;
+  border: 1px solid var(--search-border);
+  border-radius: 6px;
+  background-color: var(--search-bg);
+}
+
+.nrds-search__icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  margin-right: 8px;
+  color: var(--muted-text);
+  line-height: 0;
+}
+
+.nrds-search__icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.nrds-search__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  align-self: stretch;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--search-text);
+  font-size: var(--text-md);
+}
+
+.nrds-search__input::placeholder {
+  color: var(--search-placeholder);
+}
+
+.nrds-search__input:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--nav-pill-active-bg);
+  border-radius: 3px;
+}
+
+.nrds-search__input[aria-invalid='true'] {
+  color: var(--status-failed-text);
+}
+
+.nrds-search__input:disabled {
+  cursor: default;
+}
+
+.nrds-search__submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 32px;
+  min-height: 28px;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background-color: var(--status-bg);
+  color: var(--status-text);
+  cursor: pointer;
+}
+
+.nrds-search__submit svg {
+  width: 16px;
+  height: 16px;
+}
+
+.nrds-search__submit:not(:disabled):hover {
+  filter: brightness(1.25);
+}
+
+.nrds-search__submit:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.nrds-search__submit:focus-visible {
+  outline: 2px solid var(--nav-pill-active-bg);
+  outline-offset: 2px;
+}
+
+.nrds-search__listbox {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 1200;
+  margin: 0;
+  padding: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+  list-style: none;
+  background: var(--select-menu-bg);
+  border: 1px solid var(--select-control-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--elevation-map-control);
+}
+
+.nrds-search__option {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--select-text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.nrds-search__option.is-active,
+.nrds-search__option[aria-selected='true'] {
+  background: var(--select-option-hover-bg);
+}
+
+.nrds-search__notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 12px;
+  border: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-sm);
+  background-color: var(--status-failed-bg);
+  color: var(--status-failed-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.nrds-search__notice > span {
+  min-width: 0;
+}
+
+.nrds-search__retry {
+  flex: none;
+  min-height: 32px;
+  padding: 2px 10px;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  color: inherit;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.nrds-search__retry:hover {
+  background-color: var(--nav-button-hover-bg);
+}
+
+.nrds-search__retry:focus-visible {
+  outline: 2px solid var(--nav-pill-active-bg);
+  outline-offset: 2px;
+}
+
+/* --- Mobile feature sheet (U5d) ---------------------------------------------------------------- */
+/* On a narrow viewport the selected feature's content lives in a bottom sheet instead of the
+ * anchored popup. The sheet slides between an expanded height and a collapsed peek row, and the
+ * body[data-sheet] state (set by feature-sheet.js) lifts the map controls and time dock clear of it. */
+.nrds-feature-sheet {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  height: var(--sheet-height);
+  padding: 6px 16px 16px;
+  background-color: var(--background-color);
+  color: var(--map-panel-text);
+  border-top: 1px solid var(--panel-border-color);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  box-shadow: var(--elevation-map-control);
+  transform: translateY(0);
+  transition: transform 0.25s ease-out;
+  overflow: hidden;
+}
+
+.nrds-feature-sheet.is-collapsed {
+  transform: translateY(max(0px, calc(var(--sheet-height) - var(--sheet-peek))));
+}
+
+/* The sheet is a mobile-only surface; never let it show once the popup takes over. */
+@media (min-width: 769px) {
+  .nrds-feature-sheet {
+    display: none;
+  }
+}
+
+.nrds-feature-sheet__handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 100%;
+  min-height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.nrds-feature-sheet__grabber {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--panel-border-color);
+}
+
+.nrds-feature-sheet__handle:focus-visible {
+  outline: 2px solid var(--nav-pill-active-bg);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.nrds-feature-sheet__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex: 0 0 auto;
+}
+
+.nrds-feature-sheet__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nrds-feature-sheet__collapse,
+.nrds-feature-sheet__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--map-panel-text);
+  cursor: pointer;
+}
+
+.nrds-feature-sheet__collapse:hover,
+.nrds-feature-sheet__close:hover {
+  background: var(--nav-button-hover-bg);
+}
+
+.nrds-feature-sheet__collapse:focus-visible,
+.nrds-feature-sheet__close:focus-visible {
+  outline: 2px solid var(--nav-pill-active-bg);
+  outline-offset: 2px;
+}
+
+.nrds-feature-sheet__collapse svg,
+.nrds-feature-sheet__close svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Expanded: the chevron points down (minimise); collapsed: it points up (expand). */
+.nrds-feature-sheet.is-collapsed .nrds-feature-sheet__collapse svg {
+  transform: rotate(180deg);
+}
+
+.nrds-feature-sheet__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.nrds-feature-sheet.is-collapsed .nrds-feature-sheet__body {
+  visibility: hidden;
+}
+
+.nrds-feature-sheet .popup-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0 10px;
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  border-bottom: 1px solid var(--panel-border-color);
+}
+
+.nrds-feature-sheet .popup-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.nrds-feature-sheet .popup-label {
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.nrds-feature-sheet .popup-value {
+  font-family: var(--font-mono);
+  word-break: break-all;
+}
+
+.nrds-feature-sheet__chart {
+  position: relative;
+  width: 100%;
+  height: 240px;
+  padding: 8px 0 0;
+}
+
+/* Lift the floating map controls and time dock clear of the sheet as it opens/collapses. */
+@media (max-width: 768px) {
+  body[data-sheet='expanded'] {
+    --sheet-offset: var(--sheet-height);
+    --map-controls-offset: calc(var(--sheet-height) + 24px);
+  }
+
+  body[data-sheet='collapsed'] {
+    --sheet-offset: min(var(--sheet-peek), var(--sheet-height));
+    --map-controls-offset: calc(min(var(--sheet-peek), var(--sheet-height)) + 24px);
+  }
+
+  .nrds-time-dock {
+    transform: translate(-50%, calc(-1 * var(--sheet-offset, 0px)));
+    transition: transform 0.25s ease-out;
+  }
+
+  .maplibregl-ctrl-bottom-right,
+  .maplibregl-ctrl-bottom-left {
+    transform: translateY(calc(-1 * var(--map-controls-offset, 0px)));
+    transition: transform 0.25s ease-out;
+  }
+
+  .maplibregl-ctrl.maplibregl-ctrl-group button {
+    width: 44px;
+    height: 44px;
+  }
+}

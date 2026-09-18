@@ -1,0 +1,342 @@
+/*
+ * OKLCH design-token layer for the vanilla NRDS client, with the Bootstrap palette resolved to hex
+ * ($light #f0f4f7, $secondary #1c2126, $dark #14181c). MapLibre and chart tokens stay hex/rgb
+ * (the MapLibre parser cannot read oklch).
+ * Light is the base; dark is applied by an explicit [data-theme='dark'] and by the system
+ * preference unless [data-theme='light'] opts out, matching the effective-theme signal.
+ */
+
+/* Base (light) theme */
+:root,
+:root[data-theme='light'] {
+  color-scheme: light dark;
+
+  --background-color: oklch(0.992 0.004 250);
+  --text-color: oklch(0.235 0.012 250);
+  --primary-color: oklch(0.992 0.004 250);
+  --title-text-color: oklch(0.480 0.014 250);
+  --ts-header-height: 56px;
+  --sheet-height: min(58dvh, calc(100dvh - var(--ts-header-height) - 120px));
+  --sheet-peek: 88px;
+  --sheet-offset: 0px;
+  --modal-scrim: oklch(0.235 0.012 250);
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 20px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-pill: 999px;
+
+  --focus-ring: 2px solid var(--nav-pill-active-bg);
+  --tap-min: 44px;
+
+  --notice-bg: oklch(0.950 0.055 75);
+  --notice-border: oklch(0.620 0.100 75);
+  --notice-text: oklch(0.400 0.090 75);
+
+  --elevation-map-readout: 0 1px 3px oklch(0.235 0.030 250 / 0.10), 0 4px 12px oklch(0.235 0.030 250 / 0.10);
+  --elevation-map-control: 0 1px 2px oklch(0.235 0.030 250 / 0.10), 0 6px 16px oklch(0.235 0.030 250 / 0.12);
+
+  --panel-text-muted: oklch(0.480 0.014 250);
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-md: 0.9375rem;
+  --text-lg: 1.125rem;
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-strong: 600;
+
+  --font-ui: 'Public Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+
+  --status-text: oklch(0.235 0.012 250);
+  --status-bg: oklch(0.235 0.012 250 / 0.10);
+  --status-failed-text: #c33f38;
+  --status-failed-bg: rgba(195, 63, 56, 0.08);
+
+  --map-style-url: 'https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/styles/light-style.json';
+  --map-divides-outline-color: rgba(105, 111, 117, 0.5);
+  --map-divides-highlight-fill: rgba(179, 55, 54, 0.28);
+  --map-divides-highlight-outline: rgba(179, 55, 54, 0.95);
+  --map-flowpaths-color: #1f9ec7;
+  --map-gauges-color: #696f75;
+  --map-vpu-boundary-color: #009988;
+  --map-cursor-symbol-fill: #2571b5;
+  --map-point-stroke-color: #fcfeff;
+
+  --button-primary-bg: #f0f4f7;
+  --button-primary-hover-bg: #f0f4f7;
+  --button-primary-text-hover: #1c2126;
+  --button-primary-text: oklch(0.480 0.014 250);
+
+  --switch-active: #1c2126;
+  --switch-inactive: #f0f4f7;
+
+  --search-bg: #f0f4f7;
+  --search-border: #f0f4f7;
+  --search-text: #14181c;
+  --search-placeholder: #14181c;
+
+  --panel-background: oklch(0.995 0.003 250);
+  --panel-border-color: oklch(0.885 0.008 250);
+  --muted-text: oklch(0.235 0.012 250);
+
+  --offcanvas-bg: oklch(0.995 0.003 250);
+  --offcanvas-border-color: oklch(0.885 0.008 250);
+
+  --popup-bg: oklch(0.995 0.003 250);
+  --popup-text-color: oklch(0.235 0.012 250);
+
+  --map-panel-bg: #f0f4f7;
+  --map-panel-text: oklch(0.235 0.012 250);
+
+  --select-control-bg: oklch(0.995 0.003 250);
+  --select-control-border: oklch(0.800 0.010 250);
+  --select-text-color: oklch(0.235 0.012 250);
+  --select-placeholder-color: oklch(0.539 0.012 250);
+  --select-menu-bg: oklch(0.995 0.003 250);
+  --select-option-hover-bg: rgba(37, 113, 181, 0.10);
+  --select-option-selected-bg: var(--nav-pill-active-bg);
+
+  --modal-bg: oklch(0.995 0.003 250);
+  --modal-text-color: oklch(0.235 0.012 250);
+  --modal-border-color: oklch(0.885 0.008 250);
+
+  --link-color: #2571b5;
+
+  --accent-text: oklch(0.480 0.014 250);
+  --hover-text: #1c2126;
+
+  --nav-button-text-color: #1c2126;
+  --nav-button-hover-bg: rgba(0, 0, 0, 0.1);
+
+  --error-overlay-bg: oklch(0.992 0.004 250);
+  --error-box-bg: oklch(0.995 0.003 250);
+  --error-box-text-color: oklch(0.235 0.012 250);
+
+  --nav-pill-active-bg: oklch(0.536 0.13 250);
+  --nav-pill-active-text-color: oklch(0.995 0.003 250);
+
+  --chart-axis-label-color: #1a1f24;
+  --chart-axis-stroke-color: #1a1f24;
+  --chart-axis-tick-color: #1a1f24;
+  --chart-axis-tick-text-color: #1a1f24;
+  --chart-grid-color: #dbdee2;
+  --chart-tooltip-bg: rgba(252, 254, 255, 0.95);
+  --chart-tooltip-text: #1a1f24;
+  --chart-tooltip-border-color: rgba(185, 190, 196, 0.6);
+  --chart-crosshair-color: #585e65;
+  --chart-glyph-stroke-color: #fcfeff;
+  --chart-empty-text-color: var(--panel-text-muted);
+
+  --chart-line-colors: #2571b5, #268444, #b95115, #c33f38, #7750b1;
+  --chart-line-0: #2571b5;
+  --chart-line-1: #268444;
+  --chart-line-2: #b95115;
+  --chart-line-3: #c33f38;
+  --chart-line-4: #7750b1;
+}
+
+/* Dark theme override */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --primary-color: oklch(0.245 0.012 250);
+    --title-text-color: oklch(0.945 0.006 250);
+    --background-color: oklch(0.205 0.010 250);
+    --text-color: oklch(0.945 0.006 250);
+    --panel-text-muted: oklch(0.760 0.010 250);
+
+    --status-text: oklch(0.945 0.006 250);
+    --status-bg: oklch(0.945 0.006 250 / 0.16);
+
+    --notice-bg: oklch(0.330 0.055 75);
+    --notice-border: oklch(0.600 0.060 75);
+    --notice-text: oklch(0.900 0.055 75);
+
+    --elevation-map-readout: 0 1px 3px oklch(0 0 0 / 0.42), 0 4px 14px oklch(0 0 0 / 0.38);
+    --elevation-map-control: 0 1px 2px oklch(0 0 0 / 0.40), 0 6px 18px oklch(0 0 0 / 0.42);
+    --status-failed-text: #e25b52;
+    --status-failed-bg: rgba(226, 91, 82, 0.16);
+    --hover-text: oklch(0.945 0.006 250);
+    --map-style-url: 'https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/styles/dark-style.json';
+    --map-divides-outline-color: rgba(141, 147, 153, 0.5);
+    --map-divides-highlight-fill: rgba(240, 86, 83, 0.30);
+    --map-divides-highlight-outline: rgba(240, 86, 83, 0.95);
+    --map-flowpaths-color: #397d9e;
+    --map-gauges-color: #acb2b7;
+    --map-vpu-boundary-color: #33bbee;
+    --map-cursor-symbol-fill: #428bd2;
+    --map-point-stroke-color: #eaedf1;
+
+    --search-bg: #14181c;
+    --search-border: #14181c;
+    --search-text: #f0f4f7;
+    --search-placeholder: #f0f4f7;
+
+    --switch-inactive: #14181c;
+
+    --button-primary-bg: #14181c;
+    --button-primary-hover-bg: #14181c;
+    --button-primary-text-hover: oklch(0.945 0.006 250);
+    --button-primary-text: oklch(0.760 0.010 250);
+
+    --accent-text: oklch(0.760 0.010 250);
+
+    --panel-background: oklch(0.245 0.012 250);
+    --panel-border-color: oklch(0.330 0.012 250);
+    --muted-text: oklch(0.945 0.006 250);
+
+    --offcanvas-bg: oklch(0.245 0.012 250);
+    --offcanvas-border-color: oklch(0.330 0.012 250);
+
+    --popup-bg: oklch(0.245 0.012 250);
+    --popup-text-color: oklch(0.945 0.006 250);
+
+    --modal-bg: oklch(0.245 0.012 250);
+    --modal-text-color: var(--text-color);
+    --modal-border-color: oklch(0.330 0.012 250);
+
+    --link-color: oklch(0.720 0.120 250);
+    --map-panel-bg: oklch(0.245 0.012 250);
+    --map-panel-text: oklch(0.945 0.006 250);
+
+    --select-control-bg: oklch(0.245 0.012 250);
+    --select-control-border: oklch(0.430 0.014 250);
+    --select-text-color: oklch(0.945 0.006 250);
+    --select-placeholder-color: oklch(0.760 0.010 250);
+    --select-menu-bg: oklch(0.245 0.012 250);
+    --select-option-hover-bg: oklch(0.330 0.012 250);
+    --select-option-selected-bg: var(--nav-pill-active-bg);
+
+    --nav-button-text-color: oklch(0.945 0.006 250);
+    --nav-button-hover-bg: rgba(255, 255, 255, 0.08);
+
+    --error-overlay-bg: oklch(0.205 0.010 250);
+    --error-box-bg: oklch(0.180 0.010 250);
+    --error-box-text-color: oklch(0.945 0.006 250);
+
+    --nav-pill-active-bg: oklch(0.624 0.13 250);
+    --nav-pill-active-text-color: oklch(0.180 0.010 250);
+
+    --chart-axis-label-color: #eaedf1;
+    --chart-axis-stroke-color: #acb2b7;
+    --chart-axis-tick-color: #8d9399;
+    --chart-axis-tick-text-color: #eaedf1;
+    --chart-grid-color: #2d3135;
+    --chart-tooltip-bg: rgba(28, 33, 38, 0.95);
+    --chart-tooltip-text: #eaedf1;
+    --chart-tooltip-border-color: rgba(74, 81, 87, 0.6);
+    --chart-crosshair-color: #acb2b7;
+    --chart-glyph-stroke-color: #1c2126;
+    --chart-empty-text-color: var(--panel-text-muted);
+
+    --chart-line-colors: #549de5, #5cb572, #e38d3d, #e86156, #a780e6;
+    --chart-line-0: #549de5;
+    --chart-line-1: #5cb572;
+    --chart-line-2: #e38d3d;
+    --chart-line-3: #e86156;
+    --chart-line-4: #a780e6;
+  }
+}
+
+:root[data-theme='dark'] {
+  --primary-color: oklch(0.245 0.012 250);
+  --title-text-color: oklch(0.945 0.006 250);
+  --background-color: oklch(0.205 0.010 250);
+  --text-color: oklch(0.945 0.006 250);
+  --panel-text-muted: oklch(0.760 0.010 250);
+
+  --status-text: oklch(0.945 0.006 250);
+  --status-bg: oklch(0.945 0.006 250 / 0.16);
+
+  --notice-bg: oklch(0.330 0.055 75);
+  --notice-border: oklch(0.600 0.060 75);
+  --notice-text: oklch(0.900 0.055 75);
+
+  --elevation-map-readout: 0 1px 3px oklch(0 0 0 / 0.42), 0 4px 14px oklch(0 0 0 / 0.38);
+  --elevation-map-control: 0 1px 2px oklch(0 0 0 / 0.40), 0 6px 18px oklch(0 0 0 / 0.42);
+  --status-failed-text: #e25b52;
+  --status-failed-bg: rgba(226, 91, 82, 0.16);
+  --hover-text: oklch(0.945 0.006 250);
+  --map-style-url: 'https://communityhydrofabric.s3.us-east-1.amazonaws.com/map/styles/dark-style.json';
+  --map-divides-outline-color: rgba(141, 147, 153, 0.5);
+  --map-divides-highlight-fill: rgba(240, 86, 83, 0.30);
+  --map-divides-highlight-outline: rgba(240, 86, 83, 0.95);
+  --map-flowpaths-color: #397d9e;
+  --map-gauges-color: #acb2b7;
+  --map-vpu-boundary-color: #33bbee;
+  --map-cursor-symbol-fill: #428bd2;
+  --map-point-stroke-color: #eaedf1;
+
+  --search-bg: #14181c;
+  --search-border: #14181c;
+  --search-text: #f0f4f7;
+  --search-placeholder: #f0f4f7;
+
+  --switch-inactive: #14181c;
+
+  --button-primary-bg: #14181c;
+  --button-primary-hover-bg: #14181c;
+  --button-primary-text-hover: oklch(0.945 0.006 250);
+  --button-primary-text: oklch(0.760 0.010 250);
+
+  --accent-text: oklch(0.760 0.010 250);
+
+  --panel-background: oklch(0.245 0.012 250);
+  --panel-border-color: oklch(0.330 0.012 250);
+  --muted-text: oklch(0.945 0.006 250);
+
+  --offcanvas-bg: oklch(0.245 0.012 250);
+  --offcanvas-border-color: oklch(0.330 0.012 250);
+
+  --popup-bg: oklch(0.245 0.012 250);
+  --popup-text-color: oklch(0.945 0.006 250);
+
+  --modal-bg: oklch(0.245 0.012 250);
+  --modal-text-color: var(--text-color);
+  --modal-border-color: oklch(0.330 0.012 250);
+
+  --link-color: oklch(0.720 0.120 250);
+  --map-panel-bg: oklch(0.245 0.012 250);
+  --map-panel-text: oklch(0.945 0.006 250);
+
+  --select-control-bg: oklch(0.245 0.012 250);
+  --select-control-border: oklch(0.430 0.014 250);
+  --select-text-color: oklch(0.945 0.006 250);
+  --select-placeholder-color: oklch(0.760 0.010 250);
+  --select-menu-bg: oklch(0.245 0.012 250);
+  --select-option-hover-bg: oklch(0.330 0.012 250);
+  --select-option-selected-bg: var(--nav-pill-active-bg);
+
+  --nav-button-text-color: oklch(0.945 0.006 250);
+  --nav-button-hover-bg: rgba(255, 255, 255, 0.08);
+
+  --error-overlay-bg: oklch(0.205 0.010 250);
+  --error-box-bg: oklch(0.180 0.010 250);
+  --error-box-text-color: oklch(0.945 0.006 250);
+
+  --nav-pill-active-bg: oklch(0.624 0.13 250);
+  --nav-pill-active-text-color: oklch(0.180 0.010 250);
+
+  --chart-axis-label-color: #eaedf1;
+  --chart-axis-stroke-color: #acb2b7;
+  --chart-axis-tick-color: #8d9399;
+  --chart-axis-tick-text-color: #eaedf1;
+  --chart-grid-color: #2d3135;
+  --chart-tooltip-bg: rgba(28, 33, 38, 0.95);
+  --chart-tooltip-text: #eaedf1;
+  --chart-tooltip-border-color: rgba(74, 81, 87, 0.6);
+  --chart-crosshair-color: #acb2b7;
+  --chart-glyph-stroke-color: #1c2126;
+  --chart-empty-text-color: var(--panel-text-muted);
+
+  --chart-line-colors: #549de5, #5cb572, #e38d3d, #e86156, #a780e6;
+  --chart-line-0: #549de5;
+  --chart-line-1: #5cb572;
+  --chart-line-2: #e38d3d;
+  --chart-line-3: #e86156;
+  --chart-line-4: #a780e6;
+}

@@ -18,13 +18,16 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # Each arch builds natively (no QEMU): amd64 on the default runner, arm64 on the arm runner.
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
-        platform:
-          - linux/amd64
-          - linux/arm64
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
 
     steps:
       - name: Prepare
